@@ -1,0 +1,3109 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>OrbitGuard — Space Debris Tracking</title>
+
+    <!-- Plotly -->
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+    <!-- satellite.js -->
+    <script src="https://cdn.jsdelivr.net/npm/satellite.js@6.0.2/dist/satellite.min.js"></script>
+
+    <!-- Earcut -->
+    <script src="https://cdn.jsdelivr.net/npm/earcut@2.2.4/dist/earcut.min.js"></script>
+
+    <style>
+
+        :root {
+            --bg: #070b14;
+            --panel: #0d1422;
+            --panel2: #111a2b;
+            --line: #1c2940;
+            --text: #eaf2ff;
+            --muted: #7f91ad;
+            --cyan: #46d9ff;
+            --blue: #5b8cff;
+            --red: #ff526d;
+            --orange: #ffad4d;
+            --green: #42e6a4;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background:
+                radial-gradient(
+                    circle at 70% 10%,
+                    #13243c 0,
+                    #070b14 38%
+                );
+            color: var(--text);
+            font-family:
+                Inter,
+                ui-sans-serif,
+                system-ui,
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                sans-serif;
+        }
+
+        .app {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 230px;
+            background: rgba(7, 11, 20, .92);
+            border-right: 1px solid var(--line);
+            padding: 24px 16px;
+            position: fixed;
+            inset: 0 auto 0 0;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            font-weight: 800;
+            font-size: 19px;
+            margin: 4px 10px 35px;
+        }
+
+        .logoMark {
+            width: 34px;
+            height: 34px;
+            border: 1px solid #2b7190;
+            border-radius: 11px;
+            display: grid;
+            place-items: center;
+            color: var(--cyan);
+            box-shadow: 0 0 24px #46d9ff22;
+        }
+
+        .navTitle {
+            font-size: 10px;
+            color: #50617a;
+            letter-spacing: 1.6px;
+            margin: 22px 12px 9px;
+            text-transform: uppercase;
+        }
+
+        .nav a {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            padding: 11px 12px;
+            border-radius: 10px;
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 13px;
+            margin: 3px 0;
+        }
+
+        .nav a.active,
+        .nav a:hover {
+            background: #142238;
+            color: #fff;
+        }
+
+        .nav a.active {
+            box-shadow: inset 2px 0 var(--cyan);
+        }
+
+        .system {
+            position: absolute;
+            bottom: 22px;
+            left: 18px;
+            right: 18px;
+            padding: 13px;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            background: #0c1320;
+        }
+
+        .dot {
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 10px var(--green);
+            margin-right: 7px;
+        }
+
+        .main {
+            margin-left: 230px;
+            width: calc(100% - 230px);
+            padding: 25px 30px;
+        }
+
+        .top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 23px;
+        }
+
+        .eyebrow {
+            font-size: 11px;
+            color: var(--cyan);
+            letter-spacing: 1.8px;
+            text-transform: uppercase;
+        }
+
+        h1 {
+            margin: 5px 0 0;
+            font-size: 27px;
+        }
+
+        .topRight {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .live {
+            font-size: 12px;
+            color: #a9b9cf;
+            border: 1px solid var(--line);
+            padding: 9px 12px;
+            border-radius: 9px;
+            background: #0c1422;
+        }
+
+        .search {
+            background: #0d1524;
+            border: 1px solid var(--line);
+            color: #fff;
+            padding: 10px 13px;
+            border-radius: 9px;
+            outline: none;
+            width: 190px;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+
+        .card {
+            background:
+                linear-gradient(
+                    145deg,
+                    #0e1727,
+                    #0a111d
+                );
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 17px;
+        }
+
+        .cardHead {
+            display: flex;
+            justify-content: space-between;
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .icon {
+            color: var(--cyan);
+            font-size: 16px;
+        }
+
+        .value {
+            font-size: 28px;
+            font-weight: 750;
+            margin: 9px 0 3px;
+        }
+
+        .sub {
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        .up {
+            color: var(--green);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 310px;
+            gap: 16px;
+        }
+
+        .panel {
+            background: rgba(10, 17, 29, .88);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            overflow: hidden;
+        }
+
+        .panelTitle {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 17px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .panelTitle strong {
+            font-size: 13px;
+        }
+
+        .panelTitle span {
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        #orbit {
+            height: 440px;
+        }
+
+        .riskBody {
+            padding: 22px;
+        }
+
+        .riskCircle {
+            width: 158px;
+            height: 158px;
+            border-radius: 50%;
+            margin: 4px auto 20px;
+            display: grid;
+            place-items: center;
+            background:
+                conic-gradient(
+                    var(--muted) 0 0%,
+                    #172236 0% 100%
+                );
+            position: relative;
+            transition: background .4s ease;
+        }
+
+        .riskCircle::after {
+            content: "";
+            position: absolute;
+            width: 128px;
+            height: 128px;
+            border-radius: 50%;
+            background: #0b1320;
+        }
+
+        .riskNum {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+        }
+
+        .riskNum b {
+            display: block;
+            font-size: 40px;
+        }
+
+        .riskNum small {
+            font-size: 10px;
+            color: var(--red);
+            letter-spacing: 2px;
+        }
+
+        .details {
+            border-top: 1px solid var(--line);
+            padding-top: 14px;
+        }
+
+        .row {
+            display: flex;
+            justify-content: space-between;
+            padding: 9px 0;
+            font-size: 12px;
+        }
+
+        .row span:first-child {
+            color: var(--muted);
+        }
+
+        .badge {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+        .high {
+            background: #ff526d18;
+            color: var(--red);
+        }
+
+        .medium {
+            background: #ffad4d18;
+            color: var(--orange);
+        }
+
+        .low {
+            background: #42e6a418;
+            color: var(--green);
+        }
+
+        .events {
+            margin-top: 16px;
+        }
+
+        .tableWrap {
+            overflow: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 12px 15px;
+            border-bottom: 1px solid #152136;
+        }
+
+        th {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #60718a;
+            font-weight: 600;
+        }
+
+        td {
+            color: #cbd7e8;
+        }
+
+        tr:hover {
+            background: #101a2b;
+        }
+
+        .obj {
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .footerNote {
+            padding: 11px 15px;
+            color: #586b86;
+            font-size: 10px;
+        }
+
+        @media(max-width:1000px) {
+
+            .sidebar {
+                width: 72px;
+            }
+
+            .logo span,
+            .nav a span,
+            .navTitle,
+            .system {
+                display: none;
+            }
+
+            .main {
+                margin-left: 72px;
+                width: calc(100% - 72px);
+            }
+
+            .cards {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+    </style>
+</head>
+
+
+<body>
+
+<div class="app">
+
+    <!-- SIDEBAR -->
+
+    <aside class="sidebar">
+
+        <div class="logo">
+            <div class="logoMark">◉</div>
+            <span>OrbitGuard</span>
+        </div>
+
+        <div class="navTitle">
+            Monitor
+        </div>
+
+        <div class="nav">
+
+            <a class="active" href="#">
+                <b>⌂</b>
+                <span>Overview</span>
+            </a>
+
+            <a href="index.html">
+                <b>◎</b>
+                <span>Orbital Objects</span>
+            </a>
+
+            <a href="grid.html">
+                <b>⚠</b>
+                <span>Conjunctions</span>
+            </a>
+
+            <a href="#">
+                <b>◌</b>
+                <span>Analytics</span>
+            </a>
+
+        </div>
+
+        <div class="navTitle">
+            System
+        </div>
+
+        <div class="nav">
+
+            <a href="#">
+                <b>⚙</b>
+                <span>Settings</span>
+            </a>
+
+            <a href="#">
+                <b>?</b>
+                <span>Documentation</span>
+            </a>
+
+        </div>
+
+        <div class="system">
+
+            <span class="dot" id="sysDot"></span>
+
+            <b
+                style="font-size:11px"
+                id="sysStatus"
+            >
+                Connecting...
+            </b>
+
+            <div
+                style="
+                    font-size:10px;
+                    color:#647690;
+                    margin-top:5px
+                "
+                id="sysSub"
+            >
+                Syncing CelesTrak...
+            </div>
+
+        </div>
+
+    </aside>
+
+
+    <!-- MAIN -->
+
+    <main class="main">
+
+        <div class="top">
+
+            <div>
+
+                <div class="eyebrow">
+                    LEO Situational Awareness
+                </div>
+
+                <h1>
+                    Collision Risk Dashboard
+                </h1>
+
+            </div>
+
+            <div class="topRight">
+
+                <div
+                    class="live"
+                    id="liveStatus"
+                >
+                    <span class="dot"></span>
+                    FETCHING API...
+                </div>
+
+                <input
+                    class="search"
+                    id="search"
+                    placeholder="Search object..."
+                >
+
+            </div>
+
+        </div>
+
+
+        <!-- CARDS -->
+
+        <section class="cards">
+
+            <div class="card">
+
+                <div class="cardHead">
+                    Tracked Objects
+                    <span class="icon">◎</span>
+                </div>
+
+                <div
+                    class="value"
+                    id="cardTracked"
+                >
+                    --
+                </div>
+
+                <div class="sub">
+                    <span class="up">Live</span>
+                    from CelesTrak ACTIVE TLE
+                </div>
+
+            </div>
+
+
+            <div class="card">
+
+                <div class="cardHead">
+                    Conjunctions (24h)
+                    <span class="icon">⌁</span>
+                </div>
+
+                <div
+                    class="value"
+                    id="cardConjunctions"
+                >
+                    --
+                </div>
+
+                <div class="sub">
+                    calculated close approaches
+                </div>
+
+            </div>
+
+
+            <div class="card">
+
+                <div class="cardHead">
+                    High Risk Events
+                    <span style="color:var(--red)">
+                        ●
+                    </span>
+                </div>
+
+                <div
+                    class="value"
+                    style="color:var(--red)"
+                    id="cardHighRisk"
+                >
+                    --
+                </div>
+
+                <div class="sub">
+                    require immediate review
+                </div>
+
+            </div>
+
+
+            <div class="card">
+
+                <div class="cardHead">
+                    Next Close Approach
+                    <span class="icon">◷</span>
+                </div>
+
+                <div
+                    class="value"
+                    id="cardNextTca"
+                >
+                    --
+                </div>
+
+                <div
+                    class="sub"
+                    id="cardNextPair"
+                >
+                    Analyzing data...
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- ORBIT + RISK -->
+
+        <div class="grid">
+
+            <section class="panel">
+
+                <div class="panelTitle">
+
+                    <strong>
+                        Orbital Environment
+                    </strong>
+
+                    <span>
+                        Propagated +90 min • ECI frame (km)
+                    </span>
+
+                </div>
+
+                <div id="orbit"></div>
+
+                <div class="footerNote">
+                    Live TLE catalog from CelesTrak GROUP=ACTIVE •
+                    Globe shows a sample • Positions via SGP4 •
+                    Distances in km
+                </div>
+
+            </section>
+
+
+            <aside class="panel">
+
+                <div class="panelTitle">
+
+                    <strong>
+                        Risk Monitor
+                    </strong>
+
+                    <span>
+                        Selected event
+                    </span>
+
+                </div>
+
+                <div class="riskBody">
+
+                    <div
+                        class="riskCircle"
+                        id="riskCircle"
+                    >
+
+                        <div class="riskNum">
+
+                            <b id="riskScore">
+                                --
+                            </b>
+
+                            <small id="riskLevel">
+                                LOADING
+                            </small>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="details">
+
+                        <div class="row">
+                            <span>Closest approach</span>
+                            <b id="riskDist">-- km</b>
+                        </div>
+
+                        <div class="row">
+                            <span>Time to TCA</span>
+                            <b id="riskTca">-- min</b>
+                        </div>
+
+                        <div class="row">
+                            <span>Relative velocity</span>
+                            <b id="riskVel">-- km/s</b>
+                        </div>
+
+                        <div class="row">
+                            <span>Object A</span>
+                            <b id="riskObjA">--</b>
+                        </div>
+
+                        <div class="row">
+                            <span>Object B</span>
+                            <b id="riskObjB">--</b>
+                        </div>
+
+                        <div class="row">
+
+                            <span>
+                                Confidence
+                            </span>
+
+                            <span
+                                class="badge high"
+                                id="riskBadge"
+                            >
+                                CALCULATING
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </aside>
+
+        </div>
+
+
+        <!-- EVENTS -->
+
+        <section class="panel events">
+
+            <div class="panelTitle">
+
+                <strong>
+                    Upcoming Conjunctions
+                </strong>
+
+                <span id="conjunctionCount">
+                    Fetching data...
+                </span>
+
+            </div>
+
+            <div class="tableWrap">
+
+                <table>
+
+                    <thead>
+
+                        <tr>
+
+                            <th>
+                                Object A
+                            </th>
+
+                            <th>
+                                Object B
+                            </th>
+
+                            <th>
+                                Closest Approach
+                            </th>
+
+                            <th>
+                                TCA
+                            </th>
+
+                            <th>
+                                Relative Velocity
+                            </th>
+
+                            <th>
+                                Risk
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody id="eventRows">
+
+                        <tr>
+
+                            <td
+                                colspan="6"
+                                style="
+                                    text-align:center;
+                                    padding:20px;
+                                "
+                            >
+                                Fetching and calculating
+                                satellite orbits from
+                                CelesTrak...
+                            </td>
+
+                        </tr>
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </section>
+
+    </main>
+
+</div>
+
+
+<script>
+
+
+// ============================================================
+// CELESTRAK
+// ============================================================
+
+const CELESTRAK_API_URL =
+    "https://celestrak.org/NORAD/elements/gp.php?GROUP=ACTIVE&FORMAT=TLE";
+
+const ISS_NORAD_ID = 25544;
+
+const MAX_ORBIT_SATS = 40;
+
+const MAX_CONJUNCTION_SATS = 30;
+
+
+// ============================================================
+// EARTH SETTINGS
+// ============================================================
+
+const EARTH_RADIUS = 6371;
+
+// Land sits 2 km above Earth.
+// This makes the land visible instead of being hidden
+// inside the blue sphere.
+
+const LAND_RADIUS = 6373;
+
+
+// ============================================================
+// SATELLITE COLORS
+// ============================================================
+
+const SATELLITE_COLORS = [
+
+    "#46d9ff",
+    "#ff526d",
+    "#42e6a4",
+    "#ffad4d",
+    "#a970ff",
+    "#ffe66d",
+    "#ff7eb6",
+    "#4dd9ff",
+    "#7cffcb",
+    "#ff8c42",
+    "#c77dff",
+    "#90be6d",
+    "#f72585",
+    "#4cc9f0",
+    "#f9c74f"
+
+];
+
+
+// ============================================================
+// FETCH CELESTRAK
+// ============================================================
+
+async function fetchCelesTrakData() {
+
+    const CACHE_KEY =
+        "orbitguard_celestrak_active_tle";
+
+    const CACHE_TIME_KEY =
+        "orbitguard_celestrak_active_tle_time";
+
+    const CACHE_MAX_AGE =
+        2 * 60 * 60 * 1000;
+
+
+    // --------------------------------------------------------
+    // CACHE
+    // --------------------------------------------------------
+
+    try {
+
+        const cached =
+            localStorage.getItem(CACHE_KEY);
+
+        const cachedTime =
+            Number(
+                localStorage.getItem(
+                    CACHE_TIME_KEY
+                ) || 0
+            );
+
+        if (
+            cached &&
+            Date.now() - cachedTime <
+                CACHE_MAX_AGE
+        ) {
+
+            return parseTleCatalog(cached);
+        }
+
+    } catch (error) {
+
+        console.warn(
+            "Cache unavailable:",
+            error
+        );
+
+    }
+
+
+    // --------------------------------------------------------
+    // DIRECT FETCH
+    // --------------------------------------------------------
+
+    try {
+
+        const response =
+            await fetch(
+                CELESTRAK_API_URL
+            );
+
+        if (!response.ok) {
+
+            throw new Error(
+                `HTTP ${response.status}`
+            );
+
+        }
+
+        const tleText =
+            await response.text();
+
+
+        try {
+
+            localStorage.setItem(
+                CACHE_KEY,
+                tleText
+            );
+
+            localStorage.setItem(
+                CACHE_TIME_KEY,
+                Date.now().toString()
+            );
+
+        } catch (error) {
+
+            console.warn(
+                "Could not cache data:",
+                error
+            );
+
+        }
+
+
+        return parseTleCatalog(tleText);
+
+    } catch (directError) {
+
+        console.warn(
+            "Direct CelesTrak request failed:",
+            directError
+        );
+
+    }
+
+
+    // --------------------------------------------------------
+    // FALLBACK PROXY
+    // --------------------------------------------------------
+
+    const proxyUrl =
+        "https://api.allorigins.win/raw?url=" +
+        encodeURIComponent(
+            CELESTRAK_API_URL
+        );
+
+
+    try {
+
+        const response =
+            await fetch(proxyUrl);
+
+        if (!response.ok) {
+
+            throw new Error(
+                `Proxy HTTP ${response.status}`
+            );
+
+        }
+
+        return parseTleCatalog(
+            await response.text()
+        );
+
+    } catch (proxyError) {
+
+        throw new Error(
+            "Unable to load CelesTrak data."
+        );
+
+    }
+
+}
+
+
+// ============================================================
+// PARSE TLE CATALOG
+// ============================================================
+
+function parseTleCatalog(tleText) {
+
+    if (!tleText || !tleText.trim()) {
+        return [];
+    }
+
+    const lines = tleText
+        .split(/\r?\n/)
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+
+    const records = [];
+
+    let i = 0;
+
+    while (i < lines.length) {
+
+        const line = lines[i];
+        const next = lines[i + 1];
+        const after = lines[i + 2];
+
+        let name;
+        let line1;
+        let line2;
+
+        if (
+            line.startsWith("1 ") &&
+            next &&
+            next.startsWith("2 ")
+        ) {
+
+            line1 = line;
+            line2 = next;
+            name = `NORAD ${line1.substring(2, 7).trim()}`;
+            i += 2;
+
+        } else if (
+            next &&
+            next.startsWith("1 ") &&
+            after &&
+            after.startsWith("2 ")
+        ) {
+
+            name = line;
+            line1 = next;
+            line2 = after;
+            i += 3;
+
+        } else {
+
+            i += 1;
+            continue;
+
+        }
+
+        const noradId = Number(
+            line1.substring(2, 7).trim()
+        );
+
+        records.push({
+            name,
+            line1,
+            line2,
+            NORAD_CAT_ID: noradId
+        });
+
+    }
+
+    return records;
+
+}
+
+
+function pickSatelliteSubset(satellites, limit) {
+
+    if (satellites.length <= limit) {
+        return satellites.slice();
+    }
+
+    const iss = satellites.find(
+        sat => Number(sat.noradId) === ISS_NORAD_ID
+    );
+
+    const rest = satellites.filter(
+        sat => Number(sat.noradId) !== ISS_NORAD_ID
+    );
+
+    if (iss) {
+        return [iss, ...rest.slice(0, limit - 1)];
+    }
+
+    return rest.slice(0, limit);
+
+}
+
+
+// ============================================================
+// LAT/LON → XYZ
+// ============================================================
+
+function latLonToXYZ(
+    lon,
+    lat,
+    radius
+) {
+
+    const lonRad =
+        lon * Math.PI / 180;
+
+    const latRad =
+        lat * Math.PI / 180;
+
+
+    return {
+
+        x:
+            radius *
+            Math.cos(latRad) *
+            Math.cos(lonRad),
+
+        y:
+            radius *
+            Math.cos(latRad) *
+            Math.sin(lonRad),
+
+        z:
+            radius *
+            Math.sin(latRad)
+
+    };
+
+}
+
+
+// ============================================================
+// CREATE EARTH SPHERE
+// ============================================================
+
+function addEarthSphere(traces) {
+
+    const resolution = 50;
+
+    const x = [];
+    const y = [];
+    const z = [];
+
+
+    // --------------------------------------------------------
+    // IMPORTANT:
+    // We use a parametric sphere rather than alphahull.
+    // This gives Plotly a predictable Earth surface.
+    // --------------------------------------------------------
+
+    for (
+        let i = 0;
+        i <= resolution;
+        i++
+    ) {
+
+        const lat =
+            Math.PI / 2 -
+            Math.PI * i / resolution;
+
+
+        for (
+            let j = 0;
+            j <= resolution;
+            j++
+        ) {
+
+            const lon =
+                2 * Math.PI * j / resolution;
+
+
+            x.push(
+                EARTH_RADIUS *
+                Math.cos(lat) *
+                Math.cos(lon)
+            );
+
+            y.push(
+                EARTH_RADIUS *
+                Math.cos(lat) *
+                Math.sin(lon)
+            );
+
+            z.push(
+                EARTH_RADIUS *
+                Math.sin(lat)
+            );
+
+        }
+
+    }
+
+
+    // --------------------------------------------------------
+    // EARTH SURFACE
+    // --------------------------------------------------------
+
+    const surfaceX = [];
+    const surfaceY = [];
+    const surfaceZ = [];
+
+
+    for (
+        let i = 0;
+        i < resolution;
+        i++
+    ) {
+
+        for (
+            let j = 0;
+            j < resolution;
+            j++
+        ) {
+
+            const a =
+                i * (resolution + 1) + j;
+
+            const b =
+                a + 1;
+
+            const c =
+                (i + 1) *
+                    (resolution + 1) +
+                j;
+
+            const d =
+                c + 1;
+
+
+            // Triangle 1
+
+            surfaceX.push(
+                x[a],
+                x[b],
+                x[c]
+            );
+
+            surfaceY.push(
+                y[a],
+                y[b],
+                y[c]
+            );
+
+            surfaceZ.push(
+                z[a],
+                z[b],
+                z[c]
+            );
+
+
+            // Triangle 2
+
+            surfaceX.push(
+                x[b],
+                x[d],
+                x[c]
+            );
+
+            surfaceY.push(
+                y[b],
+                y[d],
+                y[c]
+            );
+
+            surfaceZ.push(
+                z[b],
+                z[d],
+                z[c]
+            );
+
+        }
+
+    }
+
+
+    const triangleCount =
+        surfaceX.length / 3;
+
+
+    const I = [];
+    const J = [];
+    const K = [];
+
+
+    for (
+        let i = 0;
+        i < triangleCount;
+        i++
+    ) {
+
+        I.push(i * 3);
+        J.push(i * 3 + 1);
+        K.push(i * 3 + 2);
+
+    }
+
+
+    traces.push({
+
+        type: "mesh3d",
+
+        x: surfaceX,
+        y: surfaceY,
+        z: surfaceZ,
+
+        i: I,
+        j: J,
+        k: K,
+
+        color: "#16406b",
+
+        opacity: 0.65,
+
+        flatshading: false,
+
+        lighting: {
+
+            ambient: 0.7,
+
+            diffuse: 0.8,
+
+            specular: 0.15,
+
+            roughness: 0.9
+
+        },
+
+        lightposition: {
+
+            x: 10000,
+            y: 5000,
+            z: 10000
+
+        },
+
+        name: "Earth",
+
+        showlegend: false,
+
+        hoverinfo: "skip"
+
+    });
+
+}
+
+
+// ============================================================
+// ADD EARTH LAND
+// ============================================================
+
+async function addEarthLand(traces) {
+
+    try {
+
+        // ----------------------------------------------------
+        // Natural Earth 1:110m land dataset
+        // ----------------------------------------------------
+
+        const url =
+            "https://raw.githubusercontent.com/" +
+            "nvkelso/natural-earth-vector/master/" +
+            "geojson/ne_110m_land.geojson";
+
+
+        const response =
+            await fetch(url);
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                `Land GeoJSON HTTP ${response.status}`
+            );
+
+        }
+
+
+        const geojson =
+            await response.json();
+
+
+        console.log(
+            "Earth land loaded:",
+            geojson.features.length,
+            "features"
+        );
+
+
+        geojson.features.forEach(
+            feature => {
+
+                if (!feature.geometry)
+                    return;
+
+
+                const geometry =
+                    feature.geometry;
+
+
+                // POLYGON
+
+                if (
+                    geometry.type ===
+                    "Polygon"
+                ) {
+
+                    addPolygon(
+                        geometry.coordinates,
+                        traces
+                    );
+
+                }
+
+
+                // MULTIPOLYGON
+
+                else if (
+                    geometry.type ===
+                    "MultiPolygon"
+                ) {
+
+                    geometry.coordinates
+                        .forEach(
+                            polygon => {
+
+                                addPolygon(
+                                    polygon,
+                                    traces
+                                );
+
+                            }
+                        );
+
+                }
+
+            }
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Earth land failed:",
+            error
+        );
+
+    }
+
+}
+
+
+// ============================================================
+// ADD ONE POLYGON
+// ============================================================
+
+function addPolygon(
+    rings,
+    traces
+) {
+
+    if (
+        !rings ||
+        rings.length === 0
+    ) {
+
+        return;
+
+    }
+
+
+    const vertices = [];
+
+    const holes = [];
+
+    let vertexCount = 0;
+
+
+    // --------------------------------------------------------
+    // GEOJSON RINGS
+    // --------------------------------------------------------
+
+    rings.forEach(
+        (ring, ringIndex) => {
+
+            if (
+                ringIndex > 0
+            ) {
+
+                holes.push(
+                    vertexCount
+                );
+
+            }
+
+
+            ring.forEach(
+                point => {
+
+                    const lon =
+                        point[0];
+
+                    const lat =
+                        point[1];
+
+
+                    vertices.push(
+                        lon,
+                        lat
+                    );
+
+
+                    vertexCount++;
+
+                }
+            );
+
+        }
+    );
+
+
+    // --------------------------------------------------------
+    // TRIANGULATE
+    // --------------------------------------------------------
+
+    const triangles =
+        earcut(
+            vertices,
+            holes,
+            2
+        );
+
+
+    if (
+        !triangles ||
+        triangles.length === 0
+    ) {
+
+        return;
+
+    }
+
+
+    const x = [];
+    const y = [];
+    const z = [];
+
+
+    // --------------------------------------------------------
+    // CONVERT TO 3D
+    // --------------------------------------------------------
+
+    for (
+        let i = 0;
+        i < triangles.length;
+        i++
+    ) {
+
+        const index =
+            triangles[i];
+
+
+        const lon =
+            vertices[index * 2];
+
+        const lat =
+            vertices[index * 2 + 1];
+
+
+        const position =
+            latLonToXYZ(
+                lon,
+                lat,
+                LAND_RADIUS
+            );
+
+
+        x.push(
+            position.x
+        );
+
+        y.push(
+            position.y
+        );
+
+        z.push(
+            position.z
+        );
+
+    }
+
+
+    // --------------------------------------------------------
+    // TRIANGLE INDICES
+    // --------------------------------------------------------
+
+    const I = [];
+    const J = [];
+    const K = [];
+
+
+    for (
+        let i = 0;
+        i < triangles.length;
+        i += 3
+    ) {
+
+        I.push(i);
+        J.push(i + 1);
+        K.push(i + 2);
+
+    }
+
+
+    // --------------------------------------------------------
+    // LAND TRACE
+    // --------------------------------------------------------
+
+    traces.push({
+
+        type: "mesh3d",
+
+        x: x,
+        y: y,
+        z: z,
+
+        i: I,
+        j: J,
+        k: K,
+
+        color: "#527a4d",
+
+        opacity: 1,
+
+        flatshading: true,
+
+        lighting: {
+
+            ambient: 0.9,
+
+            diffuse: 0.5,
+
+            specular: 0,
+
+            roughness: 1
+
+        },
+
+        name: "Land",
+
+        showlegend: false,
+
+        hoverinfo: "skip"
+
+    });
+
+}
+
+
+// ============================================================
+// CREATE SATELLITE ORBIT
+// ============================================================
+
+function addSatellite(
+    sat,
+    index,
+    traces,
+    now
+) {
+
+    const x = [];
+    const y = [];
+    const z = [];
+
+
+    // --------------------------------------------------------
+    // DIFFERENT COLOR FOR EVERY SATELLITE
+    // --------------------------------------------------------
+
+    const color =
+        SATELLITE_COLORS[
+            index %
+            SATELLITE_COLORS.length
+        ];
+
+
+    // --------------------------------------------------------
+    // PROPAGATE 90 MINUTES
+    // --------------------------------------------------------
+
+    for (
+        let step = 0;
+        step <= 90;
+        step += 2
+    ) {
+
+        const time =
+            new Date(
+                now.getTime() +
+                step * 60000
+            );
+
+
+        const result =
+            satellite.propagate(
+                sat.satrec,
+                time
+            );
+
+
+        if (
+            result &&
+            result.position
+        ) {
+
+            x.push(
+                result.position.x
+            );
+
+            y.push(
+                result.position.y
+            );
+
+            z.push(
+                result.position.z
+            );
+
+        }
+
+    }
+
+
+    if (x.length === 0)
+        return;
+
+
+    // ========================================================
+    // ORBIT PATH
+    // ========================================================
+
+    traces.push({
+
+        type: "scatter3d",
+
+        x: x,
+        y: y,
+        z: z,
+
+        mode: "lines",
+
+        name: sat.name,
+
+        line: {
+
+            color: color,
+
+            width:
+                index === 0
+                    ? 4
+                    : 2.5
+
+        },
+
+        hovertemplate:
+            `<b>${sat.name}</b><extra></extra>`
+
+    });
+
+
+    // ========================================================
+    // OUTER GLOW
+    // ========================================================
+
+    traces.push({
+
+        type: "scatter3d",
+
+        x: [x[0]],
+        y: [y[0]],
+        z: [z[0]],
+
+        mode: "markers",
+
+        showlegend: false,
+
+        hoverinfo: "skip",
+
+        marker: {
+
+            size: 18,
+
+            color: color,
+
+            opacity: 0.18
+
+        }
+
+    });
+
+
+    // ========================================================
+    // SECOND GLOW
+    // ========================================================
+
+    traces.push({
+
+        type: "scatter3d",
+
+        x: [x[0]],
+        y: [y[0]],
+        z: [z[0]],
+
+        mode: "markers",
+
+        showlegend: false,
+
+        hoverinfo: "skip",
+
+        marker: {
+
+            size: 11,
+
+            color: color,
+
+            opacity: 0.35
+
+        }
+
+    });
+
+
+    // ========================================================
+    // BRIGHT SATELLITE CORE
+    // ========================================================
+
+    traces.push({
+
+        type: "scatter3d",
+
+        x: [x[0]],
+        y: [y[0]],
+        z: [z[0]],
+
+        mode: "markers",
+
+        showlegend: false,
+
+        hoverinfo: "skip",
+
+        marker: {
+
+            size: 5.5,
+
+            color: "#ffffff",
+
+            opacity: 1,
+
+            line: {
+
+                color: color,
+
+                width: 1.5
+
+            }
+
+        }
+
+    });
+
+}
+
+
+// ============================================================
+// RENDER 3D ORBITS
+// ============================================================
+
+async function render3DOrbits(
+    satellites
+) {
+
+    const traces = [];
+
+    const now = new Date();
+
+
+    // ========================================================
+    // EARTH
+    // ========================================================
+
+    addEarthSphere(
+        traces
+    );
+
+
+    // ========================================================
+    // LAND
+    // ========================================================
+
+    await addEarthLand(
+        traces
+    );
+
+
+    // ========================================================
+    // SATELLITES
+    // ========================================================
+
+    satellites.forEach(
+        (sat, index) => {
+
+            addSatellite(
+                sat,
+                index,
+                traces,
+                now
+            );
+
+        }
+    );
+
+
+    // ========================================================
+    // PLOT
+    // ========================================================
+
+    Plotly.newPlot(
+
+        "orbit",
+
+        traces,
+
+        {
+
+            paper_bgcolor:
+                "#0a111d",
+
+            plot_bgcolor:
+                "#0a111d",
+
+            scene: {
+
+                bgcolor:
+                    "#0a111d",
+
+
+                xaxis: {
+                    visible: false
+                },
+
+                yaxis: {
+                    visible: false
+                },
+
+                zaxis: {
+                    visible: false
+                },
+
+
+                aspectmode:
+                    "data",
+
+
+                camera: {
+
+                    eye: {
+
+                        x: 1.55,
+
+                        y: 1.55,
+
+                        z: 1.25
+
+                    }
+
+                },
+
+
+                // ------------------------------------------------
+                // Prevent Earth from appearing stretched
+                // ------------------------------------------------
+
+                aspectratio: {
+
+                    x: 1,
+                    y: 1,
+                    z: 1
+
+                }
+
+            },
+
+
+            margin: {
+
+                l: 0,
+                r: 0,
+                t: 0,
+                b: 0
+
+            },
+
+
+            legend: {
+
+                font: {
+
+                    color:
+                        "#9fb0c8",
+
+                    size: 10
+
+                },
+
+                bgcolor:
+                    "#0a111dcc",
+
+                x: 0.02,
+
+                y: 0.98
+
+            }
+
+        },
+
+        {
+
+            displayModeBar:
+                false,
+
+            responsive:
+                true
+
+        }
+
+    );
+
+}
+
+
+// ============================================================
+// CONJUNCTION CALCULATION
+// ============================================================
+
+function computeConjunctions(
+    satellites
+) {
+
+    const events = [];
+
+    const now =
+        new Date();
+
+    const STEP_MINUTES = 2;
+
+    const HOURS_AHEAD = 24;
+
+    const totalSteps =
+        HOURS_AHEAD *
+        60 /
+        STEP_MINUTES;
+
+
+    function getState(
+        satrec,
+        time
+    ) {
+
+        const result =
+            satellite.propagate(
+                satrec,
+                time
+            );
+
+
+        if (
+            !result.position ||
+            !result.velocity
+        ) {
+
+            return null;
+
+        }
+
+
+        return {
+
+            position:
+                result.position,
+
+            velocity:
+                result.velocity
+
+        };
+
+    }
+
+
+    function distanceBetween(
+        a,
+        b
+    ) {
+
+        const dx =
+            a.x - b.x;
+
+        const dy =
+            a.y - b.y;
+
+        const dz =
+            a.z - b.z;
+
+
+        return Math.sqrt(
+            dx * dx +
+            dy * dy +
+            dz * dz
+        );
+
+    }
+
+
+    function relativeVelocity(
+        a,
+        b
+    ) {
+
+        const vx =
+            a.x - b.x;
+
+        const vy =
+            a.y - b.y;
+
+        const vz =
+            a.z - b.z;
+
+
+        return Math.sqrt(
+            vx * vx +
+            vy * vy +
+            vz * vz
+        );
+
+    }
+
+
+    // --------------------------------------------------------
+    // SATELLITE PAIRS
+    // --------------------------------------------------------
+
+    for (
+        let i = 0;
+        i < satellites.length;
+        i++
+    ) {
+
+        for (
+            let j = i + 1;
+            j < satellites.length;
+            j++
+        ) {
+
+            let minimumDistance =
+                Infinity;
+
+            let tcaTime =
+                null;
+
+            let tcaRelativeVelocity =
+                0;
+
+
+            // ------------------------------------------------
+            // TIME STEPS
+            // ------------------------------------------------
+
+            for (
+                let step = 0;
+                step <= totalSteps;
+                step++
+            ) {
+
+                const time =
+                    new Date(
+                        now.getTime() +
+                        step *
+                        STEP_MINUTES *
+                        60 *
+                        1000
+                    );
+
+
+                const stateA =
+                    getState(
+                        satellites[i].satrec,
+                        time
+                    );
+
+
+                const stateB =
+                    getState(
+                        satellites[j].satrec,
+                        time
+                    );
+
+
+                if (
+                    !stateA ||
+                    !stateB
+                )
+                    continue;
+
+
+                const distance =
+                    distanceBetween(
+                        stateA.position,
+                        stateB.position
+                    );
+
+
+                if (
+                    distance <
+                    minimumDistance
+                ) {
+
+                    minimumDistance =
+                        distance;
+
+                    tcaTime =
+                        time;
+
+                    tcaRelativeVelocity =
+                        relativeVelocity(
+                            stateA.velocity,
+                            stateB.velocity
+                        );
+
+                }
+
+            }
+
+
+            if (
+                !tcaTime ||
+                !isFinite(
+                    minimumDistance
+                )
+            ) {
+
+                continue;
+
+            }
+
+
+            const timeToTcaMinutes =
+                (
+                    tcaTime.getTime() -
+                    now.getTime()
+                ) /
+                (60 * 1000);
+
+
+            let riskLevel =
+                "LOW";
+
+
+            if (
+                minimumDistance <
+                50
+            ) {
+
+                riskLevel =
+                    "HIGH";
+
+            } else if (
+                minimumDistance <
+                500
+            ) {
+
+                riskLevel =
+                    "MEDIUM";
+
+            }
+
+
+            events.push({
+
+                objA:
+                    satellites[i].name,
+
+                objB:
+                    satellites[j].name,
+
+                dist:
+                    minimumDistance.toFixed(1),
+
+                distValue:
+                    minimumDistance,
+
+                tca:
+                    `${Math.max(
+                        0,
+                        Math.round(
+                            timeToTcaMinutes
+                        )
+                    )} min`,
+
+                tcaValue:
+                    Math.max(
+                        0,
+                        Math.round(
+                            timeToTcaMinutes
+                        )
+                    ),
+
+                relVel:
+                    tcaRelativeVelocity.toFixed(2),
+
+                risk:
+                    riskLevel,
+
+                tcaDate:
+                    tcaTime
+
+            });
+
+        }
+
+    }
+
+
+    return events.sort(
+        (a, b) =>
+            a.tcaValue -
+            b.tcaValue
+    );
+
+}
+
+
+// ============================================================
+// RISK SCORE
+// ============================================================
+
+function riskScoreFromDistance(
+    distanceKm
+) {
+
+    const clamped =
+        Math.max(
+            0,
+            Math.min(
+                distanceKm,
+                2000
+            )
+        );
+
+
+    const score =
+        100 -
+        (clamped / 2000) *
+        95;
+
+
+    return Math.round(
+        Math.max(
+            1,
+            Math.min(
+                99,
+                score
+            )
+        )
+    );
+
+}
+
+
+// ============================================================
+// RISK CIRCLE
+// ============================================================
+
+function updateRiskCircle(
+    score,
+    riskLevel
+) {
+
+    let color;
+
+    if (
+        riskLevel ===
+        "HIGH"
+    ) {
+
+        color =
+            "var(--red)";
+
+    } else if (
+        riskLevel ===
+        "MEDIUM"
+    ) {
+
+        color =
+            "var(--orange)";
+
+    } else {
+
+        color =
+            "var(--green)";
+
+    }
+
+
+    document
+        .getElementById(
+            "riskCircle"
+        )
+        .style.background =
+        `conic-gradient(
+            ${color} 0 ${score}%,
+            #172236 ${score}% 100%
+        )`;
+
+}
+
+
+// ============================================================
+// RENDER CONJUNCTIONS
+// ============================================================
+
+function renderConjunctions(
+    events
+) {
+
+    const tbody =
+        document.getElementById(
+            "eventRows"
+        );
+
+
+    tbody.innerHTML = "";
+
+
+    // --------------------------------------------------------
+    // CARD
+    // --------------------------------------------------------
+
+    document
+        .getElementById(
+            "cardConjunctions"
+        )
+        .innerText =
+        events.length;
+
+
+    const highRiskEvents =
+        events.filter(
+            e =>
+                e.risk ===
+                "HIGH"
+        );
+
+
+    document
+        .getElementById(
+            "cardHighRisk"
+        )
+        .innerText =
+        highRiskEvents.length
+            .toString()
+            .padStart(2, "0");
+
+
+    // --------------------------------------------------------
+    // EVENTS EXIST
+    // --------------------------------------------------------
+
+    if (
+        events.length > 0
+    ) {
+
+        const next =
+            events[0];
+
+
+        document
+            .getElementById(
+                "cardNextTca"
+            )
+            .innerHTML =
+            `${next.tcaValue}
+             <span style="font-size:14px">
+                min
+             </span>`;
+
+
+        document
+            .getElementById(
+                "cardNextPair"
+            )
+            .innerText =
+            `${next.objA} ↔ ${next.objB}`;
+
+
+        // ----------------------------------------------------
+        // RISK PANEL
+        // ----------------------------------------------------
+
+        const score =
+            riskScoreFromDistance(
+                next.distValue
+            );
+
+
+        document
+            .getElementById(
+                "riskScore"
+            )
+            .innerText =
+            score;
+
+
+        document
+            .getElementById(
+                "riskLevel"
+            )
+            .innerText =
+            `${next.risk} RISK`;
+
+
+        document
+            .getElementById(
+                "riskDist"
+            )
+            .innerText =
+            `${next.dist} km`;
+
+
+        document
+            .getElementById(
+                "riskTca"
+            )
+            .innerText =
+            next.tca;
+
+
+        document
+            .getElementById(
+                "riskVel"
+            )
+            .innerText =
+            `${next.relVel} km/s`;
+
+
+        document
+            .getElementById(
+                "riskObjA"
+            )
+            .innerText =
+            next.objA;
+
+
+        document
+            .getElementById(
+                "riskObjB"
+            )
+            .innerText =
+            next.objB;
+
+
+        const badge =
+            document.getElementById(
+                "riskBadge"
+            );
+
+
+        badge.className =
+            `badge ${
+                next.risk.toLowerCase()
+            }`;
+
+
+        badge.innerText =
+            next.risk;
+
+
+        updateRiskCircle(
+            score,
+            next.risk
+        );
+
+    }
+
+
+    // --------------------------------------------------------
+    // NO EVENTS
+    // --------------------------------------------------------
+
+    else {
+
+        document
+            .getElementById(
+                "cardNextTca"
+            )
+            .innerText =
+            "--";
+
+
+        document
+            .getElementById(
+                "cardNextPair"
+            )
+            .innerText =
+            "No close approaches";
+
+
+        document
+            .getElementById(
+                "riskScore"
+            )
+            .innerText =
+            "0";
+
+
+        document
+            .getElementById(
+                "riskLevel"
+            )
+            .innerText =
+            "NO EVENTS";
+
+
+        document
+            .getElementById(
+                "riskBadge"
+            )
+            .className =
+            "badge low";
+
+
+        document
+            .getElementById(
+                "riskBadge"
+            )
+            .innerText =
+            "NONE";
+
+
+        updateRiskCircle(
+            0,
+            "LOW"
+        );
+
+
+        tbody.innerHTML = `
+
+            <tr>
+
+                <td
+                    colspan="6"
+                    style="
+                        text-align:center;
+                        padding:20px;
+                    "
+                >
+                    No conjunctions detected
+                    in the next 24 hours.
+
+                </td>
+
+            </tr>
+
+        `;
+
+    }
+
+
+    document
+        .getElementById(
+            "conjunctionCount"
+        )
+        .innerText =
+        `Next 24 hours •
+         ${events.length}
+         detected`;
+
+
+    // --------------------------------------------------------
+    // TABLE
+    // --------------------------------------------------------
+
+    events.forEach(
+        event => {
+
+            const tr =
+                document.createElement(
+                    "tr"
+                );
+
+
+            tr.innerHTML = `
+
+                <td class="obj">
+                    ${event.objA}
+                </td>
+
+                <td class="obj">
+                    ${event.objB}
+                </td>
+
+                <td>
+                    ${event.dist} km
+                </td>
+
+                <td>
+                    ${event.tca}
+                </td>
+
+                <td>
+                    ${event.relVel} km/s
+                </td>
+
+                <td>
+
+                    <span
+                        class="badge
+                        ${event.risk.toLowerCase()}"
+                    >
+                        ${event.risk}
+                    </span>
+
+                </td>
+
+            `;
+
+
+            tbody.appendChild(
+                tr
+            );
+
+        }
+    );
+
+}
+
+
+// ============================================================
+// INITIALIZE DASHBOARD
+// ============================================================
+
+async function initDashboard() {
+
+    try {
+
+        // ----------------------------------------------------
+        // FETCH DATA
+        // ----------------------------------------------------
+
+        const satData =
+            await fetchCelesTrakData();
+
+
+        if (
+            !Array.isArray(satData) ||
+            satData.length === 0
+        ) {
+
+            throw new Error(
+                "CelesTrak returned no data."
+            );
+
+        }
+
+
+        // ----------------------------------------------------
+        // STATUS
+        // ----------------------------------------------------
+
+        document
+            .getElementById(
+                "sysStatus"
+            )
+            .innerText =
+            "Tracking system online";
+
+
+        document
+            .getElementById(
+                "sysSub"
+            )
+            .innerText =
+            "CelesTrak feed synced";
+
+
+        document
+            .getElementById(
+                "liveStatus"
+            )
+            .innerHTML =
+            `<span class="dot"></span>
+             LIVE • ${satData.length}
+             active TLEs`;
+
+
+        document
+            .getElementById(
+                "cardTracked"
+            )
+            .innerText =
+            satData.length.toLocaleString();
+
+
+        // ----------------------------------------------------
+        // PARSE SATELLITES
+        // ----------------------------------------------------
+
+        const parsedSatellites =
+            satData
+                .map(
+                    sat => {
+
+                        try {
+
+                            const satrec =
+                                satellite.twoline2satrec(
+                                    sat.line1,
+                                    sat.line2
+                                );
+
+
+                            return {
+
+                                name:
+                                    sat.name ||
+                                    `NORAD ${
+                                        sat.NORAD_CAT_ID
+                                    }`,
+
+                                noradId:
+                                    sat.NORAD_CAT_ID,
+
+                                satrec:
+                                    satrec
+
+                            };
+
+                        } catch (
+                            error
+                        ) {
+
+                            console.warn(
+                                "Could not parse:",
+                                sat,
+                                error
+                            );
+
+                            return null;
+
+                        }
+
+                    }
+                )
+                .filter(
+                    sat =>
+                        sat &&
+                        sat.satrec &&
+                        sat.satrec.error === 0
+                );
+
+
+        if (
+            parsedSatellites.length === 0
+        ) {
+
+            throw new Error(
+                "No valid satellites."
+            );
+
+        }
+
+
+        // ----------------------------------------------------
+        // 3D ORBITS
+        // ----------------------------------------------------
+
+        await render3DOrbits(
+            pickSatelliteSubset(
+                parsedSatellites,
+                MAX_ORBIT_SATS
+            )
+        );
+
+
+        // ----------------------------------------------------
+        // CONJUNCTIONS
+        // ----------------------------------------------------
+
+        const conjunctions =
+            computeConjunctions(
+                pickSatelliteSubset(
+                    parsedSatellites,
+                    MAX_CONJUNCTION_SATS
+                )
+            );
+
+
+        renderConjunctions(
+            conjunctions
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Dashboard error:",
+            error
+        );
+
+
+        document
+            .getElementById(
+                "sysStatus"
+            )
+            .innerText =
+            "Connection Error";
+
+
+        document
+            .getElementById(
+                "sysSub"
+            )
+            .innerText =
+            "Unable to load CelesTrak";
+
+
+        document
+            .getElementById(
+                "sysDot"
+            )
+            .style.background =
+            "var(--red)";
+
+
+        document
+            .getElementById(
+                "sysDot"
+            )
+            .style.boxShadow =
+            "0 0 10px var(--red)";
+
+
+        document
+            .getElementById(
+                "liveStatus"
+            )
+            .innerHTML =
+            `<span class="dot"></span>
+             API OFFLINE`;
+
+
+        document
+            .getElementById(
+                "eventRows"
+            )
+            .innerHTML = `
+
+                <tr>
+
+                    <td
+                        colspan="6"
+                        style="
+                            text-align:center;
+                            padding:20px;
+                        "
+                    >
+                        Could not load satellite
+                        data.
+
+                        <br><br>
+
+                        Check the browser console
+                        for details.
+
+                    </td>
+
+                </tr>
+
+            `;
+
+    }
+
+}
+
+
+// ============================================================
+// SEARCH
+// ============================================================
+
+document
+    .getElementById(
+        "search"
+    )
+    .addEventListener(
+        "input",
+        event => {
+
+            const query =
+                event.target.value
+                    .toLowerCase();
+
+
+            document
+                .querySelectorAll(
+                    "#eventRows tr"
+                )
+                .forEach(
+                    row => {
+
+                        row.style.display =
+                            row.innerText
+                                .toLowerCase()
+                                .includes(
+                                    query
+                                )
+                                ? ""
+                                : "none";
+
+                    }
+                );
+
+        }
+    );
+
+
+// ============================================================
+// START
+// ============================================================
+
+window.addEventListener(
+    "DOMContentLoaded",
+    initDashboard
+);
+
+</script>
+
+</body>
+</html>
