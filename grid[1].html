@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>OrbitGuard — Conjunctions</title><link rel="stylesheet" href="styles.css"></head><body>
+<div class="app">
+<aside class="sidebar">
+  <div class="logo"><div class="logoMark">◉</div><span>OrbitGuard</span></div>
+  <div class="navTitle">Monitor</div>
+  <div class="nav">
+    <a href="overview.html" class=""><b>⌂</b><span>Overview</span></a>
+    <a href="index.html" class=""><b>◎</b><span>Orbital Objects</span></a>
+    <a href="grid.html" class="active"><b>⚠</b><span>Conjunctions</span></a>
+    <a href="analytics.html" class=""><b>◌</b><span>Analytics</span></a>
+  </div>
+  <div class="navTitle">System</div>
+  <div class="nav">
+    <a href="settings.html" class=""><b>⚙</b><span>Settings</span></a>
+    <a href="documentation.html" class=""><b>?</b><span>Documentation</span></a>
+  </div>
+</aside>
+
+<main class="main">
+<div class="top"><div><div class="eyebrow">Collision Risk Monitoring</div><h1>Conjunctions</h1></div><div class="topRight"><input id="conjSearch" class="search" placeholder="Search object..."></div></div>
+<section class="cards">
+<div class="card"><div class="cardHead"><span>Active Alerts</span><span class="icon">⚠</span></div><div class="value yellow">3</div><div class="sub">potential conjunctions</div></div>
+<div class="card"><div class="cardHead"><span>High Risk</span><span class="icon">!</span></div><div class="value red">1</div><div class="sub">priority monitoring</div></div>
+<div class="card"><div class="cardHead"><span>Medium Risk</span><span class="icon">!</span></div><div class="value yellow">2</div><div class="sub">continued monitoring</div></div>
+<div class="card"><div class="cardHead"><span>Clear</span><span class="icon">✓</span></div><div class="value green">19</div><div class="sub">no current alert</div></div>
+</section>
+<section class="panel"><div class="panelTitle"><strong>Conjunction Events</strong><span>Risk assessment</span></div>
+<table id="conjTable"><thead><tr><th>Primary Object</th><th>Secondary Object</th><th>Miss Distance</th><th>Probability</th><th>Risk</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>ISS (ZARYA)</td><td>POISK</td><td>0.82 km</td><td>0.0021</td><td><span class="badge red">HIGH</span></td><td>MONITOR</td></tr>
+<tr><td>CSS (TIANHE)</td><td>CSS (WENTIAN)</td><td>2.14 km</td><td>0.0008</td><td><span class="badge yellow">MEDIUM</span></td><td>MONITOR</td></tr>
+<tr><td>PROGRESS-MS 33</td><td>CYGNUS NG-24</td><td>4.71 km</td><td>0.0002</td><td><span class="badge yellow">MEDIUM</span></td><td>WATCH</td></tr>
+</tbody></table><div id="conjNo" style="display:none;padding:30px;text-align:center;color:var(--muted)">No conjunction found.</div></section>
+</main></div><script src="app.js"></script></body></html>

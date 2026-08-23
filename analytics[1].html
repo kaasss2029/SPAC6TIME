@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>OrbitGuard — Analytics</title><link rel="stylesheet" href="styles.css"></head><body>
+<div class="app">
+<aside class="sidebar">
+  <div class="logo"><div class="logoMark">◉</div><span>OrbitGuard</span></div>
+  <div class="navTitle">Monitor</div>
+  <div class="nav">
+    <a href="overview.html" class=""><b>⌂</b><span>Overview</span></a>
+    <a href="index.html" class=""><b>◎</b><span>Orbital Objects</span></a>
+    <a href="grid.html" class=""><b>⚠</b><span>Conjunctions</span></a>
+    <a href="analytics.html" class="active"><b>◌</b><span>Analytics</span></a>
+  </div>
+  <div class="navTitle">System</div>
+  <div class="nav">
+    <a href="settings.html" class=""><b>⚙</b><span>Settings</span></a>
+    <a href="documentation.html" class=""><b>?</b><span>Documentation</span></a>
+  </div>
+</aside>
+
+<main class="main">
+<div class="top"><div><div class="eyebrow">Orbital Statistics</div><h1>Analytics</h1></div><div class="topRight"><div class="live"><span class="dot"></span>DATA READY</div></div></div>
+<section class="cards">
+<div class="card"><div class="cardHead"><span>Tracked Objects</span><span class="icon">◎</span></div><div class="value">22</div><div class="sub">current dataset</div></div>
+<div class="card"><div class="cardHead"><span>LEO Objects</span><span class="icon">◌</span></div><div class="value">22</div><div class="sub">low Earth orbit</div></div>
+<div class="card"><div class="cardHead"><span>Average Alerts</span><span class="icon">⚠</span></div><div class="value">3</div><div class="sub">current monitoring set</div></div>
+<div class="card"><div class="cardHead"><span>Availability</span><span class="icon">✓</span></div><div class="value green">99.8%</div><div class="sub">system uptime</div></div>
+</section>
+<section class="panel"><div class="panelTitle"><strong>Objects by Monitoring Group</strong><span>Current distribution</span></div>
+<div class="chart">
+<div class="barWrap"><span class="barValue">8</span><div class="bar" style="height:80%"></div><span class="barLabel">Station</span></div>
+<div class="barWrap"><span class="barValue">6</span><div class="bar" style="height:60%"></div><span class="barLabel">Cargo</span></div>
+<div class="barWrap"><span class="barValue">5</span><div class="bar" style="height:50%"></div><span class="barLabel">Module</span></div>
+<div class="barWrap"><span class="barValue">3</span><div class="bar" style="height:30%"></div><span class="barLabel">Other</span></div>
+</div></section>
+<section class="panel"><div class="panelTitle"><strong>System Metrics</strong><span>Summary</span></div><div class="panelBody">
+<div class="setting"><div><b>Tracking coverage</b><p>22 of 22 configured objects are available.</p></div><b class="green">100%</b></div>
+<div class="setting"><div><b>Conjunction monitoring</b><p>3 events currently require attention.</p></div><b class="yellow">3</b></div>
+<div class="setting"><div><b>Data processing</b><p>Analytics pipeline is operational.</p></div><b class="green">READY</b></div>
+</div></section>
+</main></div><script src="app.js"></script></body></html>
