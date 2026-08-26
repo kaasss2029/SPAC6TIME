@@ -1,0 +1,31 @@
+{
+  "name": "betterearth-sih-distance",
+  "version": "1.0.0",
+  "description": "BetterEarthSIH - External API to Distance-Sorted MongoDB Location Pipeline",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node tests/testPipeline.js && node tests/testServerEndpoints.js"
+  },
+  "keywords": [
+    "sih",
+    "betterearth",
+    "mongodb",
+    "express",
+    "haversine",
+    "geolocation",
+    "distance-sorting"
+  ],
+  "author": "SIH Team",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "mongoose": "^8.8.2",
+    "node-cron": "^3.0.3",
+    "node-fetch": "^2.6.12",
+    "satellite.js": "^6.0.2"
+  }
+}
