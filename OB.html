@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>OrbitGuard — Orbital Objects (List)</title>
+    <style>
+        :root{--bg:#07101a;--panel:#0b1624;--muted:#9bb0c8;--text:#eaf2ff;--accent:#46d9ff}
+        body{margin:0;font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;background:linear-gradient(180deg,#06121b 0%,#07101a 100%);color:var(--text)}
+        .wrap{max-width:1100px;margin:28px auto;padding:18px}
+        h1{margin:0 0 10px;font-size:22px}
+        .row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+        .source{color:var(--muted);font-size:13px}
+        .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+        .objBtn{background:linear-gradient(180deg,#0e2434,#071823);border:1px solid #123241;padding:12px;border-radius:10px;cursor:pointer;color:var(--text);text-align:left}
+        .objBtn:hover{box-shadow:0 6px 18px #00000055;transform:translateY(-2px)}
+        .objTitle{font-weight:700;font-size:13px}
+        .objSub{font-size:12px;color:var(--muted);margin-top:6px}
+        .details{margin-top:18px;background:var(--panel);border-radius:10px;padding:14px;border:1px solid #132534}
+        .details pre{white-space:pre-wrap;background:#07181f;padding:12px;border-radius:8px;border:1px solid #0f2a36;color:var(--text);margin:6px 0}
+        .empty{color:var(--muted);padding:20px;text-align:center}
+        a.back{color:var(--accent);text-decoration:none;font-size:13px}
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="row">
+            <div>
+                <h1>Orbital Objects — Catalog</h1>
+                <div class="source" id="dataSource">Data: (loading...)</div>
+            </div>
+            <div>
+                <a class="back" href="earth.html">← Back to Dashboard</a>
+            </div>
+        </div>
+
+        <div id="controls" class="row">
+            <div class="source">Showing up to <strong id="maxCount">60</strong> objects</div>
+            <div>
+                <input id="filter" placeholder="Filter by name or NORAD id" style="padding:8px;border-radius:8px;border:1px solid #123;" />
+            </div>
+        </div>
+
+        <div id="grid" class="grid"></div>
+
+        <div id="details" class="details" aria-live="polite">
+            <div class="empty">Select an object to see details</div>
+        </div>
+    </div>
+
+<script>
+// Cleaned OB.html — no dummy/sample data. Uses live TLE sources and cached TLE when available.
+const BACKEND_TLE_API_URL = "http://localhost:4000/api/tle/latest"; // optional backend
+const CELESTRAK_API_URL = "https://celestrak.org/NORAD/elements/gp.php?GROUP=ACTIVE&FORMAT=TLE";
+const PROXY_URLS = [
+  "https://api.allorigins.win/raw?url=",
+  "https://corsproxy.io/?",
+  "https://api.codetabs.com/v1/proxy?quest="
+];
+const CACHE_KEY = "orbitguard_celestrak_active_tle";
+const MAX_OBJECTS = 60;
+
+function parseTleCatalog(tleText) {
+  if (!tleText || !tleText.trim()) return [];
+  const lines = tleText.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length>0);
+  const records = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    const next = lines[i+1];
+    const after = lines[i+2];
+    let name, line1, line2;
+    if (line.startsWith("1 ") && next && next.startsWith("2 ")) {
+      line1 = line; line2 = next; name = `NORAD ${line1.substring(2,7).trim()}`; i += 2;
+    } else if (next && next.startsWith("1 ") && after && after.startsWith("2 ")) {
+      name = line; line1 = next; line2 = after; i += 3;
+    } else { i++; continue; }
+    const noradId = Number(line1.substring(2,7).trim());
+    records.push({ name, line1, line2, NORAD_CAT_ID: noradId });
+  }
+  return records;
+}
+
+function cacheTle(text) {
+  try { localStorage.setItem(CACHE_KEY, text); } catch (e) { /* ignore */ }
+}
+
+function readCache() {
+  try { const t = localStorage.getItem(CACHE_KEY); return t ? parseTleCatalog(t) : null; } catch (e) { return null; }
+}
+
+async function fetchTextWithTimeout(url, timeoutMs = 12000) {
+  const controller = new AbortController();
+  const timeout = setTimeout(()=>controller.abort(), timeoutMs);
+  try {
+    const r = await fetch(url, { method: 'GET', cache: 'no-store', signal: controller.signal });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return await r.text();
+  } finally { clearTimeout(timeout); }
+}
+
+async function fetchTleCatalog() {
+  // 1) Try local backend (only when not opened via file://)
+  if (BACKEND_TLE_API_URL && window.location.protocol !== 'file:') {
+    try {
+      const r = await fetch(BACKEND_TLE_API_URL, { cache: 'no-store' });
+      if (r.ok) {
+        const data = await r.json();
+        if (Array.isArray(data.satellites) && data.satellites.length > 0) {
+          const tleText = data.satellites.map(s => `${s.name}\n${s.line1}\n${s.line2}`).join('\n');
+          cacheTle(tleText);
+          return { source: 'LOCAL BACKEND', text: tleText };
+        }
+      }
+    } catch (e) { console.warn('Local backend failed:', e.message); }
+  }
+
+  // 2) Direct CelesTrak
+  try {
+    const txt = await fetchTextWithTimeout(CELESTRAK_API_URL, 12000);
+    if (txt && txt.trim()) { cacheTle(txt); return { source: 'CELESTRAK', text: txt }; }
+  } catch (e) { console.warn('Direct CelesTrak failed:', e.message); }
+
+  // 3) Proxy fallbacks
+  for (const proxy of PROXY_URLS) {
+    try {
+      const url = proxy + encodeURIComponent(CELESTRAK_API_URL);
+      const txt = await fetchTextWithTimeout(url, 12000);
+      if (txt && txt.trim()) { cacheTle(txt); return { source: 'CELESTRAK VIA PROXY', text: txt }; }
+    } catch (e) { console.warn('Proxy failed:', proxy, e.message); }
+  }
+
+  // 4) Stale cache
+  const cached = localStorage.getItem(CACHE_KEY);
+  if (cached) {
+    console.warn('Using cached TLE');
+    return { source: 'CACHED CELESTRAK', text: cached };
+  }
+
+  throw new Error('Unable to load TLE catalog from any source');
+}
+
+function escapeHtml(s){ return String(s).replace(/[&<>\"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;','\'':'&#39;' })[c]); }
+
+function renderList(records) {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  const max = Math.min(MAX_OBJECTS, records.length);
+  document.getElementById('countMax').innerText = max;
+  if (max === 0) {
+    grid.innerHTML = '<div class="empty">No orbital objects available</div>';
+    return;
+  }
+  for (let i = 0; i < max; i++) {
+    const r = records[i];
+    const el = document.createElement('div');
+    el.className = 'card';
+    el.tabIndex = 0;
+    el.innerHTML = `<div class="name">${escapeHtml(r.name)}</div><div class="sub">NORAD ${r.NORAD_CAT_ID}</div>`;
+    el.addEventListener('click', ()=> showDetails(r));
+    el.addEventListener('keypress', e => { if (e.key === 'Enter') showDetails(r); });
+    grid.appendChild(el);
+  }
+}
+
+function showDetails(rec) {
+  const details = document.getElementById('details');
+  details.innerHTML = '';
+  const title = document.createElement('div');
+  title.innerHTML = `<strong style="font-size:15px">${escapeHtml(rec.name)}</strong> <span class="muted" style="margin-left:8px">NORAD ${rec.NORAD_CAT_ID}</span>`;
+  const tle = document.createElement('pre'); tle.className = 'tle'; tle.textContent = `${rec.name}\n${rec.line1}\n${rec.line2}`;
+  const meta = document.createElement('div'); meta.className = 'muted'; meta.style.marginTop = '8px';
+
+  // derive some values from line2 safely
+  try {
+    const line2 = rec.line2;
+    const inclination = parseFloat(line2.substring(8,16));
+    const ecc = parseFloat('0.' + line2.substring(26,33));
+    const meanMotion = parseFloat(line2.substring(52,63));
+    const period = (1440 / meanMotion).toFixed(2);
+    meta.innerHTML = `Inclination: ${isNaN(inclination)?'—':inclination.toFixed(4)}° &nbsp; • &nbsp; Eccentricity: ${isNaN(ecc)?'—':ecc.toFixed(6)} &nbsp; • &nbsp; Period: ${isNaN(period)?'—':period} min`;
+  } catch (e) { meta.textContent = 'Orbital element parsing unavailable'; }
+
+  // Copy button
+  const copy = document.createElement('button'); copy.textContent = 'Copy TLE'; copy.style.marginTop='10px'; copy.style.padding='8px 10px'; copy.style.borderRadius='8px'; copy.onclick = ()=> { navigator.clipboard && navigator.clipboard.writeText(tle.textContent).then(()=> copy.textContent = 'Copied'); };
+
+  details.appendChild(title);
+  details.appendChild(tle);
+  details.appendChild(meta);
+  details.appendChild(copy);
+  details.scrollIntoView({behavior:'smooth'});
+}
+
+function applyFilter(records) {
+  const q = (document.getElementById('filter').value || '').toLowerCase().trim();
+  const filtered = records.filter(r => r.name.toLowerCase().includes(q) || String(r.NORAD_CAT_ID).includes(q));
+  renderList(filtered);
+}
+
+(async function init(){
+  const sourceLabel = document.getElementById('sourceLabel');
+  try {
+    const result = await fetchTleCatalog();
+    sourceLabel.textContent = `Data source: ${result.source}`;
+    const records = parseTleCatalog(result.text);
+    // render up to MAX_OBJECTS
+    renderList(records);
+    document.getElementById('filter').addEventListener('input', ()=> applyFilter(records));
+  } catch (err) {
+    sourceLabel.textContent = 'TLE data unavailable';
+    document.getElementById('grid').innerHTML = `<div class="empty">Unable to load TLE catalog. See console for details.</div>`;
+    console.error(err);
+  }
+})();
+</script>
+</script>
+</body>
+</html>
