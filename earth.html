@@ -629,6 +629,61 @@
             color: var(--cyan);
         }
 
+        /* ── EARTH GLOBE ZOOM SLIDER ── */
+        .zoom-slider-control {
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            color: #eaf2ff;
+            padding: 7px 11px;
+            border-radius: 10px;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 235px;
+            transition: all 0.2s ease;
+        }
+
+        .zoom-slider-control:hover {
+            border-color: var(--cyan);
+            box-shadow: 0 0 16px var(--cyan-glow);
+        }
+
+        .zoom-slider-control > i {
+            color: var(--cyan);
+            font-size: 11px;
+            flex: 0 0 auto;
+        }
+
+        #earth-zoom-slider {
+            width: 145px;
+            height: 5px;
+            accent-color: var(--cyan);
+            cursor: pointer;
+            margin: 0;
+        }
+
+        #earth-zoom-value {
+            min-width: 31px;
+            text-align: right;
+            color: #dce9fb;
+            font-family: var(--font-mono);
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+        @media (max-width: 768px) {
+            .zoom-slider-control {
+                min-width: 205px;
+            }
+
+            #earth-zoom-slider {
+                width: 115px;
+            }
+        }
+
         .orbit-hint-banner {
             background: var(--bg-glass);
             border: 1px solid var(--border-glass);
@@ -987,6 +1042,21 @@
                         <button class="orbit-hud-btn active" id="btn-toggle-orbits" title="Toggle Orbit Lines">
                             <i class="fa-solid fa-circle-nodes"></i> Orbits
                         </button>
+
+                        <div class="zoom-slider-control" title="Earth Globe Zoom">
+                            <i class="fa-solid fa-magnifying-glass-minus"></i>
+                            <input
+                                type="range"
+                                id="earth-zoom-slider"
+                                min="40"
+                                max="1000"
+                                step="1"
+                                value="120"
+                                aria-label="Earth globe zoom"
+                            >
+                            <i class="fa-solid fa-magnifying-glass-plus"></i>
+                            <span id="earth-zoom-value">120</span>
+                        </div>
                     </div>
 
                     <div class="orbit-hint-banner">
@@ -1090,8 +1160,8 @@ let scene, camera, renderer, worldGroup, earthGroup, landGroup, satellitesGroup,
 let isDragging = false;
 let previousMouseX = 0, previousMouseY = 0;
 let targetRotX = 0.32, targetRotY = 0.45;
-let cameraDistance = 120;
-let targetCameraDistance = 120;
+let cameraDistance = 200;
+let targetCameraDistance = 200;
 let autoRotate = true;
 let showOrbits = true;
 let lastInteractionTime = performance.now();
@@ -1115,7 +1185,51 @@ const satTtAlt = document.getElementById('sat-tt-alt');
 const satTtVel = document.getElementById('sat-tt-vel');
 const satTtInc = document.getElementById('sat-tt-inc');
 
+// ============================================================
+ // ZOOM SLIDER CONTROL
+ // Camera distance is smaller = closer to Earth.
+ // Minimum distance deliberately reduced to 40.
+ // ============================================================
+const EARTH_ZOOM_MIN = 40;
+const EARTH_ZOOM_MAX = 1000;
+const EARTH_ZOOM_DEFAULT = 200;
+
+const earthZoomSlider = document.getElementById('earth-zoom-slider');
+const earthZoomValue = document.getElementById('earth-zoom-value');
+
+function updateZoomSlider() {
+    if (!earthZoomSlider) return;
+    earthZoomSlider.value = String(Math.round(targetCameraDistance));
+    if (earthZoomValue) {
+        earthZoomValue.textContent = String(Math.round(targetCameraDistance));
+    }
+}
+
+function setEarthZoom(distance) {
+    targetCameraDistance = Math.max(
+        EARTH_ZOOM_MIN,
+        Math.min(EARTH_ZOOM_MAX, Number(distance))
+    );
+    lastInteractionTime = performance.now();
+    updateZoomSlider();
+}
+
+if (earthZoomSlider) {
+    earthZoomSlider.min = String(EARTH_ZOOM_MIN);
+    earthZoomSlider.max = String(EARTH_ZOOM_MAX);
+    earthZoomSlider.value = String(EARTH_ZOOM_DEFAULT);
+
+    earthZoomSlider.addEventListener('input', (e) => {
+        autoRotate = false;
+        const btnAutoRotate = document.getElementById('btn-auto-rotate');
+        if (btnAutoRotate) btnAutoRotate.classList.remove('active');
+        setEarthZoom(e.target.value);
+    });
+}
+
 function initThreeScene() {
+    updateZoomSlider();
+
     const container = document.getElementById('orbit-hero');
     const canvas = document.getElementById('earth-canvas');
 
@@ -1203,17 +1317,156 @@ function buildHolographicEarth() {
     const wireMesh = new THREE.Mesh(wireGeo, wireMat);
     earthGroup.add(wireMesh);
 
-    // Layer C: Atmospheric Radiant Blue Limb Aura (BackSide Glow)
-    const auraGeo = new THREE.SphereGeometry(EARTH_RADIUS_3D + 4.8, 48, 48);
-    const auraMat = new THREE.MeshBasicMaterial({
-        color: 0x46d9ff,
-        transparent: true,
-        opacity: 0.12,
-        side: THREE.BackSide,
-        blending: THREE.AdditiveBlending
-    });
-    const auraMesh = new THREE.Mesh(auraGeo, auraMat);
-    earthGroup.add(auraMesh);
+    // ============================================================
+// Layer C: REALISTIC BLUE ATMOSPHERIC GLOW
+// ============================================================
+
+// Inner bright atmospheric rim
+const atmosphereGeo = new THREE.SphereGeometry(
+    EARTH_RADIUS_3D + 0.8,
+    64,
+    64
+);
+
+const atmosphereMat = new THREE.ShaderMaterial({
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    side: THREE.BackSide,
+
+    uniforms: {
+        glowColor: {
+            value: new THREE.Color(0x46d9ff)
+        },
+
+        glowStrength: {
+            value: 1.8
+        }
+    },
+
+    vertexShader: `
+        varying vec3 vWorldPosition;
+        varying vec3 vNormal;
+
+        void main() {
+
+            vNormal = normalize(
+                normalMatrix * normal
+            );
+
+            vec4 worldPosition =
+                modelMatrix * vec4(position, 1.0);
+
+            vWorldPosition =
+                worldPosition.xyz;
+
+            gl_Position =
+                projectionMatrix *
+                viewMatrix *
+                worldPosition;
+        }
+    `,
+
+    fragmentShader: `
+        uniform vec3 glowColor;
+        uniform float glowStrength;
+
+        varying vec3 vWorldPosition;
+        varying vec3 vNormal;
+
+        void main() {
+
+            vec3 viewDirection =
+                normalize(
+                    cameraPosition - vWorldPosition
+                );
+
+            float rim =
+                1.0 -
+                abs(
+                    dot(
+                        normalize(vNormal),
+                        viewDirection
+                    )
+                );
+
+            // Concentrate glow around the edge
+            rim = pow(rim, 3.2);
+
+            float alpha =
+                rim * glowStrength;
+
+            gl_FragColor =
+                vec4(
+                    glowColor,
+                    alpha
+                );
+        }
+    `
+});
+
+const atmosphereMesh =
+    new THREE.Mesh(
+        atmosphereGeo,
+        atmosphereMat
+    );
+
+earthGroup.add(atmosphereMesh);
+
+
+// ============================================================
+// Outer soft blue halo
+// ============================================================
+
+const outerGlowGeo = new THREE.SphereGeometry(
+    EARTH_RADIUS_3D + 3.2,
+    64,
+    64
+);
+
+const outerGlowMat = new THREE.MeshBasicMaterial({
+    color: 0x159cff,
+    transparent: true,
+    opacity: 0.055,
+    side: THREE.BackSide,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+});
+
+const outerGlow =
+    new THREE.Mesh(
+        outerGlowGeo,
+        outerGlowMat
+    );
+
+earthGroup.add(outerGlow);
+
+
+// ============================================================
+// Very soft outermost atmospheric haze
+// ============================================================
+
+const hazeGeo = new THREE.SphereGeometry(
+    EARTH_RADIUS_3D + 6.0,
+    64,
+    64
+);
+
+const hazeMat = new THREE.MeshBasicMaterial({
+    color: 0x087cff,
+    transparent: true,
+    opacity: 0.025,
+    side: THREE.BackSide,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+});
+
+const haze =
+    new THREE.Mesh(
+        hazeGeo,
+        hazeMat
+    );
+
+earthGroup.add(haze);
 
     // Layer D: Equator Reference Halo
     const equatorCurve = new THREE.EllipseCurve(0, 0, EARTH_RADIUS_3D + 0.8, EARTH_RADIUS_3D + 0.8, 0, 2 * Math.PI, false, 0);
@@ -1361,37 +1614,50 @@ function buildStarfield() {
 }
 
 // ============================================================
-// POPULATE REAL-TIME PROPAGATED SATELLITES & 3D VOLUMETRIC ORBIT TRACKS
+// POPULATE REAL-TIME PROPAGATED SATELLITES & 3D ORBIT TRACKS
 // ============================================================
 function render3DOrbits(satellites) {
     if (!satellitesGroup || !orbitLinesGroup) return;
 
-    // Clear existing
+    // Clear existing satellites and orbit lines
     while (satellitesGroup.children.length > 0) {
         const obj = satellitesGroup.children[0];
         satellitesGroup.remove(obj);
     }
+
     while (orbitLinesGroup.children.length > 0) {
         const obj = orbitLinesGroup.children[0];
         orbitLinesGroup.remove(obj);
     }
+
     interactiveSatellites = [];
 
     const now = new Date();
 
     satellites.forEach((sat, index) => {
-        const colorHex = SATELLITE_PALETTE[index % SATELLITE_PALETTE.length];
-        const isIss = Number(sat.noradId) === ISS_NORAD_ID;
+
+        const colorHex =
+            SATELLITE_PALETTE[index % SATELLITE_PALETTE.length];
+
+        const isIss =
+            Number(sat.noradId) === ISS_NORAD_ID;
 
         const orbitPoints = [];
+
         let currentPos3D = null;
         let currentVelKmS = 0;
         let currentAltKm = 0;
         let currentIncDeg = 0;
 
-        // Propagate +90 minutes forward for full orbit ring
+        // ----------------------------------------------------
+        // Propagate satellite for +90 minutes
+        // ----------------------------------------------------
         for (let step = 0; step <= 90; step += 2) {
-            const time = new Date(now.getTime() + step * 60000);
+
+            const time = new Date(
+                now.getTime() + step * 60000
+            );
+
             const state = satellite.propagate(
                 sat.satrec,
                 time.getUTCFullYear(),
@@ -1403,89 +1669,236 @@ function render3DOrbits(satellites) {
             );
 
             if (state && state.position) {
-                const x = state.position.x * KM_TO_3D_SCALE;
-                const y = state.position.z * KM_TO_3D_SCALE;
-                const z = -state.position.y * KM_TO_3D_SCALE;
 
-                const pt = new THREE.Vector3(x, y, z);
+                const x =
+                    state.position.x * KM_TO_3D_SCALE;
+
+                const y =
+                    state.position.z * KM_TO_3D_SCALE;
+
+                const z =
+                    -state.position.y * KM_TO_3D_SCALE;
+
+                const pt =
+                    new THREE.Vector3(x, y, z);
+
                 orbitPoints.push(pt);
 
+                // Current satellite position
                 if (step === 0) {
+
                     currentPos3D = pt;
+
+                    // Velocity
                     if (state.velocity) {
+
                         currentVelKmS = Math.sqrt(
-                            state.velocity.x * state.velocity.x +
-                            state.velocity.y * state.velocity.y +
-                            state.velocity.z * state.velocity.z
+                            state.velocity.x *
+                            state.velocity.x +
+
+                            state.velocity.y *
+                            state.velocity.y +
+
+                            state.velocity.z *
+                            state.velocity.z
                         );
                     }
+
+                    // Altitude
                     const distFromCenter = Math.sqrt(
-                        state.position.x * state.position.x +
-                        state.position.y * state.position.y +
-                        state.position.z * state.position.z
+                        state.position.x *
+                        state.position.x +
+
+                        state.position.y *
+                        state.position.y +
+
+                        state.position.z *
+                        state.position.z
                     );
-                    currentAltKm = Math.max(0, distFromCenter - EARTH_KM_RADIUS);
-                    currentIncDeg = (sat.satrec.inclo * 180 / Math.PI) || 0;
+
+                    currentAltKm = Math.max(
+                        0,
+                        distFromCenter - EARTH_KM_RADIUS
+                    );
+
+                    // Inclination
+                    currentIncDeg =
+                        (sat.satrec.inclo *
+                            180 /
+                            Math.PI) || 0;
                 }
             }
         }
 
-        if (orbitPoints.length > 2 && currentPos3D) {
-            // 1. 3D Volumetric Orbit Tube with Nominal Thickness
-            const curve = new THREE.CatmullRomCurve3(orbitPoints, true);
-            // Nominal thickness: 0.24 for normal sats, 0.42 for ISS
-            const tubeRadius = isIss ? 0.42 : 0.24;
-            const orbitGeo = new THREE.TubeGeometry(curve, 84, tubeRadius, 5, true);
-            const orbitMat = new THREE.MeshBasicMaterial({
-                color: colorHex,
-                transparent: true,
-                opacity: isIss ? 0.85 : 0.48,
-                blending: THREE.AdditiveBlending
-            });
-            const orbitMesh = new THREE.Mesh(orbitGeo, orbitMat);
-            orbitLinesGroup.add(orbitMesh);
+        // ----------------------------------------------------
+        // DRAW ORBIT
+        // ----------------------------------------------------
+        if (
+            orbitPoints.length > 2 &&
+            currentPos3D
+        ) {
 
-            // 2. Satellite Beacon Marker
-            const satObjGroup = new THREE.Group();
-            satObjGroup.position.copy(currentPos3D);
+            /*
+             * IMPORTANT:
+             *
+             * false = OPEN CURVE
+             *
+             * This prevents Three.js from connecting
+             * the final trajectory point back to the
+             * first trajectory point.
+             */
+            const curve =
+                new THREE.CatmullRomCurve3(
+                    orbitPoints,
+                    false
+                );
+
+            const tubeRadius =
+                isIss ? 0.37 : 0.10;
+
+            /*
+             * IMPORTANT:
+             *
+             * false = OPEN TUBE
+             *
+             * Without this, TubeGeometry also closes
+             * the trajectory at the endpoints.
+             */
+            const orbitGeo =
+                new THREE.TubeGeometry(
+                    curve,
+                    84,
+                    tubeRadius,
+                    5,
+                    false
+                );
+
+            const orbitMat =
+                new THREE.MeshBasicMaterial({
+                    color: colorHex,
+                    transparent: true,
+                    opacity: isIss ? 0.85 : 0.48,
+                    blending: THREE.AdditiveBlending
+                });
+
+            const orbitMesh =
+                new THREE.Mesh(
+                    orbitGeo,
+                    orbitMat
+                );
+
+            orbitLinesGroup.add(
+                orbitMesh
+            );
+
+            // ------------------------------------------------
+            // SATELLITE BEACON
+            // ------------------------------------------------
+
+            const satObjGroup =
+                new THREE.Group();
+
+            satObjGroup.position.copy(
+                currentPos3D
+            );
 
             // Core sphere
-            const satCoreGeo = new THREE.SphereGeometry(isIss ? 1.8 : 1.1, 16, 16);
-            const satCoreMat = new THREE.MeshBasicMaterial({
-                color: isIss ? 0xffffff : colorHex
-            });
-            const satCoreMesh = new THREE.Mesh(satCoreGeo, satCoreMat);
-            satObjGroup.add(satCoreMesh);
+            const satCoreGeo =
+                new THREE.SphereGeometry(
+                    isIss ? 1.8 : 1.1,
+                    16,
+                    16
+                );
 
-            // Glowing Outer Halo
-            const haloGeo = new THREE.SphereGeometry(isIss ? 3.8 : 2.4, 16, 16);
-            const haloMat = new THREE.MeshBasicMaterial({
-                color: colorHex,
-                transparent: true,
-                opacity: 0.38,
-                blending: THREE.AdditiveBlending
-            });
-            const haloMesh = new THREE.Mesh(haloGeo, haloMat);
-            satObjGroup.add(haloMesh);
+            const satCoreMat =
+                new THREE.MeshBasicMaterial({
+                    color:
+                        isIss
+                            ? 0xffffff
+                            : colorHex
+                });
 
-            // Raycast hit target
-            const hitGeo = new THREE.SphereGeometry(4.8, 8, 8);
-            const hitMat = new THREE.MeshBasicMaterial({ visible: false });
-            const hitMesh = new THREE.Mesh(hitGeo, hitMat);
+            const satCoreMesh =
+                new THREE.Mesh(
+                    satCoreGeo,
+                    satCoreMat
+                );
+
+            satObjGroup.add(
+                satCoreMesh
+            );
+
+            // Glowing outer halo
+            const haloGeo =
+                new THREE.SphereGeometry(
+                    isIss ? 3.8 : 2.4,
+                    16,
+                    16
+                );
+
+            const haloMat =
+                new THREE.MeshBasicMaterial({
+                    color: colorHex,
+                    transparent: true,
+                    opacity: 0.38,
+                    blending:
+                        THREE.AdditiveBlending
+                });
+
+            const haloMesh =
+                new THREE.Mesh(
+                    haloGeo,
+                    haloMat
+                );
+
+            satObjGroup.add(
+                haloMesh
+            );
+
+            // Invisible raycast target
+            const hitGeo =
+                new THREE.SphereGeometry(
+                    4.8,
+                    8,
+                    8
+                );
+
+            const hitMat =
+                new THREE.MeshBasicMaterial({
+                    visible: false
+                });
+
+            const hitMesh =
+                new THREE.Mesh(
+                    hitGeo,
+                    hitMat
+                );
+
             hitMesh.userData = {
                 name: sat.name,
                 noradId: sat.noradId,
-                altitude: Math.round(currentAltKm),
-                velocity: currentVelKmS.toFixed(2),
-                inclination: currentIncDeg.toFixed(1),
+                altitude:
+                    Math.round(currentAltKm),
+                velocity:
+                    currentVelKmS.toFixed(2),
+                inclination:
+                    currentIncDeg.toFixed(1),
                 color: colorHex,
                 isIss: isIss,
                 halo: haloMesh
             };
-            satObjGroup.add(hitMesh);
 
-            satellitesGroup.add(satObjGroup);
-            interactiveSatellites.push(hitMesh);
+            satObjGroup.add(
+                hitMesh
+            );
+
+            satellitesGroup.add(
+                satObjGroup
+            );
+
+            interactiveSatellites.push(
+                hitMesh
+            );
         }
     });
 }
@@ -1562,7 +1975,9 @@ function attachSceneEventListeners(container) {
         autoRotate = false;
         lastInteractionTime = performance.now();
 
-        targetCameraDistance = Math.max(72, Math.min(230, targetCameraDistance + e.deltaY * 0.08));
+        // Lower minimum zoom distance so the globe can be viewed much closer.
+        targetCameraDistance = Math.max(40, Math.min(1000, targetCameraDistance + e.deltaY * 0.08));
+        updateZoomSlider();
     }, { passive: false });
 
     // Touch support
@@ -1602,7 +2017,7 @@ function attachSceneEventListeners(container) {
         gsap.to(worldGroup.rotation, { x: 0.32, y: 0.45, duration: 1.2, ease: "power2.out" });
         targetRotX = 0.32;
         targetRotY = 0.45;
-        targetCameraDistance = 120;
+        setEarthZoom(EARTH_ZOOM_DEFAULT);
     });
 
     btnAutoRotate.addEventListener('click', () => {
@@ -1661,7 +2076,13 @@ function animateScene() {
     worldGroup.rotation.x += (targetRotX - worldGroup.rotation.x) * 0.08;
 
     // Smooth zoom interpolation
+    targetCameraDistance = Math.max(
+        EARTH_ZOOM_MIN,
+        Math.min(EARTH_ZOOM_MAX, targetCameraDistance)
+    );
+
     cameraDistance += (targetCameraDistance - cameraDistance) * 0.1;
+    cameraDistance = Math.max(EARTH_ZOOM_MIN, Math.min(EARTH_ZOOM_MAX, cameraDistance));
     camera.position.z = cameraDistance;
 
     renderer.render(scene, camera);
