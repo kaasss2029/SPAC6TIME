@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OrbitGuard — Space Debris Tracking</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+:root{
+  --bg:#070b14; --panel:#0d1422; --panel2:#111a2b; --line:#1c2940;
+  --text:#eaf2ff; --muted:#7f91ad; --cyan:#46d9ff; --blue:#5b8cff;
+  --red:#ff526d; --orange:#ffad4d; --green:#42e6a4;
+}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(circle at 70% 10%,#13243c 0,#070b14 38%);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.app{display:flex;min-height:100vh}
+.sidebar{width:230px;background:rgba(7,11,20,.92);border-right:1px solid var(--line);padding:24px 16px;position:fixed;inset:0 auto 0 0}
+.logo{display:flex;align-items:center;gap:11px;font-weight:800;font-size:19px;margin:4px 10px 35px}
+.logoMark{width:34px;height:34px;border:1px solid #2b7190;border-radius:11px;display:grid;place-items:center;color:var(--cyan);box-shadow:0 0 24px #46d9ff22}
+.navTitle{font-size:10px;color:#50617a;letter-spacing:1.6px;margin:22px 12px 9px;text-transform:uppercase}
+.nav a{display:flex;gap:12px;align-items:center;padding:11px 12px;border-radius:10px;color:var(--muted);text-decoration:none;font-size:13px;margin:3px 0}
+.nav a.active,.nav a:hover{background:#142238;color:#fff}
+.nav a.active{box-shadow:inset 2px 0 var(--cyan)}
+.system{position:absolute;bottom:22px;left:18px;right:18px;padding:13px;border:1px solid var(--line);border-radius:12px;background:#0c1320}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green);margin-right:7px}
+.main{margin-left:230px;width:calc(100% - 230px);padding:25px 30px}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:23px}
+.eyebrow{font-size:11px;color:var(--cyan);letter-spacing:1.8px;text-transform:uppercase}
+h1{margin:5px 0 0;font-size:27px}
+.topRight{display:flex;align-items:center;gap:12px}
+.live{font-size:12px;color:#a9b9cf;border:1px solid var(--line);padding:9px 12px;border-radius:9px;background:#0c1422}
+.search{background:#0d1524;border:1px solid var(--line);color:#fff;padding:10px 13px;border-radius:9px;outline:none;width:190px}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}
+.card{background:linear-gradient(145deg,#0e1727,#0a111d);border:1px solid var(--line);border-radius:14px;padding:17px}
+.cardHead{display:flex;justify-content:space-between;color:var(--muted);font-size:12px}
+.icon{color:var(--cyan);font-size:16px}.value{font-size:28px;font-weight:750;margin:9px 0 3px}.sub{font-size:11px;color:var(--muted)}.up{color:var(--green)}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:16px}
+.panel{background:rgba(10,17,29,.88);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.panelTitle{display:flex;justify-content:space-between;align-items:center;padding:15px 17px;border-bottom:1px solid var(--line)}
+.panelTitle strong{font-size:13px}.panelTitle span{font-size:11px;color:var(--muted)}
+#orbit{height:440px}
+.riskBody{padding:22px}
+.riskCircle{width:158px;height:158px;border-radius:50%;margin:4px auto 20px;display:grid;place-items:center;background:conic-gradient(var(--red) 0 87%,#172236 87% 100%);position:relative}
+.riskCircle:after{content:"";position:absolute;width:128px;height:128px;border-radius:50%;background:#0b1320}
+.riskNum{position:relative;z-index:2;text-align:center}.riskNum b{display:block;font-size:40px}.riskNum small{font-size:10px;color:var(--red);letter-spacing:2px}
+.details{border-top:1px solid var(--line);padding-top:14px}
+.row{display:flex;justify-content:space-between;padding:9px 0;font-size:12px}.row span:first-child{color:var(--muted)}
+.badge{padding:4px 8px;border-radius:6px;font-size:10px;font-weight:700}.high{background:#ff526d18;color:var(--red)}.medium{background:#ffad4d18;color:var(--orange)}.low{background:#42e6a418;color:var(--green)}
+.events{margin-top:16px}
+.tableWrap{overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{text-align:left;padding:12px 15px;border-bottom:1px solid #152136}
+th{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#60718a;font-weight:600}
+td{color:#cbd7e8}tr:hover{background:#101a2b}
+.obj{color:#fff;font-weight:600}.muted{color:var(--muted)}
+.footerNote{padding:11px 15px;color:#586b86;font-size:10px}
+@media(max-width:1000px){.sidebar{width:72px}.logo span,.nav a span,.navTitle,.system{display:none}.main{margin-left:72px;width:calc(100% - 72px)}.cards{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <div class="logo"><div class="logoMark">◉</div><span>OrbitGuard</span></div>
+  <div class="navTitle">Monitor</div>
+  <div class="nav">
+    <a class="active" href="#"><b>⌂</b><span>Overview</span></a>
+    <a href="#"><b>◎</b><span>Orbital Objects</span></a>
+    <a href="#"><b>⚠</b><span>Conjunctions</span></a>
+    <a href="#"><b>◌</b><span>Analytics</span></a>
+  </div>
+  <div class="navTitle">System</div>
+  <div class="nav"><a href="#"><b>⚙</b><span>Settings</span></a><a href="#"><b>?</b><span>Documentation</span></a></div>
+  <div class="system"><span class="dot"></span><b style="font-size:11px">Tracking system online</b><div style="font-size:10px;color:#647690;margin-top:5px">TLE feed synchronized</div></div>
+</aside>
+
+<main class="main">
+  <div class="top">
+    <div><div class="eyebrow">LEO Situational Awareness</div><h1>Collision Risk Dashboard</h1></div>
+    <div class="topRight"><!--<div class="live"><span class="dot"></span>LIVE • updated 42s ago</div>--><div class="live"><span class="dot"></span>DEMO DATASET</div><input class="search" id="search" placeholder="Search object..."></div>
+  </div>
+  
+  <section class="cards">
+
+    <div class="card">
+      <div class="cardHead">
+        Tracked Objects
+        <span class="icon">◎</span>
+      </div>
+      <div class="value" id="trackedObjects">—</div>
+      <div class="sub">from current TLE catalog</div>
+    </div>
+
+    <div class="card">
+      <div class="cardHead">
+        Conjunctions (72h)
+        <span class="icon">⌁</span>
+      </div>
+      <div class="value" id="conjunctionCount">—</div>
+      <div class="sub">predicted close approaches</div>
+    </div>
+
+    <div class="card">
+      <div class="cardHead">
+        High Risk Events
+        <span style="color:var(--red)">●</span>
+      </div>
+      <div class="value" id="highRiskCount" style="color:var(--red)">—</div>
+      <div class="sub">require immediate review</div>
+    </div>
+
+    <div class="card">
+      <div class="cardHead">
+        Next Close Approach
+        <span class="icon">◷</span>
+      </div>
+      <div class="value">
+        <span id="nextApproachTime">—</span>
+      </div>
+      <div class="sub" id="nextApproachPair">calculating...</div>
+    </div>
+
+</section>
+  
+<!--
+  <section class="cards">
+    <div class="card"><div class="cardHead">Tracked Objects <span class="icon">◎</span></div><div class="value">12,481</div><div class="sub"><span class="up">+128</span> since last update</div></div>
+    <div class="card"><div class="cardHead">Conjunctions (24h) <span class="icon">⌁</span></div><div class="value">37</div><div class="sub">predicted close approaches</div></div>
+    <div class="card"><div class="cardHead">High Risk Events <span style="color:var(--red)">●</span></div><div class="value" style="color:var(--red)">04</div><div class="sub">require immediate review</div></div>
+    <div class="card"><div class="cardHead">Next Close Approach <span class="icon">◷</span></div><div class="value">18<span style="font-size:14px"> min</span></div><div class="sub">Object 44322 ↔ 52918</div></div>
+  </section>
+-->
+
+  <div class="grid">
+    <section class="panel">
+      <div class="panelTitle"><strong>Orbital Environment</strong><span>Propagated +72h • ECI frame</span></div>
+      <div id="orbit"></div>
+      <div class="footerNote">Demo visualization • Positions propagated from TLE data using SGP4 • distances shown in km</div>
+    </section>
+
+<!--
+    <aside class="panel">
+      <div class="panelTitle"><strong>Risk Monitor</strong><span>Selected event</span></div>
+      <div class="riskBody">
+        <div class="riskCircle"><div class="riskNum"><b>87</b><small>HIGH RISK</small></div></div>
+        <div class="details">
+          <div class="row"><span>Closest approach</span><b>7.2 km</b></div>
+          <div class="row"><span>Time to TCA</span><b>18 min</b></div>
+          <div class="row"><span>Relative velocity</span><b>8.4 km/s</b></div>
+          <div class="row"><span>Object A</span><b>44322</b></div>
+          <div class="row"><span>Object B</span><b>52918</b></div>
+          <div class="row"><span>Confidence</span><span class="badge high">HIGH</span></div>
+        </div>
+      </div>
+    </aside>
+-->
+
+    <aside class="panel">
+      <div class="panelTitle">
+        <strong>Risk Monitor</strong>
+        <span>Highest Pc event</span>
+      </div>
+
+      <div class="riskBody">
+
+        <div class="riskCircle">
+          <div class="riskNum">
+            <b id="riskPc">—</b>
+            <small id="riskLevel">—</small>
+          </div>
+        </div>
+
+        <div class="details">
+
+          <div class="row">
+            <span>Closest approach</span>
+            <b id="riskMiss">—</b>
+          </div>
+
+          <div class="row">
+            <span>Relative velocity</span>
+            <b id="riskVelocity">—</b>
+          </div>
+
+          <div class="row">
+            <span>Probability of collision</span>
+            <b id="riskPcValue">—</b>
+          </div>
+
+          <div class="row">
+            <span>Object A</span>
+            <b id="riskObjectA">—</b>
+          </div>
+
+          <div class="row">
+            <span>Object B</span>
+            <b id="riskObjectB">—</b>
+          </div>
+
+          <div class="row">
+            <span>TCA</span>
+            <b id="riskTca">—</b>
+          </div>
+
+          <div class="row">
+            <span>Risk</span>
+            <span id="riskBadge" class="badge high">—</span>
+          </div>
+
+        </div>
+      </div>
+    </aside>
+
+  </div>
+
+  <section class="panel events">
+    <div class="panelTitle">
+      <strong>Upcoming Conjunctions</strong>
+      <span>Next 72 hours • 14 detected</span>
+    </div>
+    
+<!--    <div class="panelTitle"><strong>Upcoming Conjunctions</strong><span>Next 24 hours • 37 detected</span></div>    -->
+
+    <div class="tableWrap">
+    <table>
+      <thead><tr><th>Object A</th><th>Object B</th><th>Closest Approach</th><th>TCA</th><th>Relative Velocity</th><th>Risk</th></tr></thead>
+      <tbody id="eventRows">
+<!--      
+        <tr><td class="obj">NORAD 44322</td><td class="obj">NORAD 52918</td><td>7.2 km</td><td>18 min</td><td>8.4 km/s</td><td><span class="badge high">HIGH</span></td></tr>
+        <tr><td class="obj">COSMOS 2251</td><td class="obj">DEB 1987-005</td><td>14.8 km</td><td>1h 42m</td><td>6.9 km/s</td><td><span class="badge medium">MEDIUM</span></td></tr>
+        <tr><td class="obj">STARLINK-3142</td><td class="obj">DEB 1999-057</td><td>23.1 km</td><td>3h 16m</td><td>7.5 km/s</td><td><span class="badge medium">MEDIUM</span></td></tr>
+        <tr><td class="obj">OBJECT 51073</td><td class="obj">OBJECT 47219</td><td>41.6 km</td><td>6h 03m</td><td>5.2 km/s</td><td><span class="badge low">LOW</span></td></tr>
+-->
+
+      </tbody>
+    </table></div>
+  </section>
+</main>
+</div>
+
+<script>
+
+// ==========================================
+// STEP 4 — REAL SGP4 ORBIT VISUALIZATION
+// ==========================================
+
+fetch("orbit_data.json")
+  .then(response => {
+    if (!response.ok) {
+      throw new Error("Could not load orbit_data.json");
+    }
+
+    return response.json();
+  })
+
+  .then(data => {
+
+    const traces = [];
+
+    data.objects.forEach((object, index) => {
+
+      const x = [];
+      const y = [];
+      const z = [];
+
+      object.positions.forEach(position => {
+        x.push(position.x);
+        y.push(position.y);
+        z.push(position.z);
+      });
+
+      // ------------------------------------------
+      // Orbital trajectory
+      // ------------------------------------------
+
+      traces.push({
+        x: x,
+        y: y,
+        z: z,
+
+        mode: "lines",
+
+        type: "scatter3d",
+
+        name: object.name,
+
+        line: {
+          width: index < 3 ? 3 : 2
+        }
+      });
+
+      // ------------------------------------------
+      // Current / starting position marker
+      // ------------------------------------------
+
+      traces.push({
+        x: [x[0]],
+        y: [y[0]],
+        z: [z[0]],
+
+        mode: "markers",
+
+        type: "scatter3d",
+
+        name: object.name + " position",
+
+        showlegend: false,
+
+        marker: {
+          size: 5
+        }
+      });
+
+    });
+
+
+    // ==========================================
+    // PLOT REAL ORBIT DATA
+    // ==========================================
+
+    Plotly.newPlot(
+      "orbit",
+      traces,
+      {
+
+        paper_bgcolor: "#0a111d",
+
+        plot_bgcolor: "#0a111d",
+
+        scene: {
+
+          bgcolor: "#0a111d",
+
+          xaxis: {
+            title: "X (km)",
+            color: "#60718a",
+            gridcolor: "#18253a",
+            zerolinecolor: "#263750"
+          },
+
+          yaxis: {
+            title: "Y (km)",
+            color: "#60718a",
+            gridcolor: "#18253a",
+            zerolinecolor: "#263750"
+          },
+
+          zaxis: {
+            title: "Z (km)",
+            color: "#60718a",
+            gridcolor: "#18253a",
+            zerolinecolor: "#263750"
+          },
+
+          aspectmode: "cube",
+
+          camera: {
+            eye: {
+              x: 1.35,
+              y: 1.35,
+              z: 0.9
+            }
+          }
+        },
+
+        margin: {
+          l: 0,
+          r: 0,
+          t: 0,
+          b: 0
+        },
+
+        legend: {
+          font: {
+            color: "#9fb0c8",
+            size: 10
+          },
+
+          bgcolor: "#0a111dcc",
+
+          x: 0.02,
+
+          y: 0.98
+        }
+
+      },
+
+      {
+        displayModeBar: false,
+
+        responsive: true
+      }
+    );
+
+  })
+
+  .catch(error => {
+
+    console.error(
+      "Orbit data error:",
+      error
+    );
+
+  });
+  
+<!--
+const traces=[];
+const orbitSpecs=[
+ {name:"SAT-44322",a:1.35,b:.88,rot:.25},
+ {name:"SAT-52918",a:1.05,b:.72,rot:-.55},
+ {name:"STARLINK",a:1.55,b:.64,rot:.95},
+ {name:"DEBRIS",a:.82,b:.58,rot:1.65},
+ {name:"DEBRIS-2",a:1.28,b:.48,rot:2.2}
+];
+orbitSpecs.forEach((o,i)=>{
+ const x=[],y=[],z=[];
+ for(let t=0;t<=360;t+=2){
+   const q=t*Math.PI/180, xx=o.a*Math.cos(q), yy=o.b*Math.sin(q);
+   x.push(xx*Math.cos(o.rot)-yy*Math.sin(o.rot));
+   y.push(xx*Math.sin(o.rot)+yy*Math.cos(o.rot));
+   z.push(.18*Math.sin(q*2+i));
+ }
+ traces.push({x,y,z,mode:"lines",type:"scatter3d",name:o.name,line:{width:i<2?3:1.5}});
+ const p=360*Math.PI/180;
+ traces.push({x:[x[x.length-1]],y:[y[y.length-1]],z:[z[z.length-1]],mode:"markers",type:"scatter3d",showlegend:false,marker:{size:i<2?6:4}});
+});
+Plotly.newPlot("orbit",traces,{
+ paper_bgcolor:"#0a111d",plot_bgcolor:"#0a111d",
+ scene:{
+   bgcolor:"#0a111d",
+   xaxis:{visible:false},yaxis:{visible:false},zaxis:{visible:false},
+   aspectmode:"cube",
+   camera:{eye:{x:1.35,y:1.35,z:.9}}
+ },
+ margin:{l:0,r:0,t:0,b:0},
+ legend:{font:{color:"#9fb0c8",size:10},bgcolor:"#0a111dcc",x:.02,y:.98}
+},{displayModeBar:false,responsive:true});
+-->
+
+document.getElementById("search").addEventListener("input",e=>{
+ const q=e.target.value.toLowerCase();
+ document.querySelectorAll("#eventRows tr").forEach(r=>r.style.display=r.innerText.toLowerCase().includes(q)?"":"none");
+});
+
+
+fetch("dashboard_data.json")
+  .then(response => {
+    if (!response.ok) {
+      throw new Error("Could not load dashboard_data.json");
+    }
+    return response.json();
+  })
+  .then(data => {
+
+    // ==========================================
+    // STEP 2: SUMMARY CARDS
+    // ==========================================
+
+    document.getElementById("trackedObjects").textContent =
+      data.summary.tracked_objects.toLocaleString();
+
+    document.getElementById("conjunctionCount").textContent =
+      data.summary.conjunctions_flagged;
+
+    document.getElementById("highRiskCount").textContent =
+      String(data.summary.high_risk_count).padStart(2, "0");
+      
+        // ==========================================
+        // STEP 3: REAL RISK MONITOR
+        // ==========================================
+
+        const top = data.summary.top_event;
+
+        if (top) {
+
+          // Display Pc inside the risk circle
+          document.getElementById("riskPc").textContent =
+            top.pc.toExponential(2);
+
+          // Display risk level
+          document.getElementById("riskLevel").textContent =
+            top.risk;
+
+          // Real conjunction information
+          document.getElementById("riskMiss").textContent =
+            top.miss_km + " km";
+
+          document.getElementById("riskVelocity").textContent =
+            top.rel_vel_kms + " km/s";
+
+          document.getElementById("riskPcValue").textContent =
+            top.pc.toExponential(3);
+
+          document.getElementById("riskObjectA").textContent =
+            top.name_a + " (" + top.norad_a + ")";
+
+          document.getElementById("riskObjectB").textContent =
+            top.name_b + " (" + top.norad_b + ")";
+
+          // Format TCA for humans
+          const riskTca = new Date(top.tca);
+
+          document.getElementById("riskTca").textContent =
+            riskTca.toISOString()
+              .replace("T", " ")
+              .replace(".000Z", " UTC");
+
+          // Risk badge
+          const badge = document.getElementById("riskBadge");
+
+          badge.textContent = top.risk;
+          badge.className = "badge " + top.risk.toLowerCase();
+        }
+
+
+    // ==========================================
+    // NEXT CLOSE APPROACH
+    // ==========================================
+
+    if (data.events.length > 0) {
+
+      // Events are already sorted by Pc.
+      // For "next", we need to find the earliest TCA.
+
+      const sortedByTCA = [...data.events].sort(
+        (a, b) => new Date(a.tca) - new Date(b.tca)
+      );
+
+      const next = sortedByTCA[0];
+
+      const tcaDate = new Date(next.tca);
+
+      const demoEpoch = new Date(data.metadata.demo_epoch);
+
+      const differenceMs = tcaDate - demoEpoch;
+
+      const differenceMinutes =
+        Math.round(differenceMs / 60000);
+
+      let timeText;
+
+      if (differenceMinutes < 60) {
+
+        timeText = differenceMinutes + " min";
+
+      } else {
+
+        const hours = Math.floor(differenceMinutes / 60);
+        const minutes = differenceMinutes % 60;
+
+        timeText = hours + "h";
+
+        if (minutes > 0) {
+          timeText += " " + minutes + "m";
+        }
+      }
+
+      document.getElementById("nextApproachTime").textContent =
+        timeText;
+
+      document.getElementById("nextApproachPair").textContent =
+        next.name_a + " ↔ " + next.name_b;
+    }
+
+
+    // ==========================================
+    // EXISTING EVENT TABLE
+    // ==========================================
+
+    const tbody = document.getElementById("eventRows");
+
+    tbody.innerHTML = "";
+
+    data.events.forEach(event => {
+
+      const row = document.createElement("tr");
+
+      row.innerHTML = `
+        <td class="obj">${event.name_a}</td>
+        <td class="obj">${event.name_b}</td>
+        <td>${event.miss_km} km</td>
+        <td>${event.tca}</td>
+        <td>${event.rel_vel_kms} km/s</td>
+        <td>
+          <span class="badge ${event.risk.toLowerCase()}">
+            ${event.risk}
+          </span>
+        </td>
+      `;
+
+      tbody.appendChild(row);
+    });
+
+  })
+  .catch(error => {
+    console.error("Dashboard data error:", error);
+  });
+  
+
+</script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+venv/
+.env
+*.pyc
+__pycache__/
+old_files_backup/
+
+# Backup / temporary files
+*.backup
+*.before_*
+*_BACKUP.*
+*_BEFORE_*
+*.OLD_DO_NOT_RUN.*
+
+# Dashboard backup files
+dashboard/*_backup.html
+
+# Experimental files
+phase3_propagate/*TEST*.py

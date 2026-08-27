@@ -1,0 +1,196 @@
+{
+  "metadata": {
+    "demo_mode": true,
+    "demo_epoch": "2026-08-26T12:00:00",
+    "window_hours": 72,
+    "tle_source": "Space-Track",
+    "event_source": "conjunction_events_20s_FINAL.csv"
+  },
+  "summary": {
+    "tracked_objects": 32516,
+    "conjunctions_flagged": 14,
+    "high_risk_count": 4,
+    "top_event": {
+      "norad_a": "24954",
+      "name_a": "FAISAT 2V",
+      "norad_b": "5680",
+      "name_b": "OPS 7898 (P/L 2)",
+      "tca": "2026-08-28T20:06:54.137651",
+      "miss_km": 2.42,
+      "rel_vel_kms": 8.949,
+      "combined_sigma_km": 1.539,
+      "pc": 2.4524532410702044e-05,
+      "risk": "HIGH"
+    }
+  },
+  "events": [
+    {
+      "norad_a": "24954",
+      "name_a": "FAISAT 2V",
+      "norad_b": "5680",
+      "name_b": "OPS 7898 (P/L 2)",
+      "tca": "2026-08-28T20:06:54.137651",
+      "miss_km": 2.42,
+      "rel_vel_kms": 8.949,
+      "combined_sigma_km": 1.539,
+      "pc": 2.4524532410702044e-05,
+      "risk": "HIGH"
+    },
+    {
+      "norad_a": "24954",
+      "name_a": "FAISAT 2V",
+      "norad_b": "13302",
+      "name_b": "SL-8 R/B",
+      "tca": "2026-08-27T09:47:26.137651",
+      "miss_km": 2.44,
+      "rel_vel_kms": 0.05,
+      "combined_sigma_km": 1.529,
+      "pc": 2.3947444427432477e-05,
+      "risk": "HIGH"
+    },
+    {
+      "norad_a": "26546",
+      "name_a": "MEGSAT 1",
+      "norad_b": "1835",
+      "name_b": "TITAN 3C TRANSTAGE DEB",
+      "tca": "2026-08-29T03:10:47.137651",
+      "miss_km": 2.765,
+      "rel_vel_kms": 8.19,
+      "combined_sigma_km": 1.859,
+      "pc": 1.9145771540642427e-05,
+      "risk": "HIGH"
+    },
+    {
+      "norad_a": "24954",
+      "name_a": "FAISAT 2V",
+      "norad_b": "30683",
+      "name_b": "FENGYUN 1C DEB",
+      "tca": "2026-08-27T22:36:59.137651",
+      "miss_km": 2.575,
+      "rel_vel_kms": 3.919,
+      "combined_sigma_km": 3.585,
+      "pc": 1.2023943387043678e-05,
+      "risk": "HIGH"
+    },
+    {
+      "norad_a": "40054",
+      "name_a": "AISAT",
+      "norad_b": "35023",
+      "name_b": "COSMOS 2251 DEB",
+      "tca": "2026-08-27T07:21:41.137651",
+      "miss_km": 4.052,
+      "rel_vel_kms": 12.421,
+      "combined_sigma_km": 2.178,
+      "pc": 7.4679406114233565e-06,
+      "risk": "MEDIUM"
+    },
+    {
+      "norad_a": "26548",
+      "name_a": "TIUNGSAT 1",
+      "norad_b": "17429",
+      "name_b": "ARIANE 1 DEB",
+      "tca": "2026-08-28T15:09:19.137651",
+      "miss_km": 3.73,
+      "rel_vel_kms": 10.926,
+      "combined_sigma_km": 1.818,
+      "pc": 7.372865638130933e-06,
+      "risk": "MEDIUM"
+    },
+    {
+      "norad_a": "26546",
+      "name_a": "MEGSAT 1",
+      "norad_b": "39429",
+      "name_b": "DOVE 3",
+      "tca": "2026-08-28T07:01:36.137651",
+      "miss_km": 3.514,
+      "rel_vel_kms": 11.922,
+      "combined_sigma_km": 1.516,
+      "pc": 5.923924369573213e-06,
+      "risk": "MEDIUM"
+    },
+    {
+      "norad_a": "26548",
+      "name_a": "TIUNGSAT 1",
+      "norad_b": "36879",
+      "name_b": "METEOR 2-7 DEB",
+      "tca": "2026-08-27T23:11:16.137651",
+      "miss_km": 3.056,
+      "rel_vel_kms": 6.131,
+      "combined_sigma_km": 5.602,
+      "pc": 5.491284227976634e-06,
+      "risk": "MEDIUM"
+    },
+    {
+      "norad_a": "40054",
+      "name_a": "AISAT",
+      "norad_b": "58579",
+      "name_b": "ELECTRON KICK STAGE R/B",
+      "tca": "2026-08-28T08:33:06.137651",
+      "miss_km": 4.663,
+      "rel_vel_kms": 14.152,
+      "combined_sigma_km": 2.147,
+      "pc": 4.103374991869771e-06,
+      "risk": "MEDIUM"
+    },
+    {
+      "norad_a": "24954",
+      "name_a": "FAISAT 2V",
+      "norad_b": "45029",
+      "name_b": "ARIANE 5 R/B",
+      "tca": "2026-08-27T18:31:32.137651",
+      "miss_km": 4.004,
+      "rel_vel_kms": 11.437,
+      "combined_sigma_km": 1.671,
+      "pc": 4.054357638843257e-06,
+      "risk": "MEDIUM"
+    },
+    {
+      "norad_a": "26548",
+      "name_a": "TIUNGSAT 1",
+      "norad_b": "22286",
+      "name_b": "COSMOS 2228",
+      "tca": "2026-08-28T21:53:47.137651",
+      "miss_km": 3.814,
+      "rel_vel_kms": 14.525,
+      "combined_sigma_km": 1.514,
+      "pc": 3.6585098661244556e-06,
+      "risk": "MEDIUM"
+    },
+    {
+      "norad_a": "25758",
+      "name_a": "IRS P4 (OCEANSAT 1)",
+      "norad_b": "26338",
+      "name_b": "CZ-4 DEB",
+      "tca": "2026-08-29T02:34:13.137651",
+      "miss_km": 4.114,
+      "rel_vel_kms": 9.814,
+      "combined_sigma_km": 1.633,
+      "pc": 3.1431122547735526e-06,
+      "risk": "MEDIUM"
+    },
+    {
+      "norad_a": "25758",
+      "name_a": "IRS P4 (OCEANSAT 1)",
+      "norad_b": "48709",
+      "name_b": "NOAA 17 DEB",
+      "tca": "2026-08-27T10:59:08.137651",
+      "miss_km": 4.279,
+      "rel_vel_kms": 4.065,
+      "combined_sigma_km": 1.726,
+      "pc": 3.105006200850851e-06,
+      "risk": "MEDIUM"
+    },
+    {
+      "norad_a": "28650",
+      "name_a": "HAMSAT",
+      "norad_b": "4699",
+      "name_b": "COSMOS 374 DEB",
+      "tca": "2026-08-27T14:26:24.137651",
+      "miss_km": 4.011,
+      "rel_vel_kms": 9.03,
+      "combined_sigma_km": 1.56,
+      "pc": 3.0182152289688858e-06,
+      "risk": "MEDIUM"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+ORBITGUARD PHASE 3 - FROZEN DEMO CONFIGURATION
+
+Reference epoch:
+2026-08-26 12:00:00 UTC
+
+Propagation window:
+72 hours
+
+Coarse step:
+20 seconds
+
+Fine/refinement step:
+1 second
+
+Pair count:
+109,270
+
+SGP4:
+Vectorized sgp4_array()
+
+TLE stale-age limit:
+14 days
+
+Collision threshold:
+5.0 km
+
+Demo mode:
+True
+
+Final result:
+conjunction_events_20s_FINAL.csv
