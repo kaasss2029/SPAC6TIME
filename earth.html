@@ -4,67 +4,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OrbitGuard — 3D Orbital Globe & Live Tracking</title>
 
-    <title>OrbitGuard — Space Debris Tracking</title>
-
-    <!-- Plotly -->
-    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <!-- Three.js & GSAP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 
     <!-- satellite.js -->
     <script src="https://cdn.jsdelivr.net/npm/satellite.js@6.0.2/dist/satellite.min.js"></script>
 
-    <!-- Earcut -->
-    <script src="https://cdn.jsdelivr.net/npm/earcut@2.2.4/dist/earcut.min.js"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
     <style>
-
         :root {
             --bg: #070b14;
+            --bg-glass: rgba(10, 17, 30, 0.65);
+            --bg-glass-heavy: rgba(10, 17, 30, 0.78);
+            --border-glass: rgba(70, 217, 255, 0.18);
+            --border-glass-glow: rgba(70, 217, 255, 0.45);
             --panel: #0d1422;
             --panel2: #111a2b;
             --line: #1c2940;
             --text: #eaf2ff;
             --muted: #7f91ad;
             --cyan: #46d9ff;
+            --cyan-glow: rgba(70, 217, 255, 0.4);
+            --mint: #38e8be;
+            --mint-glow: rgba(56, 232, 190, 0.4);
             --blue: #5b8cff;
             --red: #ff526d;
             --orange: #ffad4d;
             --green: #42e6a4;
+            --purple: #b362ff;
+            --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
         }
 
         * {
             box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
 
         body {
-            margin: 0;
-            background:
-                radial-gradient(
-                    circle at 70% 10%,
-                    #13243c 0,
-                    #070b14 38%
-                );
+            background: radial-gradient(circle at 70% 10%, #13243c 0, #070b14 38%);
             color: var(--text);
-            font-family:
-                Inter,
-                ui-sans-serif,
-                system-ui,
-                -apple-system,
-                BlinkMacSystemFont,
-                "Segoe UI",
-                sans-serif;
+            font-family: var(--font-main);
+            min-height: 100vh;
+            overflow-x: hidden;
         }
 
         .app {
             display: flex;
             min-height: 100vh;
             position: relative;
-            overflow-x: hidden;
         }
 
+        /* ── SIDEBAR NAVIGATION ── */
         .sidebar {
             width: 250px;
-            background: rgba(7, 11, 20, .96);
+            background: rgba(7, 11, 20, 0.96);
             border-right: 1px solid var(--line);
             padding: 24px 16px;
             position: fixed;
@@ -103,6 +108,28 @@
             align-items: center;
             justify-content: space-between;
             margin-bottom: 24px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            font-weight: 800;
+            font-size: 19px;
+            letter-spacing: -0.5px;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .logoMark {
+            width: 34px;
+            height: 34px;
+            border: 1px solid #2b7190;
+            border-radius: 11px;
+            display: grid;
+            place-items: center;
+            color: var(--cyan);
+            box-shadow: 0 0 24px #46d9ff22;
         }
 
         .sidebarCloseBtn {
@@ -149,55 +176,44 @@
             transform: translateY(-1px);
         }
 
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 11px;
-            font-weight: 800;
-            font-size: 19px;
-            margin: 0;
-        }
-
-        .logoMark {
-            width: 34px;
-            height: 34px;
-            border: 1px solid #2b7190;
-            border-radius: 11px;
-            display: grid;
-            place-items: center;
-            color: var(--cyan);
-            box-shadow: 0 0 24px #46d9ff22;
-        }
-
         .navTitle {
             font-size: 10px;
             color: #50617a;
             letter-spacing: 1.6px;
             margin: 22px 12px 9px;
             text-transform: uppercase;
+            font-weight: 700;
         }
 
         .nav a {
             display: flex;
-            gap: 12px;
             align-items: center;
-            padding: 11px 12px;
-            border-radius: 10px;
-            color: var(--muted);
+            gap: 12px;
+            padding: 10px 12px;
+            margin: 4px 0;
+            border-radius: 9px;
             text-decoration: none;
+            color: var(--muted);
             font-size: 13px;
-            margin: 3px 0;
-            transition: all 0.2s ease;
+            cursor: pointer;
+            transition: all 0.2s;
         }
 
-        .nav a.active,
         .nav a:hover {
             background: #142238;
-            color: #fff;
+            color: var(--text);
         }
 
         .nav a.active {
+            background: #142238;
+            color: #fff;
             box-shadow: inset 2px 0 var(--cyan);
+        }
+
+        .nav b {
+            font-size: 15px;
+            width: 18px;
+            text-align: center;
         }
 
         .system {
@@ -218,18 +234,22 @@
             margin-right: 7px;
         }
 
+        /* ── MAIN DASHBOARD CONTAINER ── */
         .main {
             margin-left: 0;
             width: 100%;
-            padding: 24px 32px;
+            padding: 24px 32px 48px;
             transition: margin-left 0.35s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
+        /* ── HEADER ── */
         .top {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 23px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 16px;
         }
 
         .eyebrow {
@@ -237,107 +257,221 @@
             color: var(--cyan);
             letter-spacing: 1.8px;
             text-transform: uppercase;
+            font-weight: 700;
         }
 
         h1 {
-            margin: 5px 0 0;
-            font-size: 27px;
+            margin: 4px 0 0;
+            font-size: 26px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
         }
 
         .topRight {
             display: flex;
             align-items: center;
             gap: 12px;
+            flex-wrap: wrap;
         }
 
         .live {
             font-size: 12px;
             color: #a9b9cf;
-            border: 1px solid var(--line);
-            padding: 9px 12px;
-            border-radius: 9px;
-            background: #0c1422;
+            border: 1px solid var(--border-glass);
+            padding: 9px 15px;
+            border-radius: 10px;
+            background: var(--bg-glass);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            display: flex;
+            align-items: center;
+            font-family: var(--font-mono);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
         }
 
         .search {
-            background: #0d1524;
-            border: 1px solid var(--line);
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
             color: #fff;
-            padding: 10px 13px;
-            border-radius: 9px;
+            padding: 9px 15px;
+            border-radius: 10px;
             outline: none;
-            width: 190px;
+            width: 220px;
+            font-family: var(--font-main);
+            font-size: 13px;
+            transition: all 0.2s;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
         }
 
-        .cards {
+        .search:focus {
+            border-color: var(--cyan);
+            box-shadow: 0 0 16px var(--cyan-glow);
+        }
+
+        /* ── LARGE EXPANDED 3D ORBITAL ENVIRONMENT HERO STAGE ── */
+        .orbit-hero-stage {
+            position: relative;
+            width: 100%;
+            height: 820px;
+            min-height: 680px;
+            border-radius: 24px;
+            border: 1px solid var(--border-glass);
+            background: #050811;
+            overflow: hidden;
+            margin-bottom: 24px;
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.65), 0 0 40px rgba(70, 217, 255, 0.06);
+        }
+
+        /* 3D WebGL Canvas */
+        #earth-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            outline: none;
+            cursor: grab;
+        }
+
+        #earth-canvas:active {
+            cursor: grabbing;
+        }
+
+        /* ── GLASS OVERLAY HOST (CLICK-THROUGH WRAPPER) ── */
+        .orbit-glass-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 22px 24px;
+        }
+
+        /* 1. TOP GLASS KPI CARDS STRIP */
+        .glass-kpi-bar {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 14px;
-            margin-bottom: 16px;
+            gap: 16px;
+            pointer-events: auto;
         }
 
-        .card {
-            background:
-                linear-gradient(
-                    145deg,
-                    #0e1727,
-                    #0a111d
-                );
-            border: 1px solid var(--line);
-            border-radius: 14px;
-            padding: 17px;
+        .glass-card {
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-radius: 18px;
+            padding: 16px 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), 0 0 20px rgba(70, 217, 255, 0.04);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .glass-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(70, 217, 255, 0.4), transparent);
+        }
+
+        .glass-card:hover {
+            border-color: var(--border-glass-glow);
+            transform: translateY(-3px);
+            box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55), 0 0 30px var(--cyan-glow);
         }
 
         .cardHead {
             display: flex;
             justify-content: space-between;
+            align-items: center;
             color: var(--muted);
-            font-size: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .icon {
+        .cardHead .icon {
             color: var(--cyan);
-            font-size: 16px;
+            font-size: 14px;
         }
 
         .value {
-            font-size: 28px;
-            font-weight: 750;
-            margin: 9px 0 3px;
+            font-size: 26px;
+            font-weight: 800;
+            font-family: var(--font-mono);
+            margin: 8px 0 2px;
+            color: #ffffff;
         }
 
         .sub {
             font-size: 11px;
             color: var(--muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .up {
             color: var(--green);
+            font-weight: 600;
         }
 
-        .grid {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) 310px;
-            gap: 16px;
+        /* 2. MIDDLE VIEWPORT LAYER: FLOATING RISK MONITOR ON RIGHT */
+        .glass-mid-layer {
+            display: flex;
+            justify-content: flex-end;
+            align-items: flex-start;
+            flex: 1;
+            margin-top: 16px;
+            margin-bottom: 16px;
+            position: relative;
         }
 
-        .panel {
-            background: rgba(10, 17, 29, .88);
-            border: 1px solid var(--line);
-            border-radius: 14px;
+        .glass-risk-panel {
+            width: 320px;
+            background: var(--bg-glass-heavy);
+            border: 1px solid var(--border-glass);
+            backdrop-filter: blur(28px);
+            -webkit-backdrop-filter: blur(28px);
+            border-radius: 20px;
             overflow: hidden;
+            pointer-events: auto;
+            box-shadow: 0 20px 54px rgba(0, 0, 0, 0.65), 0 0 32px rgba(70, 217, 255, 0.08);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .glass-risk-panel:hover {
+            border-color: var(--border-glass-glow);
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.75), 0 0 40px var(--cyan-glow);
         }
 
         .panelTitle {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 15px 17px;
-            border-bottom: 1px solid var(--line);
+            padding: 13px 18px;
+            border-bottom: 1px solid var(--border-glass);
+            background: rgba(14, 23, 39, 0.45);
         }
 
         .panelTitle strong {
-            font-size: 13px;
+            font-size: 12px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .panelTitle span {
@@ -345,45 +479,30 @@
             color: var(--muted);
         }
 
-        #orbit {
-            height: 680px;
-            min-height: 520px;
-            border-radius: 0 0 14px 14px;
-        }
-
-        @media (min-width: 1500px) {
-            #orbit {
-                height: 760px;
-            }
-        }
-
         .riskBody {
-            padding: 22px;
+            padding: 18px 20px;
         }
 
         .riskCircle {
-            width: 158px;
-            height: 158px;
+            width: 136px;
+            height: 136px;
             border-radius: 50%;
-            margin: 4px auto 20px;
+            margin: 0 auto 16px;
             display: grid;
             place-items: center;
-            background:
-                conic-gradient(
-                    var(--muted) 0 0%,
-                    #172236 0% 100%
-                );
+            background: conic-gradient(var(--muted) 0 0%, #172236 0% 100%);
             position: relative;
-            transition: background .4s ease;
+            transition: background 0.4s ease;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
         }
 
         .riskCircle::after {
             content: "";
             position: absolute;
-            width: 128px;
-            height: 128px;
+            width: 108px;
+            height: 108px;
             border-radius: 50%;
-            background: #0b1320;
+            background: #080e1a;
         }
 
         .riskNum {
@@ -394,131 +513,272 @@
 
         .riskNum b {
             display: block;
-            font-size: 40px;
+            font-size: 34px;
+            font-family: var(--font-mono);
+            font-weight: 800;
+            color: #fff;
         }
 
         .riskNum small {
-            font-size: 10px;
+            font-size: 9px;
             color: var(--red);
-            letter-spacing: 2px;
+            letter-spacing: 1.5px;
+            font-weight: 700;
         }
 
         .details {
-            border-top: 1px solid var(--line);
-            padding-top: 14px;
+            border-top: 1px solid var(--border-glass);
+            padding-top: 12px;
         }
 
         .row {
             display: flex;
             justify-content: space-between;
-            padding: 9px 0;
-            font-size: 12px;
+            align-items: center;
+            padding: 6px 0;
+            font-size: 11px;
         }
 
         .row span:first-child {
             color: var(--muted);
         }
 
+        .row b {
+            color: #eaf2ff;
+            font-family: var(--font-mono);
+        }
+
         .badge {
-            padding: 4px 8px;
+            padding: 3px 8px;
             border-radius: 6px;
             font-size: 10px;
             font-weight: 700;
+            font-family: var(--font-mono);
         }
 
         .high {
-            background: #ff526d18;
+            background: rgba(255, 82, 109, 0.15);
             color: var(--red);
+            border: 1px solid rgba(255, 82, 109, 0.35);
         }
 
         .medium {
-            background: #ffad4d18;
+            background: rgba(255, 173, 77, 0.15);
             color: var(--orange);
+            border: 1px solid rgba(255, 173, 77, 0.35);
         }
 
         .low {
-            background: #42e6a418;
+            background: rgba(66, 230, 164, 0.15);
             color: var(--green);
+            border: 1px solid rgba(66, 230, 164, 0.35);
+        }
+
+        /* 3. BOTTOM GLASS CONTROLS & HINT BAR */
+        .glass-bottom-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: auto;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .orbit-hud-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .orbit-hud-btn {
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            color: #eaf2ff;
+            padding: 7px 14px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: var(--font-main);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+        }
+
+        .orbit-hud-btn:hover {
+            border-color: var(--cyan);
+            color: var(--cyan);
+            box-shadow: 0 0 16px var(--cyan-glow);
+            transform: translateY(-1px);
+        }
+
+        .orbit-hud-btn.active {
+            background: rgba(70, 217, 255, 0.2);
+            border-color: var(--cyan);
+            color: var(--cyan);
+        }
+
+        .orbit-hint-banner {
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            padding: 7px 18px;
+            border-radius: 999px;
+            font-size: 11px;
+            color: #8fa3c2;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+        }
+
+        /* ── SATELLITE RAYCAST TOOLTIP ── */
+        .sat-tooltip {
+            position: absolute;
+            background: rgba(10, 16, 28, 0.94);
+            border: 1px solid var(--cyan);
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 24px var(--cyan-glow);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border-radius: 14px;
+            padding: 12px 16px;
+            font-size: 11px;
+            color: #eaf2ff;
+            pointer-events: none;
+            z-index: 30;
+            transform: translate(-50%, -125%);
+            opacity: 0;
+            transition: opacity 0.18s ease, transform 0.18s ease;
+            min-width: 190px;
+        }
+
+        .sat-tooltip.visible {
+            opacity: 1;
+            transform: translate(-50%, -135%);
+        }
+
+        .sat-tooltip-title {
+            font-weight: 800;
+            color: var(--cyan);
+            font-size: 13px;
+            margin-bottom: 6px;
+            border-bottom: 1px solid rgba(70, 217, 255, 0.25);
+            padding-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .sat-tooltip-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            margin: 3px 0;
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        .sat-tooltip-row b {
+            color: #fff;
+            font-family: var(--font-mono);
+        }
+
+        /* ── UPCOMING CONJUNCTIONS TABLE (BOTTOM PANEL) ── */
+        .panel {
+            background: rgba(10, 17, 29, 0.92);
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            overflow: hidden;
+            position: relative;
         }
 
         .events {
-            margin-top: 16px;
+            margin-top: 8px;
         }
 
         .tableWrap {
             overflow: auto;
+            max-height: 420px;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
             font-size: 12px;
-        }
-
-        th,
-        td {
             text-align: left;
-            padding: 12px 15px;
-            border-bottom: 1px solid #152136;
         }
 
-        th {
-            font-size: 10px;
+        thead th {
+            position: sticky;
+            top: 0;
+            background: #0d1422;
+            color: var(--muted);
+            padding: 12px 18px;
+            font-size: 11px;
+            font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            color: #60718a;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--line);
+            white-space: nowrap;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid rgba(28, 41, 64, 0.5);
+            transition: background 0.15s;
+        }
+
+        tbody tr:hover {
+            background: rgba(22, 34, 56, 0.6);
+            cursor: pointer;
+        }
+
+        tbody td {
+            padding: 11px 18px;
+            white-space: nowrap;
+            color: #d6e2f5;
+        }
+
+        tbody td.obj {
             font-weight: 600;
-        }
-
-        td {
-            color: #cbd7e8;
-        }
-
-        tr:hover {
-            background: #101a2b;
-        }
-
-        .obj {
             color: #fff;
-            font-weight: 600;
         }
 
-        .footerNote {
-            padding: 11px 15px;
-            color: #586b86;
-            font-size: 10px;
-        }
-
-        @media(max-width:1000px) {
-
-            .sidebar {
-                width: 72px;
-            }
-
-            .logo span,
-            .nav a span,
-            .navTitle,
-            .system {
-                display: none;
-            }
-
-            .main {
-                margin-left: 72px;
-                width: calc(100% - 72px);
-            }
-
-            .cards {
+        /* ── RESPONSIVENESS ── */
+        @media (max-width: 1200px) {
+            .glass-kpi-bar {
                 grid-template-columns: repeat(2, 1fr);
             }
-
-            .grid {
-                grid-template-columns: 1fr;
+            .orbit-hero-stage {
+                height: 900px;
+            }
+            .glass-mid-layer {
+                align-items: flex-end;
+            }
+            .glass-risk-panel {
+                width: 100%;
             }
         }
 
+        @media (max-width: 768px) {
+            .main {
+                padding: 16px;
+            }
+            .glass-kpi-bar {
+                grid-template-columns: 1fr;
+            }
+            .orbit-hero-stage {
+                height: 840px;
+            }
+            .orbit-hint-banner {
+                display: none;
+            }
+        }
     </style>
 </head>
-
 
 <body>
 
@@ -531,679 +791,924 @@
     <aside class="sidebar" id="sidebar">
 
         <div class="sidebarHeader">
-            <a href="index.html" class="logo" style="text-decoration:none; color:inherit; cursor:pointer;">
+            <a href="index.html" class="logo">
                 <div class="logoMark">◉</div>
                 <span>OrbitGuard</span>
             </a>
             <button class="sidebarCloseBtn" id="sidebarCloseBtn" title="Close Sidebar">✕</button>
         </div>
 
-        <div class="navTitle">
-            Monitor
-        </div>
+        <div class="navTitle">Monitor</div>
 
         <div class="nav">
-
-            <a class="active" href="#">
+            <a class="active" href="earth.html">
                 <b>⌂</b>
                 <span>Overview</span>
             </a>
-
             <a href="orb_obj.html">
                 <b>◎</b>
                 <span>Orbital Objects</span>
             </a>
-
             <a href="grid.html">
                 <b>⚠</b>
                 <span>Conjunctions</span>
             </a>
-
             <a href="analytics.html">
                 <b>◌</b>
                 <span>Analytics</span>
             </a>
-
         </div>
 
-        <div class="navTitle">
-            System
-        </div>
+        <div class="navTitle">System</div>
 
         <div class="nav">
-
             <a href="#">
                 <b>⚙</b>
                 <span>Settings</span>
             </a>
-
             <a href="#">
                 <b>?</b>
                 <span>Documentation</span>
             </a>
-
         </div>
 
         <div class="system">
-
             <span class="dot" id="sysDot"></span>
-
-            <b
-                style="font-size:11px"
-                id="sysStatus"
-            >
-                Connecting...
-            </b>
-
-            <div
-                style="
-                    font-size:10px;
-                    color:#647690;
-                    margin-top:5px
-                "
-                id="sysSub"
-            >
-                Syncing CelesTrak...
-            </div>
-
+            <b style="font-size:11px" id="sysStatus">Connecting...</b>
+            <div style="font-size:10px; color:#647690; margin-top:5px" id="sysSub">Syncing CelesTrak...</div>
         </div>
 
     </aside>
 
-
-    <!-- MAIN -->
-
+    <!-- MAIN DASHBOARD -->
     <main class="main">
 
+        <!-- TOP BAR -->
         <div class="top">
-
             <div style="display: flex; align-items: center;">
-
                 <button class="sidebarToggleBtn" id="sidebarToggleBtn" title="Toggle Navigation Menu">
                     <span style="font-size: 16px;">☰</span>
                     <span>Menu</span>
                 </button>
-
                 <div>
-                    <div class="eyebrow">
-                        LEO Situational Awareness
-                    </div>
-
-                    <h1>
-                        Collision Risk Dashboard
-                    </h1>
+                    <div class="eyebrow">LEO Situational Awareness</div>
+                    <h1>Collision Risk Dashboard</h1>
                 </div>
-
             </div>
 
             <div class="topRight">
+                <div class="live" id="liveStatus">
+                    <span class="dot"></span> FETCHING API...
+                </div>
+                <input class="search" id="search" placeholder="Search object...">
+            </div>
+        </div>
 
-                <div
-                    class="live"
-                    id="liveStatus"
-                >
-                    <span class="dot"></span>
-                    FETCHING API...
+        <!-- =========================================================================
+             LARGE EXPANDED 3D ORBITAL ENVIRONMENT HERO STAGE WITH FLOATING GLASS HUD
+             ========================================================================= -->
+        <div class="orbit-hero-stage" id="orbit-hero">
+            
+            <!-- 3D Three.js WebGL Canvas (Background) -->
+            <canvas id="earth-canvas"></canvas>
+
+            <!-- Floating Glassmorphic Overlay Layer -->
+            <div class="orbit-glass-overlay">
+
+                <!-- 1. TOP GLASS KPI CARDS STRIP -->
+                <div class="glass-kpi-bar">
+                    <!-- Tracked Objects -->
+                    <div class="glass-card">
+                        <div class="cardHead">
+                            <span>Tracked Objects</span>
+                            <span class="icon"><i class="fa-solid fa-satellite"></i></span>
+                        </div>
+                        <div class="value" id="cardTracked">--</div>
+                        <div class="sub"><span class="up">Live</span> from CelesTrak ACTIVE</div>
+                    </div>
+
+                    <!-- Conjunctions (24h) -->
+                    <div class="glass-card">
+                        <div class="cardHead">
+                            <span>Conjunctions (24h)</span>
+                            <span class="icon"><i class="fa-solid fa-bolt"></i></span>
+                        </div>
+                        <div class="value" id="cardConjunctions">--</div>
+                        <div class="sub">calculated close encounters</div>
+                    </div>
+
+                    <!-- High Risk Events -->
+                    <div class="glass-card">
+                        <div class="cardHead">
+                            <span>High Risk Events</span>
+                            <span style="color:var(--red)"><i class="fa-solid fa-triangle-exclamation"></i></span>
+                        </div>
+                        <div class="value" style="color:var(--red)" id="cardHighRisk">--</div>
+                        <div class="sub">require immediate review</div>
+                    </div>
+
+                    <!-- Next Close Approach -->
+                    <div class="glass-card">
+                        <div class="cardHead">
+                            <span>Next Close Approach</span>
+                            <span class="icon"><i class="fa-regular fa-clock"></i></span>
+                        </div>
+                        <div class="value" id="cardNextTca">--</div>
+                        <div class="sub" id="cardNextPair">Analyzing catalog...</div>
+                    </div>
                 </div>
 
-                <input
-                    class="search"
-                    id="search"
-                    placeholder="Search object..."
-                >
+                <!-- 2. MIDDLE VIEWPORT LAYER: FLOATING RISK MONITOR ON RIGHT -->
+                <div class="glass-mid-layer">
+                    <div class="glass-risk-panel">
+                        <div class="panelTitle">
+                            <strong>
+                                <i class="fa-solid fa-shield-halved" style="color:var(--red);"></i>
+                                Risk Monitor
+                            </strong>
+                            <span id="riskHeader">Closest approach</span>
+                        </div>
 
+                        <div class="riskBody">
+                            <div class="riskCircle" id="riskCircle">
+                                <div class="riskNum">
+                                    <b id="riskScore">--</b>
+                                    <small id="riskLevel">PRELIMINARY RISK</small>
+                                </div>
+                            </div>
+
+                            <div class="details">
+                                <div class="row">
+                                    <span>Closest approach</span>
+                                    <b id="riskDist">-- km</b>
+                                </div>
+                                <div class="row">
+                                    <span>Time to TCA</span>
+                                    <b id="riskTca">-- min</b>
+                                </div>
+                                <div class="row">
+                                    <span>Relative velocity</span>
+                                    <b id="riskVel">-- km/s</b>
+                                </div>
+                                <div class="row">
+                                    <span>Object A</span>
+                                    <b id="riskObjA">--</b>
+                                </div>
+                                <div class="row">
+                                    <span>Object B</span>
+                                    <b id="riskObjB">--</b>
+                                </div>
+                                <div class="row">
+                                    <span>Confidence</span>
+                                    <span class="badge high" id="riskBadge">CALCULATING</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. BOTTOM GLASS CONTROLS & HINT BAR -->
+                <div class="glass-bottom-bar">
+                    <div class="orbit-hud-controls">
+                        <button class="orbit-hud-btn" id="btn-reset-cam" title="Reset Camera View">
+                            <i class="fa-solid fa-arrows-rotate"></i> Reset View
+                        </button>
+                        <button class="orbit-hud-btn active" id="btn-auto-rotate" title="Toggle Auto-Rotation">
+                            <i class="fa-solid fa-rotate"></i> Auto-Spin
+                        </button>
+                        <button class="orbit-hud-btn active" id="btn-toggle-orbits" title="Toggle Orbit Lines">
+                            <i class="fa-solid fa-circle-nodes"></i> Orbits
+                        </button>
+                    </div>
+
+                    <div class="orbit-hint-banner">
+                        <i class="fa-solid fa-arrows-up-down-left-right" style="color:var(--cyan);"></i>
+                        <span>Drag background to rotate • Scroll to zoom • Hover/click satellites for live telemetry</span>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Satellite Raycast Tooltip -->
+            <div class="sat-tooltip" id="sat-tooltip">
+                <div class="sat-tooltip-title" id="sat-tt-name">🛰️ Satellite Name</div>
+                <div class="sat-tooltip-row">
+                    <span>NORAD ID:</span>
+                    <b id="sat-tt-norad">--</b>
+                </div>
+                <div class="sat-tooltip-row">
+                    <span>Altitude:</span>
+                    <b id="sat-tt-alt">-- km</b>
+                </div>
+                <div class="sat-tooltip-row">
+                    <span>Velocity:</span>
+                    <b id="sat-tt-vel">-- km/s</b>
+                </div>
+                <div class="sat-tooltip-row">
+                    <span>Inclination:</span>
+                    <b id="sat-tt-inc">--°</b>
+                </div>
             </div>
 
         </div>
 
-
-        <!-- CARDS -->
-
-        <section class="cards">
-
-            <div class="card">
-
-                <div class="cardHead">
-                    Tracked Objects
-                    <span class="icon">◎</span>
-                </div>
-
-                <div
-                    class="value"
-                    id="cardTracked"
-                >
-                    --
-                </div>
-
-                <div class="sub">
-                    <span class="up">Live</span>
-                    from CelesTrak ACTIVE TLE
-                </div>
-
-            </div>
-
-
-            <div class="card">
-
-                <div class="cardHead">
-                    Conjunctions (24h)
-                    <span class="icon">⌁</span>
-                </div>
-
-                <div
-                    class="value"
-                    id="cardConjunctions"
-                >
-                    --
-                </div>
-
-                <div class="sub">
-                    calculated close approaches
-                </div>
-
-            </div>
-
-
-            <div class="card">
-
-                <div class="cardHead">
-                    High Risk Events
-                    <span style="color:var(--red)">
-                        ●
-                    </span>
-                </div>
-
-                <div
-                    class="value"
-                    style="color:var(--red)"
-                    id="cardHighRisk"
-                >
-                    --
-                </div>
-
-                <div class="sub">
-                    require immediate review
-                </div>
-
-            </div>
-
-
-            <div class="card">
-
-                <div class="cardHead">
-                    Next Close Approach
-                    <span class="icon">◷</span>
-                </div>
-
-                <div
-                    class="value"
-                    id="cardNextTca"
-                >
-                    --
-                </div>
-
-                <div
-                    class="sub"
-                    id="cardNextPair"
-                >
-                    Analyzing data...
-                </div>
-
-            </div>
-
-        </section>
-
-
-        <!-- ORBIT + RISK -->
-
-        <div class="grid">
-
-            <section class="panel">
-
-                <div class="panelTitle">
-
-                    <strong>
-                        Orbital Environment
-                    </strong>
-
-                    <span>
-                        Propagated +90 min • TEME/ECI-like frame (km)
-                    </span>
-
-                </div>
-
-                <div id="orbit"></div>
-
-                <div class="footerNote">
-                    Live TLE catalog from CelesTrak GROUP=ACTIVE •
-                    Globe shows a sample • Positions via SGP4 •
-                    Distances in km
-                </div>
-
-            </section>
-
-
-            <aside class="panel">
-
-                <div class="panelTitle">
-
-                    <strong>
-                        Risk Monitor
-                    </strong>
-
-                    <span id="riskHeader">
-                        Closest approach
-                    </span>
-
-                </div>
-
-                <div class="riskBody">
-
-                    <div
-                        class="riskCircle"
-                        id="riskCircle"
-                    >
-
-                        <div class="riskNum">
-
-                            <b id="riskScore">
-                                --
-                            </b>
-
-                            <small id="riskLevel">
-                                PRELIMINARY RISK
-                            </small>
-
-                        </div>
-
-                    </div>
-
-
-                    <div class="details">
-
-                        <div class="row">
-                            <span>Closest approach</span>
-                            <b id="riskDist">-- km</b>
-                        </div>
-
-                        <div class="row">
-                            <span>Time to TCA</span>
-                            <b id="riskTca">-- min</b>
-                        </div>
-
-                        <div class="row">
-                            <span>Relative velocity</span>
-                            <b id="riskVel">-- km/s</b>
-                        </div>
-
-                        <div class="row">
-                            <span>Object A</span>
-                            <b id="riskObjA">--</b>
-                        </div>
-
-                        <div class="row">
-                            <span>Object B</span>
-                            <b id="riskObjB">--</b>
-                        </div>
-
-                        <div class="row">
-
-                            <span>
-                                Confidence
-                            </span>
-
-                            <span
-                                class="badge high"
-                                id="riskBadge"
-                            >
-                                CALCULATING
-                            </span>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </aside>
-
-        </div>
-
-
-        <!-- EVENTS -->
-
+        <!-- UPCOMING CONJUNCTIONS TABLE -->
         <section class="panel events">
-
             <div class="panelTitle">
-
                 <strong>
-                    Upcoming Conjunctions
+                    <i class="fa-solid fa-triangle-exclamation" style="color:var(--orange);"></i>
+                    Upcoming Conjunctions (CDM Data Messages)
                 </strong>
-
-                <span id="conjunctionCount">
-                    Fetching data...
-                </span>
-
+                <span id="conjunctionCount">Fetching data...</span>
             </div>
 
             <div class="tableWrap">
-
                 <table>
-
                     <thead>
-
                         <tr>
-
-                            <th>
-                                Object A
-                            </th>
-
-                            <th>
-                                Object B
-                            </th>
-
-                            <th>
-                                Closest Approach
-                            </th>
-
-                            <th>
-                                TCA
-                            </th>
-
-                            <th>
-                                Relative Velocity
-                            </th>
-
-                            <th>
-                                Risk
-                            </th>
-
+                            <th>Object A</th>
+                            <th>Object B</th>
+                            <th>Closest Approach</th>
+                            <th>TCA</th>
+                            <th>Relative Velocity</th>
+                            <th>Risk Tier</th>
                         </tr>
-
                     </thead>
-
                     <tbody id="eventRows">
-
                         <tr>
-
-                            <td
-                                colspan="6"
-                                style="
-                                    text-align:center;
-                                    padding:20px;
-                                "
-                            >
-                                Fetching and calculating
-                                satellite orbits from
-                                CelesTrak...
+                            <td colspan="6" style="text-align:center; padding:24px; color:var(--muted);">
+                                Fetching and calculating satellite orbits from CelesTrak...
                             </td>
-
                         </tr>
-
                     </tbody>
-
                 </table>
-
             </div>
-
         </section>
 
     </main>
 
 </div>
 
-
+<!-- =========================================================================
+     JAVASCRIPT: THREE.JS 3D SCENE & REAL-TIME SGP4 ORBITAL ENGINE
+     ========================================================================= -->
 <script>
-
-
 // ============================================================
-// CELESTRAK
+// CONSTANTS & CONFIGURATION
 // ============================================================
-
-const CELESTRAK_API_URL =
-    "https://celestrak.org/NORAD/elements/gp.php?GROUP=ACTIVE&FORMAT=TLE";
-
-// The local backend is optional. When this page is opened directly
-// with file://, browsers commonly block localhost/CORS requests.
-// We therefore use CelesTrak directly and then reliable public
-// fallbacks instead of treating the missing local server as an outage.
-const BACKEND_TLE_API_URL =
-    "http://localhost:4000/api/tle/latest";
-
+const CELESTRAK_API_URL = "https://celestrak.org/NORAD/elements/gp.php?GROUP=ACTIVE&FORMAT=TLE";
+const BACKEND_TLE_API_URL = "http://localhost:4000/api/tle/latest";
 const ISS_NORAD_ID = 25544;
 
-const MAX_ORBIT_SATS = 40;
-
-// More objects gives the conjunction screen a better sample while
-// the calculation below pre-computes propagation states efficiently.
-const MAX_CONJUNCTION_SATS = 60;
-
-// A "conjunction" in this dashboard means a predicted TCA at or
-// below this screening distance. Larger separations are shown only
-// as the closest monitored approach, never as a conjunction.
+const MAX_ORBIT_SATS = 50;
+const MAX_CONJUNCTION_SATS = 65;
 const CONJUNCTION_SCREEN_KM = 25;
 
-// Risk bands are intentionally much tighter than the screening band.
-const HIGH_RISK_KM = 1;
-const MEDIUM_RISK_KM = 5;
-
-// Preliminary risk model: distance dominates, relative velocity
-// is a secondary encounter modifier. This is not Pc.
-const RISK_DISTANCE_WEIGHT = 0.80;
-const RISK_VELOCITY_WEIGHT = 0.20;
-const RISK_VELOCITY_CAP_KM_S = 15;
-
-
-// ============================================================
-// EARTH SETTINGS
-// ============================================================
-
-const EARTH_RADIUS = 6371;
-
-// Visual ocean is slightly smaller than the true Earth
-// radius so land faces cannot cut through it.
-
-const OCEAN_RADIUS = EARTH_RADIUS * 0.93;
-
-// Land vertices live outside the ocean sphere.
-// Large GeoJSON triangles are later subdivided onto
-// this radius so their flat faces stay above water.
-
-const LAND_RADIUS = EARTH_RADIUS * 1;
-
-const LAND_MAX_EDGE_KM = 420;
-
-
-// ============================================================
-// SATELLITE COLORS
-// ============================================================
-
-const SATELLITE_COLORS = [
-
-    "#46d9ff",
-    "#ff526d",
-    "#42e6a4",
-    "#ffad4d",
-    "#a970ff",
-    "#ffe66d",
-    "#ff7eb6",
-    "#4dd9ff",
-    "#7cffcb",
-    "#ff8c42",
-    "#c77dff",
-    "#90be6d",
-    "#f72585",
-    "#4cc9f0",
-    "#f9c74f"
-
+const SATELLITE_PALETTE = [
+    0x46d9ff, // Cyan
+    0xff526d, // Neon Red
+    0x42e6a4, // Emerald
+    0xffad4d, // Amber
+    0xb362ff, // Purple
+    0xffe66d, // Yellow
+    0x5b8cff, // Electric Blue
+    0xff7eb6  // Pink
 ];
 
+// ============================================================
+// THREE.JS 3D ENGINE INITIALIZATION
+// ============================================================
+let scene, camera, renderer, worldGroup, earthGroup, landGroup, satellitesGroup, orbitLinesGroup;
+let isDragging = false;
+let previousMouseX = 0, previousMouseY = 0;
+let targetRotX = 0.32, targetRotY = 0.45;
+let cameraDistance = 120;
+let targetCameraDistance = 120;
+let autoRotate = true;
+let showOrbits = true;
+let lastInteractionTime = performance.now();
+const IDLE_RESUME_MS = 3500;
+
+// Earth radius in 3D Scene space (Large, commanding presence)
+const EARTH_RADIUS_3D = 54;
+const EARTH_KM_RADIUS = 6371;
+const KM_TO_3D_SCALE = EARTH_RADIUS_3D / EARTH_KM_RADIUS;
+
+// Interactive Raycaster for Satellites
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2(-999, -999);
+let interactiveSatellites = [];
+let hoveredSatellite = null;
+
+const satTooltip = document.getElementById('sat-tooltip');
+const satTtName = document.getElementById('sat-tt-name');
+const satTtNorad = document.getElementById('sat-tt-norad');
+const satTtAlt = document.getElementById('sat-tt-alt');
+const satTtVel = document.getElementById('sat-tt-vel');
+const satTtInc = document.getElementById('sat-tt-inc');
+
+function initThreeScene() {
+    const container = document.getElementById('orbit-hero');
+    const canvas = document.getElementById('earth-canvas');
+
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+
+    scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x050811, 0.0012);
+
+    // Perspective Camera matching cinematic large radius framing
+    camera = new THREE.PerspectiveCamera(46, width / height, 0.1, 2000);
+    camera.position.set(20, 8, cameraDistance);
+
+    renderer = new THREE.WebGLRenderer({
+        canvas: canvas,
+        antialias: true,
+        alpha: true,
+        powerPreference: "high-performance"
+    });
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    // Master group
+    worldGroup = new THREE.Group();
+    worldGroup.rotation.x = targetRotX;
+    worldGroup.rotation.y = targetRotY;
+    scene.add(worldGroup);
+
+    // Sub-groups
+    earthGroup = new THREE.Group();
+    landGroup = new THREE.Group();
+    satellitesGroup = new THREE.Group();
+    orbitLinesGroup = new THREE.Group();
+    
+    worldGroup.add(earthGroup);
+    earthGroup.add(landGroup);
+    worldGroup.add(orbitLinesGroup);
+    worldGroup.add(satellitesGroup);
+
+    // 1. BUILD MULTI-LAYERED HOLOGRAPHIC 3D EARTH WITH LAND TRACES
+    buildHolographicEarth();
+    buildEarthLandTraces();
+
+    // 2. BACKGROUND COSMIC STARFIELD
+    buildStarfield();
+
+    // 3. ATTACH INTERACTION LISTENERS
+    attachSceneEventListeners(container);
+
+    // 4. START RENDER LOOP
+    animateScene();
+}
+
+// Geographic Coordinate (lon, lat) to 3D Cartesian (x, y, z) on Earth Sphere
+function geoToVector3(lon, lat, radius = EARTH_RADIUS_3D + 0.35) {
+    const latRad = (lat * Math.PI) / 180;
+    const lonRad = (lon * Math.PI) / 180;
+    const x = radius * Math.cos(latRad) * Math.cos(lonRad);
+    const y = radius * Math.sin(latRad);
+    const z = -radius * Math.cos(latRad) * Math.sin(lonRad);
+    return new THREE.Vector3(x, y, z);
+}
 
 // ============================================================
-// FETCH CELESTRAK
+// HOLOGRAPHIC EARTH MESHES (DARK CORE + GRID + AURA)
 // ============================================================
+function buildHolographicEarth() {
+    // Layer A: Dark Solid High-Tech Inner Core
+    const coreGeo = new THREE.SphereGeometry(EARTH_RADIUS_3D, 56, 56);
+    const coreMat = new THREE.MeshBasicMaterial({
+        color: 0x060e1c,
+        wireframe: false
+    });
+    const coreMesh = new THREE.Mesh(coreGeo, coreMat);
+    earthGroup.add(coreMesh);
 
+    // Layer B: Glowing Wireframe Latitude / Longitude Grid
+    const wireGeo = new THREE.SphereGeometry(EARTH_RADIUS_3D + 0.18, 36, 24);
+    const wireMat = new THREE.MeshBasicMaterial({
+        color: 0x1d4677,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.28
+    });
+    const wireMesh = new THREE.Mesh(wireGeo, wireMat);
+    earthGroup.add(wireMesh);
+
+    // Layer C: Atmospheric Radiant Blue Limb Aura (BackSide Glow)
+    const auraGeo = new THREE.SphereGeometry(EARTH_RADIUS_3D + 4.8, 48, 48);
+    const auraMat = new THREE.MeshBasicMaterial({
+        color: 0x46d9ff,
+        transparent: true,
+        opacity: 0.12,
+        side: THREE.BackSide,
+        blending: THREE.AdditiveBlending
+    });
+    const auraMesh = new THREE.Mesh(auraGeo, auraMat);
+    earthGroup.add(auraMesh);
+
+    // Layer D: Equator Reference Halo
+    const equatorCurve = new THREE.EllipseCurve(0, 0, EARTH_RADIUS_3D + 0.8, EARTH_RADIUS_3D + 0.8, 0, 2 * Math.PI, false, 0);
+    const eqPoints = equatorCurve.getPoints(72);
+    const eqGeo = new THREE.BufferGeometry().setFromPoints(eqPoints);
+    const eqMat = new THREE.LineBasicMaterial({
+        color: 0x46d9ff,
+        transparent: true,
+        opacity: 0.25
+    });
+    const equatorLine = new THREE.Line(eqGeo, eqMat);
+    equatorLine.rotation.x = Math.PI / 2;
+    earthGroup.add(equatorLine);
+}
+
+// ============================================================
+// CONTINENTAL LAND TRACES & COASTLINES (VECTOR MAP)
+// ============================================================
+async function buildEarthLandTraces() {
+    const LAND_GEOJSON_URL = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_land.geojson";
+
+    // High-Tech Emerald-Cyan / Neon-Mint glowing coastlines
+    const coastMat = new THREE.LineBasicMaterial({
+        color: 0x38e8be, // Emerald Cyan-Mint Glow
+        transparent: true,
+        opacity: 0.85
+    });
+
+    const continentPoints = [];
+    const continentColors = [];
+
+    function processPolygonRing(ring) {
+        if (!ring || ring.length < 3) return;
+        const pts = [];
+        for (let i = 0; i < ring.length; i++) {
+            const lon = ring[i][0];
+            const lat = ring[i][1];
+            const pt = geoToVector3(lon, lat, EARTH_RADIUS_3D + 0.40);
+            pts.push(pt);
+
+            // Generate glowing boundary points for luminous continent texture
+            if (i % 2 === 0) {
+                continentPoints.push(pt.x, pt.y, pt.z);
+                continentColors.push(0.22, 0.91, 0.74); // #38e8be
+            }
+        }
+        if (pts.length > 2) {
+            const geo = new THREE.BufferGeometry().setFromPoints(pts);
+            const line = new THREE.Line(geo, coastMat);
+            landGroup.add(line);
+        }
+    }
+
+    try {
+        let geojsonData = null;
+        const cached = localStorage.getItem("orbitguard_land_geojson");
+        if (cached) {
+            try { geojsonData = JSON.parse(cached); } catch(e){}
+        }
+
+        if (!geojsonData) {
+            const res = await fetch(LAND_GEOJSON_URL, { cache: "force-cache" });
+            if (res.ok) {
+                geojsonData = await res.json();
+                try { localStorage.setItem("orbitguard_land_geojson", JSON.stringify(geojsonData)); } catch(e){}
+            }
+        }
+
+        if (geojsonData && geojsonData.features) {
+            geojsonData.features.forEach(feat => {
+                if (!feat.geometry) return;
+                if (feat.geometry.type === "Polygon") {
+                    feat.geometry.coordinates.forEach(ring => processPolygonRing(ring));
+                } else if (feat.geometry.type === "MultiPolygon") {
+                    feat.geometry.coordinates.forEach(poly => {
+                        poly.forEach(ring => processPolygonRing(ring));
+                    });
+                }
+            });
+        } else {
+            // Built-in fallback continent outlines if network is unreachable
+            drawFallbackContinents(processPolygonRing);
+        }
+    } catch(err) {
+        console.warn("Could not load Natural Earth land vector, drawing embedded land traces:", err);
+        drawFallbackContinents(processPolygonRing);
+    }
+
+    // Add glowing land boundary points for rich texture
+    if (continentPoints.length > 0) {
+        const dotGeo = new THREE.BufferGeometry();
+        dotGeo.setAttribute('position', new THREE.Float32BufferAttribute(continentPoints, 3));
+        dotGeo.setAttribute('color', new THREE.Float32BufferAttribute(continentColors, 3));
+        const dotMat = new THREE.PointsMaterial({
+            size: 1.8,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.85,
+            blending: THREE.AdditiveBlending
+        });
+        const dotMesh = new THREE.Points(dotGeo, dotMat);
+        landGroup.add(dotMesh);
+    }
+}
+
+// Built-in high-fidelity continent vector fallback
+function drawFallbackContinents(processRingFn) {
+    const FALLBACK_CONTINENTS = [
+        // North America
+        [[-168,65],[-160,71],[-140,70],[-120,76],[-80,73],[-65,60],[-55,50],[-70,42],[-80,30],[-81,25],[-97,26],[-105,20],[-85,10],[-77,8],[-82,15],[-90,16],[-105,25],[-118,34],[-124,48],[-140,60],[-165,60],[-168,65]],
+        // South America
+        [[-77,8],[-60,10],[-50,0],[-35,-5],[-38,-20],[-55,-35],[-68,-55],[-75,-50],[-72,-30],[-80,-5],[-77,8]],
+        // Eurasia & Africa
+        [[-10,36],[0,40],[10,37],[20,40],[30,32],[32,15],[45,12],[50,28],[60,25],[70,22],[80,10],[90,22],[105,20],[115,22],[120,38],[130,35],[140,40],[142,50],[130,60],[110,75],[80,72],[50,68],[30,70],[20,60],[10,55],[0,50],[-5,44],[-10,36]],
+        // Africa
+        [[-10,36],[10,37],[30,32],[40,15],[51,12],[40,-10],[35,-30],[20,-35],[15,-20],[10,5],[-15,12],[-18,28],[-10,36]],
+        // Australia
+        [[115,-22],[125,-15],[135,-12],[145,-15],[152,-25],[150,-38],[138,-35],[130,-32],[115,-35],[113,-26],[115,-22]],
+        // Antarctica
+        [[-180,-75],[-120,-73],[-60,-65],[0,-70],[60,-68],[120,-72],[180,-75]]
+    ];
+    FALLBACK_CONTINENTS.forEach(ring => processRingFn(ring));
+}
+
+// Background Starfield
+function buildStarfield() {
+    const starCount = 1400;
+    const starGeo = new THREE.BufferGeometry();
+    const starPos = new Float32Array(starCount * 3);
+
+    for (let i = 0; i < starCount; i++) {
+        starPos[i * 3] = (Math.random() - 0.5) * 1600;
+        starPos[i * 3 + 1] = (Math.random() - 0.5) * 1600;
+        starPos[i * 3 + 2] = (Math.random() - 0.5) * 1600;
+    }
+    starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+    const starMat = new THREE.PointsMaterial({
+        color: 0xffffff,
+        size: 1.2,
+        transparent: true,
+        opacity: 0.45
+    });
+    const starMesh = new THREE.Points(starGeo, starMat);
+    scene.add(starMesh);
+}
+
+// ============================================================
+// POPULATE REAL-TIME PROPAGATED SATELLITES & 3D VOLUMETRIC ORBIT TRACKS
+// ============================================================
+function render3DOrbits(satellites) {
+    if (!satellitesGroup || !orbitLinesGroup) return;
+
+    // Clear existing
+    while (satellitesGroup.children.length > 0) {
+        const obj = satellitesGroup.children[0];
+        satellitesGroup.remove(obj);
+    }
+    while (orbitLinesGroup.children.length > 0) {
+        const obj = orbitLinesGroup.children[0];
+        orbitLinesGroup.remove(obj);
+    }
+    interactiveSatellites = [];
+
+    const now = new Date();
+
+    satellites.forEach((sat, index) => {
+        const colorHex = SATELLITE_PALETTE[index % SATELLITE_PALETTE.length];
+        const isIss = Number(sat.noradId) === ISS_NORAD_ID;
+
+        const orbitPoints = [];
+        let currentPos3D = null;
+        let currentVelKmS = 0;
+        let currentAltKm = 0;
+        let currentIncDeg = 0;
+
+        // Propagate +90 minutes forward for full orbit ring
+        for (let step = 0; step <= 90; step += 2) {
+            const time = new Date(now.getTime() + step * 60000);
+            const state = satellite.propagate(
+                sat.satrec,
+                time.getUTCFullYear(),
+                time.getUTCMonth() + 1,
+                time.getUTCDate(),
+                time.getUTCHours(),
+                time.getUTCMinutes(),
+                time.getUTCSeconds()
+            );
+
+            if (state && state.position) {
+                const x = state.position.x * KM_TO_3D_SCALE;
+                const y = state.position.z * KM_TO_3D_SCALE;
+                const z = -state.position.y * KM_TO_3D_SCALE;
+
+                const pt = new THREE.Vector3(x, y, z);
+                orbitPoints.push(pt);
+
+                if (step === 0) {
+                    currentPos3D = pt;
+                    if (state.velocity) {
+                        currentVelKmS = Math.sqrt(
+                            state.velocity.x * state.velocity.x +
+                            state.velocity.y * state.velocity.y +
+                            state.velocity.z * state.velocity.z
+                        );
+                    }
+                    const distFromCenter = Math.sqrt(
+                        state.position.x * state.position.x +
+                        state.position.y * state.position.y +
+                        state.position.z * state.position.z
+                    );
+                    currentAltKm = Math.max(0, distFromCenter - EARTH_KM_RADIUS);
+                    currentIncDeg = (sat.satrec.inclo * 180 / Math.PI) || 0;
+                }
+            }
+        }
+
+        if (orbitPoints.length > 2 && currentPos3D) {
+            // 1. 3D Volumetric Orbit Tube with Nominal Thickness
+            const curve = new THREE.CatmullRomCurve3(orbitPoints, true);
+            // Nominal thickness: 0.24 for normal sats, 0.42 for ISS
+            const tubeRadius = isIss ? 0.42 : 0.24;
+            const orbitGeo = new THREE.TubeGeometry(curve, 84, tubeRadius, 5, true);
+            const orbitMat = new THREE.MeshBasicMaterial({
+                color: colorHex,
+                transparent: true,
+                opacity: isIss ? 0.85 : 0.48,
+                blending: THREE.AdditiveBlending
+            });
+            const orbitMesh = new THREE.Mesh(orbitGeo, orbitMat);
+            orbitLinesGroup.add(orbitMesh);
+
+            // 2. Satellite Beacon Marker
+            const satObjGroup = new THREE.Group();
+            satObjGroup.position.copy(currentPos3D);
+
+            // Core sphere
+            const satCoreGeo = new THREE.SphereGeometry(isIss ? 1.8 : 1.1, 16, 16);
+            const satCoreMat = new THREE.MeshBasicMaterial({
+                color: isIss ? 0xffffff : colorHex
+            });
+            const satCoreMesh = new THREE.Mesh(satCoreGeo, satCoreMat);
+            satObjGroup.add(satCoreMesh);
+
+            // Glowing Outer Halo
+            const haloGeo = new THREE.SphereGeometry(isIss ? 3.8 : 2.4, 16, 16);
+            const haloMat = new THREE.MeshBasicMaterial({
+                color: colorHex,
+                transparent: true,
+                opacity: 0.38,
+                blending: THREE.AdditiveBlending
+            });
+            const haloMesh = new THREE.Mesh(haloGeo, haloMat);
+            satObjGroup.add(haloMesh);
+
+            // Raycast hit target
+            const hitGeo = new THREE.SphereGeometry(4.8, 8, 8);
+            const hitMat = new THREE.MeshBasicMaterial({ visible: false });
+            const hitMesh = new THREE.Mesh(hitGeo, hitMat);
+            hitMesh.userData = {
+                name: sat.name,
+                noradId: sat.noradId,
+                altitude: Math.round(currentAltKm),
+                velocity: currentVelKmS.toFixed(2),
+                inclination: currentIncDeg.toFixed(1),
+                color: colorHex,
+                isIss: isIss,
+                halo: haloMesh
+            };
+            satObjGroup.add(hitMesh);
+
+            satellitesGroup.add(satObjGroup);
+            interactiveSatellites.push(hitMesh);
+        }
+    });
+}
+
+// ============================================================
+// EVENT LISTENERS & CAMERA CONTROLS
+// ============================================================
+function attachSceneEventListeners(container) {
+    const canvas = document.getElementById('earth-canvas');
+
+    // Mouse Drag Rotation on canvas
+    canvas.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        previousMouseX = e.clientX;
+        previousMouseY = e.clientY;
+        autoRotate = false;
+        lastInteractionTime = performance.now();
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        const rect = container.getBoundingClientRect();
+        mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+        if (isDragging) {
+            const deltaX = e.clientX - previousMouseX;
+            const deltaY = e.clientY - previousMouseY;
+
+            targetRotY += deltaX * 0.0055;
+            targetRotX += deltaY * 0.0055;
+            targetRotX = Math.max(-1.4, Math.min(1.4, targetRotX));
+
+            previousMouseX = e.clientX;
+            previousMouseY = e.clientY;
+            lastInteractionTime = performance.now();
+        }
+
+        // Raycasting for satellite hover tooltip
+        if (mouse.x >= -1 && mouse.x <= 1 && mouse.y >= -1 && mouse.y <= 1) {
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(interactiveSatellites);
+
+            if (intersects.length > 0) {
+                const satData = intersects[0].object.userData;
+                hoveredSatellite = intersects[0].object;
+
+                satTtName.innerHTML = `${satData.isIss ? '⭐ ' : '🛰️ '}${satData.name}`;
+                satTtNorad.innerText = satData.noradId || '--';
+                satTtAlt.innerText = `${satData.altitude} km`;
+                satTtVel.innerText = `${satData.velocity} km/s`;
+                satTtInc.innerText = `${satData.inclination}°`;
+
+                satTooltip.style.left = `${e.clientX - rect.left}px`;
+                satTooltip.style.top = `${e.clientY - rect.top}px`;
+                satTooltip.classList.add('visible');
+
+                if (satData.halo) {
+                    satData.halo.scale.set(1.6, 1.6, 1.6);
+                    satData.halo.material.opacity = 0.75;
+                }
+            } else {
+                hideTooltip();
+            }
+        } else {
+            hideTooltip();
+        }
+    });
+
+    window.addEventListener('mouseup', () => { isDragging = false; });
+
+    // Wheel Zoom with smooth damping
+    container.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        autoRotate = false;
+        lastInteractionTime = performance.now();
+
+        targetCameraDistance = Math.max(72, Math.min(230, targetCameraDistance + e.deltaY * 0.08));
+    }, { passive: false });
+
+    // Touch support
+    container.addEventListener('touchstart', (e) => {
+        if (e.target === canvas && e.touches.length === 1) {
+            isDragging = true;
+            previousMouseX = e.touches[0].clientX;
+            previousMouseY = e.touches[0].clientY;
+            autoRotate = false;
+            lastInteractionTime = performance.now();
+        }
+    }, { passive: true });
+
+    container.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 1 && isDragging) {
+            const deltaX = e.touches[0].clientX - previousMouseX;
+            const deltaY = e.touches[0].clientY - previousMouseY;
+
+            targetRotY += deltaX * 0.0055;
+            targetRotX += deltaY * 0.0055;
+            targetRotX = Math.max(-1.4, Math.min(1.4, targetRotX));
+
+            previousMouseX = e.touches[0].clientX;
+            previousMouseY = e.touches[0].clientY;
+            lastInteractionTime = performance.now();
+        }
+    }, { passive: true });
+
+    container.addEventListener('touchend', () => { isDragging = false; });
+
+    // HUD Buttons
+    const btnResetCam = document.getElementById('btn-reset-cam');
+    const btnAutoRotate = document.getElementById('btn-auto-rotate');
+    const btnToggleOrbits = document.getElementById('btn-toggle-orbits');
+
+    btnResetCam.addEventListener('click', () => {
+        gsap.to(worldGroup.rotation, { x: 0.32, y: 0.45, duration: 1.2, ease: "power2.out" });
+        targetRotX = 0.32;
+        targetRotY = 0.45;
+        targetCameraDistance = 120;
+    });
+
+    btnAutoRotate.addEventListener('click', () => {
+        autoRotate = !autoRotate;
+        btnAutoRotate.classList.toggle('active', autoRotate);
+    });
+
+    btnToggleOrbits.addEventListener('click', () => {
+        showOrbits = !showOrbits;
+        orbitLinesGroup.visible = showOrbits;
+        btnToggleOrbits.classList.toggle('active', showOrbits);
+    });
+}
+
+function hideTooltip() {
+    satTooltip.classList.remove('visible');
+    if (hoveredSatellite && hoveredSatellite.userData && hoveredSatellite.userData.halo) {
+        hoveredSatellite.userData.halo.scale.set(1.0, 1.0, 1.0);
+        hoveredSatellite.userData.halo.material.opacity = 0.38;
+        hoveredSatellite = null;
+    }
+}
+
+// Window resize handler
+function handleResize() {
+    const container = document.getElementById('orbit-hero');
+    if (!container || !renderer || !camera) return;
+
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+    renderer.setSize(width, height);
+}
+window.addEventListener('resize', handleResize);
+
+// ============================================================
+// ANIMATION & RENDER LOOP
+// ============================================================
+const clock = new THREE.Clock();
+
+function animateScene() {
+    requestAnimationFrame(animateScene);
+
+    const delta = clock.getDelta();
+    const now = performance.now();
+
+    // Auto-rotation when idle
+    if (autoRotate || (now - lastInteractionTime > IDLE_RESUME_MS && !isDragging)) {
+        targetRotY += 0.12 * delta;
+    }
+
+    // Smooth inertia interpolation for world rotation
+    worldGroup.rotation.y += (targetRotY - worldGroup.rotation.y) * 0.08;
+    worldGroup.rotation.x += (targetRotX - worldGroup.rotation.x) * 0.08;
+
+    // Smooth zoom interpolation
+    cameraDistance += (targetCameraDistance - cameraDistance) * 0.1;
+    camera.position.z = cameraDistance;
+
+    renderer.render(scene, camera);
+}
+
+// ============================================================
+// CELESTRAK TLE FETCHING PIPELINE
+// ============================================================
 async function fetchCelesTrakData() {
-
-    const CACHE_KEY =
-        "orbitguard_celestrak_active_tle";
-
-    const CACHE_TIME_KEY =
-        "orbitguard_celestrak_active_tle_time";
-
-    // Keep live data reasonably fresh, but retain a usable cache
-    // if the page is opened from file:// and a network request fails.
-    const CACHE_MAX_AGE =
-        60 * 60 * 1000;
-
+    const CACHE_KEY = "orbitguard_celestrak_active_tle";
+    const CACHE_TIME_KEY = "orbitguard_celestrak_active_tle_time";
+    const CACHE_MAX_AGE = 60 * 60 * 1000;
 
     function cacheData(tleText) {
-
         try {
-
-            localStorage.setItem(
-                CACHE_KEY,
-                tleText
-            );
-
-            localStorage.setItem(
-                CACHE_TIME_KEY,
-                Date.now().toString()
-            );
-
-        } catch (error) {
-
-            console.warn(
-                "Could not cache CelesTrak data:",
-                error
-            );
-
+            localStorage.setItem(CACHE_KEY, tleText);
+            localStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
+        } catch (e) {
+            console.warn("Could not cache CelesTrak data:", e);
         }
-
     }
-
 
     function readCache() {
-
         try {
-
-            const cached =
-                localStorage.getItem(
-                    CACHE_KEY
-                );
-
-            const cachedTime =
-                Number(
-                    localStorage.getItem(
-                        CACHE_TIME_KEY
-                    ) || 0
-                );
-
-            if (!cached) {
-                return null;
-            }
-
-            const parsed =
-                parseTleCatalog(cached);
-
-            if (
-                parsed.length === 0
-            ) {
-                return null;
-            }
-
-            return {
-                satellites: parsed,
-                ageMs:
-                    Date.now() - cachedTime
-            };
-
-        } catch (error) {
-
-            console.warn(
-                "Cache unavailable:",
-                error
-            );
-
+            const cached = localStorage.getItem(CACHE_KEY);
+            const cachedTime = Number(localStorage.getItem(CACHE_TIME_KEY) || 0);
+            if (!cached) return null;
+            const parsed = parseTleCatalog(cached);
+            if (parsed.length === 0) return null;
+            return { satellites: parsed, ageMs: Date.now() - cachedTime };
+        } catch (e) {
             return null;
-
         }
-
     }
 
-
-    async function fetchText(
-        url,
-        timeoutMs = 3500
-    ) {
-
-        const controller =
-            new AbortController();
-
-        const timeout =
-            setTimeout(
-                () => controller.abort(),
-                timeoutMs
-            );
-
+    async function fetchText(url, timeoutMs = 3500) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), timeoutMs);
         try {
-
-            const response =
-                await fetch(
-                    url,
-                    {
-                        method: "GET",
-                        cache: "no-store",
-                        signal:
-                            controller.signal
-                    }
-                );
-
-            if (!response.ok) {
-
-                throw new Error(
-                    `HTTP ${response.status}`
-                );
-
-            }
-
-            const text =
-                await response.text();
-
-            if (
-                !text ||
-                !text.trim()
-            ) {
-
-                throw new Error(
-                    "Empty response"
-                );
-
-            }
-
+            const response = await fetch(url, { method: "GET", cache: "no-store", signal: controller.signal });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const text = await response.text();
+            if (!text || !text.trim()) throw new Error("Empty response");
             return text;
-
         } finally {
-
             clearTimeout(timeout);
-
         }
-
     }
 
+    const cached = readCache();
 
-    const cached =
-        readCache();
-
-
-    // --------------------------------------------------------
-    // 1. LOCAL DATASET (active.tle) + AUTO-SYNC TRIGGER
-    // --------------------------------------------------------
+    // 1. LOCAL DATASET (active.tle) + AUTO-SYNC
     if (window.location.protocol !== "file:") {
         try {
-            // Trigger auto-sync in background if running local server
             fetch("/api/tle/sync").catch(() => {});
-
             const localFileText = await fetchText("active.tle", 2500);
             const parsedLocal = parseTleCatalog(localFileText);
             if (parsedLocal.length > 0) {
@@ -1211,217 +1716,46 @@ async function fetchCelesTrakData() {
                 window.orbitGuardDataSource = "LOCAL ACTIVE TLE";
                 return parsedLocal;
             }
-        } catch (localFileErr) {
-            console.log("Local active.tle not directly accessible via HTTP, checking backend/CelesTrak...");
-        }
+        } catch (err) {}
     }
 
-    // --------------------------------------------------------
-    // 2. LOCAL BACKEND — if custom API is running
-    // --------------------------------------------------------
-    if (
-        BACKEND_TLE_API_URL &&
-        window.location.protocol !== "file:"
-    ) {
-
-        try {
-
-            const response =
-                await fetch(
-                    BACKEND_TLE_API_URL,
-                    {
-                        cache: "no-store"
-                    }
-                );
-
-            if (!response.ok) {
-
-                throw new Error(
-                    `Backend HTTP ${response.status}`
-                );
-
-            }
-
-            const data =
-                await response.json();
-
-            if (
-                Array.isArray(
-                    data.satellites
-                ) &&
-                data.satellites.length > 0
-            ) {
-
-                const tleText =
-                    data.satellites
-                        .map(
-                            sat =>
-                                `${sat.name}\n${sat.line1}\n${sat.line2}`
-                        )
-                        .join("\n");
-
-                const parsed =
-                    parseTleCatalog(
-                        tleText
-                    );
-
-                if (
-                    parsed.length > 0
-                ) {
-
-                    cacheData(tleText);
-
-                    window.orbitGuardDataSource =
-                        "LOCAL BACKEND";
-
-                    return parsed;
-
-                }
-
-            }
-
-        } catch (backendError) {
-
-            console.warn(
-                "Local backend unavailable; continuing with CelesTrak:",
-                backendError
-            );
-
-        }
-
-    }
-
-
-    // --------------------------------------------------------
     // 2. DIRECT CELESTRAK
-    // --------------------------------------------------------
-
     try {
-
-        const tleText =
-            await fetchText(
-                CELESTRAK_API_URL
-            );
-
-        const parsed =
-            parseTleCatalog(
-                tleText
-            );
-
-        if (
-            parsed.length > 0
-        ) {
-
+        const tleText = await fetchText(CELESTRAK_API_URL, 4000);
+        const parsed = parseTleCatalog(tleText);
+        if (parsed.length > 0) {
             cacheData(tleText);
-
-            window.orbitGuardDataSource =
-                "CELESTRAK DIRECT";
-
+            window.orbitGuardDataSource = "CELESTRAK DIRECT";
             return parsed;
-
         }
+    } catch (err) {}
 
-        throw new Error(
-            "CelesTrak returned no valid TLEs."
-        );
-
-    } catch (directError) {
-
-        console.warn(
-            "Direct CelesTrak request failed:",
-            directError
-        );
-
-    }
-
-
-    // --------------------------------------------------------
     // 3. CORS FALLBACKS
-    // --------------------------------------------------------
-
     const proxyUrls = [
-
-        "https://api.allorigins.win/raw?url=" +
-        encodeURIComponent(
-            CELESTRAK_API_URL
-        ),
-
-        "https://corsproxy.io/?" +
-        encodeURIComponent(
-            CELESTRAK_API_URL
-        ),
-
-        "https://api.codetabs.com/v1/proxy?quest=" +
-        encodeURIComponent(
-            CELESTRAK_API_URL
-        )
-
+        "https://api.allorigins.win/raw?url=" + encodeURIComponent(CELESTRAK_API_URL),
+        "https://corsproxy.io/?" + encodeURIComponent(CELESTRAK_API_URL),
+        "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(CELESTRAK_API_URL)
     ];
 
-
-    for (
-        const proxyUrl of proxyUrls
-    ) {
-
+    for (const proxyUrl of proxyUrls) {
         try {
-
-            const tleText =
-                await fetchText(
-                    proxyUrl
-                );
-
-            const parsed =
-                parseTleCatalog(
-                    tleText
-                );
-
-            if (
-                parsed.length > 0
-            ) {
-
+            const tleText = await fetchText(proxyUrl, 3500);
+            const parsed = parseTleCatalog(tleText);
+            if (parsed.length > 0) {
                 cacheData(tleText);
-
-                window.orbitGuardDataSource =
-                    "CELESTRAK VIA PROXY";
-
+                window.orbitGuardDataSource = "CELESTRAK VIA PROXY";
                 return parsed;
-
             }
-
-        } catch (proxyError) {
-
-            console.warn(
-                "CelesTrak proxy failed:",
-                proxyError
-            );
-
-        }
-
+        } catch (e) {}
     }
 
-
-    // --------------------------------------------------------
-    // 4. STALE CACHE — better than a fake "API OFFLINE"
-    // --------------------------------------------------------
-
+    // 4. CACHE
     if (cached) {
-
-        console.warn(
-            "Using cached CelesTrak TLE data."
-        );
-
-        window.orbitGuardDataSource =
-            "CACHED CELESTRAK";
-
+        window.orbitGuardDataSource = "CACHED CELESTRAK";
         return cached.satellites;
-
     }
 
-    // --------------------------------------------------------
     // 5. EMBEDDED HIGH-FIDELITY BACKUP CATALOG
-    // --------------------------------------------------------
-    console.warn("Network TLE fetch unavailable (CORS/403); utilizing embedded high-precision orbital catalog.");
-    
     const EMBEDDED_BACKUP_TLE = `ISS (ZARYA)
 1 25544U 98067A   26058.48270833  .00016717  00000+0  10270-3 0  9028
 2 25544  51.6416 112.5642 0005478 284.8143 175.2952 15.49889419441238
@@ -1480,3304 +1814,298 @@ LANDSAT 9
 1 49260U 21088A   26058.49500000  .00000082  00000+0  49000-5 0  9998
 2 49260  98.2145 160.1234 0001340  82.1234 278.0123 14.57112341381245`;
 
-    const embeddedParsed = parseTleCatalog(EMBEDDED_BACKUP_TLE);
-    window.orbitGuardDataSource = "EMBEDDED CATALOG (OFFLINE BACKUP)";
-    return embeddedParsed;
-
+    window.orbitGuardDataSource = "EMBEDDED CATALOG (OFFLINE)";
+    return parseTleCatalog(EMBEDDED_BACKUP_TLE);
 }
 
-// ============================================================
-// PARSE TLE CATALOG
-// ============================================================
-
+// Parse raw TLE string
 function parseTleCatalog(tleText) {
-
-    if (!tleText || !tleText.trim()) {
-        return [];
-    }
-
-    const lines = tleText
-        .split(/\r?\n/)
-        .map(line => line.trim())
-        .filter(line => line.length > 0);
-
+    if (!tleText || !tleText.trim()) return [];
+    const lines = tleText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
     const records = [];
-
     let i = 0;
 
     while (i < lines.length) {
-
         const line = lines[i];
         const next = lines[i + 1];
         const after = lines[i + 2];
 
-        let name;
-        let line1;
-        let line2;
+        let name, line1, line2;
 
-        if (
-            line.startsWith("1 ") &&
-            next &&
-            next.startsWith("2 ")
-        ) {
-
+        if (line.startsWith("1 ") && next && next.startsWith("2 ")) {
             line1 = line;
             line2 = next;
             name = `NORAD ${line1.substring(2, 7).trim()}`;
             i += 2;
-
-        } else if (
-            next &&
-            next.startsWith("1 ") &&
-            after &&
-            after.startsWith("2 ")
-        ) {
-
+        } else if (next && next.startsWith("1 ") && after && after.startsWith("2 ")) {
             name = line;
             line1 = next;
             line2 = after;
             i += 3;
-
         } else {
-
             i += 1;
             continue;
-
         }
 
-        const noradId = Number(
-            line1.substring(2, 7).trim()
-        );
-
-        records.push({
-            name,
-            line1,
-            line2,
-            NORAD_CAT_ID: noradId
-        });
-
+        const noradId = Number(line1.substring(2, 7).trim());
+        records.push({ name, line1, line2, NORAD_CAT_ID: noradId });
     }
-
     return records;
-
 }
-
 
 function pickSatelliteSubset(satellites, limit) {
-
-    if (satellites.length <= limit) {
-        return satellites.slice();
-    }
-
-    const iss = satellites.find(
-        sat => Number(sat.noradId) === ISS_NORAD_ID
-    );
-
-    const rest = satellites.filter(
-        sat => Number(sat.noradId) !== ISS_NORAD_ID
-    );
-
-    if (iss) {
-        return [iss, ...rest.slice(0, limit - 1)];
-    }
-
+    if (satellites.length <= limit) return satellites.slice();
+    const iss = satellites.find(sat => Number(sat.noradId) === ISS_NORAD_ID);
+    const rest = satellites.filter(sat => Number(sat.noradId) !== ISS_NORAD_ID);
+    if (iss) return [iss, ...rest.slice(0, limit - 1)];
     return rest.slice(0, limit);
-
 }
 
-
 // ============================================================
-// LAT/LON → XYZ
+// CONJUNCTION CALCULATION & RISK MODEL
 // ============================================================
-
-function latLonToXYZ(
-    lon,
-    lat,
-    radius
-) {
-
-    const lonRad =
-        lon * Math.PI / 180;
-
-    const latRad =
-        lat * Math.PI / 180;
-
-
-    return {
-
-        x:
-            radius *
-            Math.cos(latRad) *
-            Math.cos(lonRad),
-
-        y:
-            radius *
-            Math.cos(latRad) *
-            Math.sin(lonRad),
-
-        z:
-            radius *
-            Math.sin(latRad)
-
-    };
-
-}
-
-
-// ============================================================
-// CREATE EARTH SPHERE
-// ============================================================
-
-function addEarthSphere(traces) {
-
-    const resolution = 80;
-
-    const x = [];
-    const y = [];
-    const z = [];
-
-
-    // --------------------------------------------------------
-    // IMPORTANT:
-    // We use a parametric sphere rather than alphahull.
-    // This gives Plotly a predictable Earth surface.
-    // --------------------------------------------------------
-
-    for (
-        let i = 0;
-        i <= resolution;
-        i++
-    ) {
-
-        const lat =
-            Math.PI / 2 -
-            Math.PI * i / resolution;
-
-
-        for (
-            let j = 0;
-            j <= resolution;
-            j++
-        ) {
-
-            const lon =
-                2 * Math.PI * j / resolution;
-
-
-            x.push(
-                OCEAN_RADIUS *
-                Math.cos(lat) *
-                Math.cos(lon)
-            );
-
-            y.push(
-                OCEAN_RADIUS *
-                Math.cos(lat) *
-                Math.sin(lon)
-            );
-
-            z.push(
-                OCEAN_RADIUS *
-                Math.sin(lat)
-            );
-
-        }
-
-    }
-
-
-    // --------------------------------------------------------
-    // EARTH SURFACE
-    // --------------------------------------------------------
-
-    const surfaceX = [];
-    const surfaceY = [];
-    const surfaceZ = [];
-
-
-    for (
-        let i = 0;
-        i < resolution;
-        i++
-    ) {
-
-        for (
-            let j = 0;
-            j < resolution;
-            j++
-        ) {
-
-            const a =
-                i * (resolution + 1) + j;
-
-            const b =
-                a + 1;
-
-            const c =
-                (i + 1) *
-                    (resolution + 1) +
-                j;
-
-            const d =
-                c + 1;
-
-
-            // Triangle 1
-
-            surfaceX.push(
-                x[a],
-                x[b],
-                x[c]
-            );
-
-            surfaceY.push(
-                y[a],
-                y[b],
-                y[c]
-            );
-
-            surfaceZ.push(
-                z[a],
-                z[b],
-                z[c]
-            );
-
-
-            // Triangle 2
-
-            surfaceX.push(
-                x[b],
-                x[d],
-                x[c]
-            );
-
-            surfaceY.push(
-                y[b],
-                y[d],
-                y[c]
-            );
-
-            surfaceZ.push(
-                z[b],
-                z[d],
-                z[c]
-            );
-
-        }
-
-    }
-
-
-    const triangleCount =
-        surfaceX.length / 3;
-
-
-    const I = [];
-    const J = [];
-    const K = [];
-
-
-    for (
-        let i = 0;
-        i < triangleCount;
-        i++
-    ) {
-
-        I.push(i * 3);
-        J.push(i * 3 + 1);
-        K.push(i * 3 + 2);
-
-    }
-
-
-    traces.push({
-
-        type: "mesh3d",
-
-        x: surfaceX,
-        y: surfaceY,
-        z: surfaceZ,
-
-        i: I,
-        j: J,
-        k: K,
-
-        color: "#16406b",
-
-        // Must stay fully opaque. Plotly draws transparent
-        // meshes after solid ones, which buried the land.
-
-        opacity: 1,
-
-        flatshading: false,
-
-        lighting: {
-
-            ambient: 0.85,
-
-            diffuse: 0.45,
-
-            specular: 0.15,
-
-            roughness: 0.9
-
-        },
-
-        lightposition: {
-
-            x: 10000,
-            y: 5000,
-            z: 10000
-
-        },
-
-        name: "Earth",
-
-        showlegend: false,
-
-        hoverinfo: "skip"
-
-    });
-
-}
-
-
-// ============================================================
-// ADD EARTH LAND
-// ============================================================
-
-async function addEarthLand(traces) {
-
-    try {
-
-        // ----------------------------------------------------
-        // Natural Earth 1:110m land dataset
-        // ----------------------------------------------------
-
-        const url =
-            "https://raw.githubusercontent.com/" +
-            "nvkelso/natural-earth-vector/master/" +
-            "geojson/ne_110m_land.geojson";
-
-
-        const response =
-            await fetch(url);
-
-
-        if (!response.ok) {
-
-            throw new Error(
-                `Land GeoJSON HTTP ${response.status}`
-            );
-
-        }
-
-
-        const geojson =
-            await response.json();
-
-
-        console.log(
-            "Earth land loaded:",
-            geojson.features.length,
-            "features"
-        );
-
-
-        console.log(
-            "Processing land features..."
-        );
-
-
-        // Accumulate all vertices and indices
-        const allX = [];
-        const allY = [];
-        const allZ = [];
-        const allI = [];
-        const allJ = [];
-        const allK = [];
-
-
-        geojson.features.forEach(
-            feature => {
-
-                if (!feature.geometry)
-                    return;
-
-
-                const geometry =
-                    feature.geometry;
-
-
-                // POLYGON
-
-                if (
-                    geometry.type ===
-                    "Polygon"
-                ) {
-
-                    accumulateLandPolygon(
-                        geometry.coordinates,
-                        allX,
-                        allY,
-                        allZ,
-                        allI,
-                        allJ,
-                        allK
-                    );
-
-                }
-
-
-                // MULTIPOLYGON
-
-                else if (
-                    geometry.type ===
-                    "MultiPolygon"
-                ) {
-
-                    geometry.coordinates
-                        .forEach(
-                            polygon => {
-
-                                accumulateLandPolygon(
-                                    polygon,
-                                    allX,
-                                    allY,
-                                    allZ,
-                                    allI,
-                                    allJ,
-                                    allK
-                                );
-
-                            }
-                        );
-
-                }
-
-            }
-        );
-
-
-        // Add single combined mesh3d trace
-        if (allX.length > 0) {
-
-            console.log(
-                "Creating land mesh3d trace:",
-                "vertices:",
-                allX.length,
-                "triangles:",
-                allI.length
-            );
-
-            traces.push({
-
-                type: "mesh3d",
-
-                x: allX,
-                y: allY,
-                z: allZ,
-
-                i: allI,
-                j: allJ,
-                k: allK,
-
-                color: "#2ecc71",
-
-                opacity: 1,
-
-                flatshading: true,
-
-                lighting: {
-
-                    ambient: 1,
-
-                    diffuse: 0,
-
-                    specular: 0,
-
-                    roughness: 1
-
-                },
-
-                lightposition: {
-
-                    x: 10000,
-                    y: 5000,
-                    z: 10000
-
-                },
-
-                name: "Land",
-
-                showlegend: false,
-
-                hoverinfo: "skip"
-
-            });
-
-            console.log(
-                "Land mesh3d added to traces"
-            );
-
-        } else {
-
-            console.log(
-                "No land vertices accumulated - mesh3d not created"
-            );
-
-        }
-
-
-    } catch (error) {
-
-        console.error(
-            "Earth land failed:",
-            error
-        );
-
-    }
-
-}
-
-
-// ============================================================
-// ACCUMULATE LAND POLYGON DATA
-// ============================================================
-
-function accumulateLandPolygon(
-    rings,
-    allX,
-    allY,
-    allZ,
-    allI,
-    allJ,
-    allK
-) {
-
-    if (
-        !rings ||
-        rings.length === 0
-    ) {
-
-        return;
-
-    }
-
-
-    const vertices = [];
-
-    const holes = [];
-
-    let vertexCount = 0;
-
-
-    // --------------------------------------------------------
-    // GEOJSON RINGS
-    // --------------------------------------------------------
-
-    rings.forEach(
-        (ring, ringIndex) => {
-
-            if (
-                ringIndex > 0
-            ) {
-
-                holes.push(
-                    vertexCount
-                );
-
-            }
-
-
-            ring.forEach(
-                point => {
-
-                    const lon =
-                        point[0];
-
-                    const lat =
-                        point[1];
-
-
-                    vertices.push(
-                        lon,
-                        lat
-                    );
-
-
-                    vertexCount++;
-
-                }
-            );
-
-        }
-    );
-
-
-    // --------------------------------------------------------
-    // TRIANGULATE
-    // --------------------------------------------------------
-
-    const triangles =
-        earcut(
-            vertices,
-            holes,
-            2
-        );
-
-
-    if (
-        !triangles ||
-        triangles.length === 0
-    ) {
-
-        return;
-
-    }
-
-
-    const vertexOffsetForThisPolygon = allX.length;
-
-    // --------------------------------------------------------
-    // CONVERT TO 3D AND SUBDIVIDE ONTO THE SPHERE
-    // --------------------------------------------------------
-
-    for (
-        let i = 0;
-        i < triangles.length;
-        i += 3
-    ) {
-
-        const a = landVertex(
-            vertices,
-            triangles[i]
-        );
-
-        const b = landVertex(
-            vertices,
-            triangles[i + 1]
-        );
-
-        const c = landVertex(
-            vertices,
-            triangles[i + 2]
-        );
-
-
-        subdivideLandTriangle(
-            a,
-            b,
-            c,
-            allX,
-            allY,
-            allZ,
-            0
-        );
-
-    }
-
-
-    // --------------------------------------------------------
-    // TRIANGLE INDICES
-    // --------------------------------------------------------
-
-    const numNewVertices = allX.length - vertexOffsetForThisPolygon;
-    const numTriangles = numNewVertices / 3;
-
-    for (
-        let tri = 0;
-        tri < numTriangles;
-        tri++
-    ) {
-
-        const baseIdx = vertexOffsetForThisPolygon + (tri * 3);
-
-        allI.push(baseIdx);
-        allJ.push(baseIdx + 1);
-        allK.push(baseIdx + 2);
-
-    }
-
-}
-
-
-// ============================================================
-// ADD ONE POLYGON
-// ============================================================
-
-function addPolygon(
-    rings,
-    traces
-) {
-
-    if (
-        !rings ||
-        rings.length === 0
-    ) {
-
-        return;
-
-    }
-
-
-    const vertices = [];
-
-    const holes = [];
-
-    let vertexCount = 0;
-
-
-    // --------------------------------------------------------
-    // GEOJSON RINGS
-    // --------------------------------------------------------
-
-    rings.forEach(
-        (ring, ringIndex) => {
-
-            if (
-                ringIndex > 0
-            ) {
-
-                holes.push(
-                    vertexCount
-                );
-
-            }
-
-
-            ring.forEach(
-                point => {
-
-                    const lon =
-                        point[0];
-
-                    const lat =
-                        point[1];
-
-
-                    vertices.push(
-                        lon,
-                        lat
-                    );
-
-
-                    vertexCount++;
-
-                }
-            );
-
-        }
-    );
-
-
-    // --------------------------------------------------------
-    // TRIANGULATE
-    // --------------------------------------------------------
-
-    const triangles =
-        earcut(
-            vertices,
-            holes,
-            2
-        );
-
-
-    if (
-        !triangles ||
-        triangles.length === 0
-    ) {
-
-        return;
-
-    }
-
-
-    const x = [];
-    const y = [];
-    const z = [];
-
-
-    // --------------------------------------------------------
-    // CONVERT TO 3D AND SUBDIVIDE ONTO THE SPHERE
-    // Flat triangles from earcut cut inside the globe.
-    // Split long edges and snap midpoints back to LAND_RADIUS
-    // so the green faces stay outside the ocean.
-    // --------------------------------------------------------
-
-    for (
-        let i = 0;
-        i < triangles.length;
-        i += 3
-    ) {
-
-        const a = landVertex(
-            vertices,
-            triangles[i]
-        );
-
-        const b = landVertex(
-            vertices,
-            triangles[i + 1]
-        );
-
-        const c = landVertex(
-            vertices,
-            triangles[i + 2]
-        );
-
-
-        subdivideLandTriangle(
-            a,
-            b,
-            c,
-            x,
-            y,
-            z,
-            0
-        );
-
-    }
-
-
-    // --------------------------------------------------------
-    // TRIANGLE INDICES
-    // --------------------------------------------------------
-
-    const I = [];
-    const J = [];
-    const K = [];
-
-
-    for (
-        let i = 0;
-        i < x.length;
-        i += 3
-    ) {
-
-        I.push(i);
-        J.push(i + 1);
-        K.push(i + 2);
-
-    }
-
-
-    // --------------------------------------------------------
-    // LAND TRACE
-    // --------------------------------------------------------
-
-    traces.push({
-
-        type: "mesh3d",
-
-        x: x,
-        y: y,
-        z: z,
-
-        i: I,
-        j: J,
-        k: K,
-
-        color: "#2ecc71",
-
-        opacity: 1,
-
-        flatshading: true,
-
-        lighting: {
-
-            ambient: 1,
-
-            diffuse: 0,
-
-            specular: 0,
-
-            roughness: 1
-
-        },
-
-        lightposition: {
-
-            x: 10000,
-            y: 5000,
-            z: 10000
-
-        },
-
-        name: "Land",
-
-        showlegend: false,
-
-        hoverinfo: "skip"
-
-    });
-
-}
-
-
-function landVertex(vertices, index) {
-
-    return latLonToXYZ(
-        vertices[index * 2],
-        vertices[index * 2 + 1],
-        LAND_RADIUS
-    );
-
-}
-
-
-function pointLength(p) {
-
-    return Math.sqrt(
-        p.x * p.x +
-        p.y * p.y +
-        p.z * p.z
-    );
-
-}
-
-
-function snapToLandRadius(p) {
-
-    const length = pointLength(p);
-
-    if (length === 0) {
-
-        return {
-            x: 0,
-            y: 0,
-            z: LAND_RADIUS
-        };
-
-    }
-
-    const scale =
-        LAND_RADIUS / length;
-
-    return {
-        x: p.x * scale,
-        y: p.y * scale,
-        z: p.z * scale
-    };
-
-}
-
-
-function chordDistance(a, b) {
-
-    const dx = a.x - b.x;
-    const dy = a.y - b.y;
-    const dz = a.z - b.z;
-
-    return Math.sqrt(
-        dx * dx +
-        dy * dy +
-        dz * dz
-    );
-
-}
-
-
-function subdivideLandTriangle(
-    a,
-    b,
-    c,
-    x,
-    y,
-    z,
-    depth
-) {
-
-    const ab = chordDistance(a, b);
-    const bc = chordDistance(b, c);
-    const ca = chordDistance(c, a);
-
-    const longest = Math.max(ab, bc, ca);
-
-
-    if (
-        longest > LAND_MAX_EDGE_KM &&
-        depth < 6
-    ) {
-
-        const abMid = snapToLandRadius({
-            x: (a.x + b.x) / 2,
-            y: (a.y + b.y) / 2,
-            z: (a.z + b.z) / 2
-        });
-
-        const bcMid = snapToLandRadius({
-            x: (b.x + c.x) / 2,
-            y: (b.y + c.y) / 2,
-            z: (b.z + c.z) / 2
-        });
-
-        const caMid = snapToLandRadius({
-            x: (c.x + a.x) / 2,
-            y: (c.y + a.y) / 2,
-            z: (c.z + a.z) / 2
-        });
-
-
-        subdivideLandTriangle(
-            a, abMid, caMid, x, y, z, depth + 1
-        );
-
-        subdivideLandTriangle(
-            abMid, b, bcMid, x, y, z, depth + 1
-        );
-
-        subdivideLandTriangle(
-            caMid, bcMid, c, x, y, z, depth + 1
-        );
-
-        subdivideLandTriangle(
-            abMid, bcMid, caMid, x, y, z, depth + 1
-        );
-
-        return;
-
-    }
-
-
-    x.push(a.x, b.x, c.x);
-    y.push(a.y, b.y, c.y);
-    z.push(a.z, b.z, c.z);
-
-}
-
-
-// ============================================================
-// CREATE SATELLITE ORBIT
-// ============================================================
-
-function addSatellite(
-    sat,
-    index,
-    traces,
-    now
-) {
-
-    const x = [];
-    const y = [];
-    const z = [];
-
-
-    // --------------------------------------------------------
-    // DIFFERENT COLOR FOR EVERY SATELLITE
-    // --------------------------------------------------------
-
-    const color =
-        SATELLITE_COLORS[
-            index %
-            SATELLITE_COLORS.length
-        ];
-
-
-    // --------------------------------------------------------
-    // PROPAGATE 90 MINUTES
-    // --------------------------------------------------------
-
-    for (
-        let step = 0;
-        step <= 90;
-        step += 2
-    ) {
-
-        const time =
-            new Date(
-                now.getTime() +
-                step * 60000
-            );
-
-
-        const result =
-            satellite.propagate(
-                sat.satrec,
-                time.getUTCFullYear(),
-                time.getUTCMonth() + 1,
-                time.getUTCDate(),
-                time.getUTCHours(),
-                time.getUTCMinutes(),
-                time.getUTCSeconds()
-            );
-
-
-        if (
-            result &&
-            result.position
-        ) {
-
-            x.push(
-                result.position.x
-            );
-
-            y.push(
-                result.position.y
-            );
-
-            z.push(
-                result.position.z
-            );
-
-        }
-
-    }
-
-
-    if (x.length === 0)
-        return;
-
-
-    // ========================================================
-    // ORBIT PATH
-    // ========================================================
-
-    traces.push({
-
-        type: "scatter3d",
-
-        x: x,
-        y: y,
-        z: z,
-
-        mode: "lines",
-
-        name: sat.name,
-
-        line: {
-
-            color: color,
-
-            width:
-                index === 0
-                    ? 4
-                    : 2.5
-
-        },
-
-        hovertemplate:
-            `<b>${sat.name}</b><extra></extra>`
-
-    });
-
-
-    // ========================================================
-    // OUTER GLOW
-    // ========================================================
-
-    traces.push({
-
-        type: "scatter3d",
-
-        x: [x[0]],
-        y: [y[0]],
-        z: [z[0]],
-
-        mode: "markers",
-
-        showlegend: false,
-
-        hoverinfo: "skip",
-
-        marker: {
-
-            size: 18,
-
-            color: color,
-
-            opacity: 0.18
-
-        }
-
-    });
-
-
-    // ========================================================
-    // SECOND GLOW
-    // ========================================================
-
-    traces.push({
-
-        type: "scatter3d",
-
-        x: [x[0]],
-        y: [y[0]],
-        z: [z[0]],
-
-        mode: "markers",
-
-        showlegend: false,
-
-        hoverinfo: "skip",
-
-        marker: {
-
-            size: 11,
-
-            color: color,
-
-            opacity: 0.35
-
-        }
-
-    });
-
-
-    // ========================================================
-    // BRIGHT SATELLITE CORE
-    // ========================================================
-
-    traces.push({
-
-        type: "scatter3d",
-
-        x: [x[0]],
-        y: [y[0]],
-        z: [z[0]],
-
-        mode: "markers",
-
-        showlegend: false,
-
-        hoverinfo: "skip",
-
-        marker: {
-
-            size: 5.5,
-
-            color: "#ffffff",
-
-            opacity: 1,
-
-            line: {
-
-                color: color,
-
-                width: 1.5
-
-            }
-
-        }
-
-    });
-
-}
-
-
-// ============================================================
-// RENDER 3D ORBITS
-// ============================================================
-
-async function render3DOrbits(
-    satellites
-) {
-
-    const traces = [];
-
-    const now = new Date();
-
-
-    // ========================================================
-    // EARTH
-    // ========================================================
-
-    addEarthSphere(
-        traces
-    );
-
-
-    // ========================================================
-    // LAND
-    // ========================================================
-
-    await addEarthLand(
-        traces
-    );
-
-
-    // ========================================================
-    // SATELLITES
-    // ========================================================
-
-    satellites.forEach(
-        (sat, index) => {
-
-            addSatellite(
-                sat,
-                index,
-                traces,
-                now
-            );
-
-        }
-    );
-
-
-    // ========================================================
-    // PLOT
-    // ========================================================
-
-    await Plotly.newPlot(
-
-        "orbit",
-
-        traces,
-
-        {
-
-            paper_bgcolor:
-                "#0a111d",
-
-            plot_bgcolor:
-                "#0a111d",
-
-            scene: {
-
-                bgcolor:
-                    "#0a111d",
-
-
-                xaxis: {
-                    visible: false
-                },
-
-                yaxis: {
-                    visible: false
-                },
-
-                zaxis: {
-                    visible: false
-                },
-
-
-                aspectmode:
-                    "data",
-
-
-                camera: {
-
-                    eye: {
-
-                        x: 1.45,
-
-                        y: 1.45,
-
-                        z: 0.95
-
-                    },
-
-                    center: {
-
-                        x: 0,
-                        y: 0,
-                        z: 0
-
-                    }
-
-                },
-
-
-                // ------------------------------------------------
-                // Prevent Earth from appearing stretched
-                // ------------------------------------------------
-
-                aspectratio: {
-
-                    x: 1,
-                    y: 1,
-                    z: 1
-
-                }
-
-            },
-
-
-            margin: {
-
-                l: 0,
-                r: 0,
-                t: 0,
-                b: 0
-
-            },
-
-
-            legend: {
-
-                font: {
-
-                    color:
-                        "#9fb0c8",
-
-                    size: 10
-
-                },
-
-                bgcolor:
-                    "#0a111dcc",
-
-                x: 0.02,
-
-                y: 0.98
-
-            }
-
-        },
-
-        {
-
-            displayModeBar:
-                false,
-
-            responsive:
-                true
-
-        }
-
-    );
-
-    startEarthGlobeMotion("orbit");
-
-}
-
-
-// ============================================================
-// EARTH OPENING ZOOM + ROTATION
-// ============================================================
-
-function startEarthGlobeMotion(graphId) {
-
-    const graphDiv =
-        document.getElementById(graphId);
-
-    if (!graphDiv) {
-        return;
-    }
-
-
-    // Camera distance: smaller = Earth appears larger.
-    // Start farther so the globe grows as the page opens.
-
-    const START_RADIUS = 2.40;
-    const END_RADIUS = 1.35;
-
-    const START_Z = 1.25;
-    const END_Z = 0.85;
-
-    // Faster opening zoom, plus stronger manual wheel zoom.
-    const ZOOM_MS = 1900;
-    const ROTATE_RAD_PER_MS = 0.00018;
-    const RESUME_IDLE_MS = 4000;
-    const WHEEL_ZOOM_FACTOR = 0.0018;
-    const MIN_CAMERA_RADIUS = 0.42;
-    const MAX_CAMERA_RADIUS = 4.5;
-
-
-    let angle = Math.PI / 4;
-    const startTime = performance.now();
-    let lastTime = startTime;
-    let paused = false;
-    let resumeAt = 0;
-    let autoUpdating = false;
-    let lastRelayout = 0;
-
-
-    function easeOutCubic(t) {
-
-        return 1 - Math.pow(1 - t, 3);
-
-    }
-
-
-    function applyCamera(now) {
-
-        const zoomT = Math.min(
-            1,
-            (now - startTime) / ZOOM_MS
-        );
-
-        const eased = easeOutCubic(zoomT);
-
-        const radius =
-            START_RADIUS +
-            (END_RADIUS - START_RADIUS) *
-            eased;
-
-        const z =
-            START_Z +
-            (END_Z - START_Z) * eased;
-
-
-        autoUpdating = true;
-
-        Plotly.relayout(graphDiv, {
-
-            "scene.camera.eye": {
-
-                x: radius * Math.cos(angle),
-
-                y: radius * Math.sin(angle),
-
-                z: z
-
-            },
-
-            "scene.camera.center": {
-
-                x: 0,
-                y: 0,
-                z: 0
-
-            }
-
-        }).finally(() => {
-
-            autoUpdating = false;
-
-        });
-
-    }
-
-
-    function tick(now) {
-
-        const dt = Math.min(
-            48,
-            now - lastTime
-        );
-
-        lastTime = now;
-
-
-        const spinning =
-            !paused &&
-            now >= resumeAt;
-
-
-        if (spinning) {
-
-            angle +=
-                ROTATE_RAD_PER_MS * dt;
-
-        }
-
-
-        // Keep the opening zoom even before rotation,
-        // but never overwrite the camera while the user
-        // is dragging the globe.
-
-        if (
-            spinning ||
-            (now - startTime < ZOOM_MS &&
-                !paused)
-        ) {
-
-            if (now - lastRelayout > 32) {
-
-                lastRelayout = now;
-                applyCamera(now);
-
-            }
-
-        }
-
-        requestAnimationFrame(tick);
-
-    }
-
-
-    function pauseForUser() {
-
-        paused = true;
-        resumeAt =
-            performance.now() +
-            RESUME_IDLE_MS;
-
-        window.setTimeout(() => {
-
-            if (
-                performance.now() >=
-                resumeAt
-            ) {
-
-                paused = false;
-
-            }
-
-        }, RESUME_IDLE_MS + 30);
-
-    }
-
-
-    graphDiv.on(
-        "plotly_relayout",
-        () => {
-
-            if (!autoUpdating) {
-                pauseForUser();
-            }
-
-        }
-    );
-
-
-    graphDiv.addEventListener(
-        "mousedown",
-        pauseForUser
-    );
-
-    graphDiv.addEventListener(
-        "touchstart",
-        pauseForUser,
-        { passive: true }
-    );
-
-
-    // Plotly's default 3D wheel zoom can feel too slow when this
-    // dashboard is used locally. Apply a stronger camera change
-    // while preserving the user's current rotation.
-    graphDiv.addEventListener(
-        "wheel",
-        event => {
-
-            event.preventDefault();
-
-            pauseForUser();
-
-            const camera =
-                graphDiv.layout &&
-                graphDiv.layout.scene &&
-                graphDiv.layout.scene.camera;
-
-            if (!camera || !camera.eye) {
-                return;
-            }
-
-            const currentRadius =
-                Math.sqrt(
-                    Math.pow(camera.eye.x || 0, 2) +
-                    Math.pow(camera.eye.y || 0, 2) +
-                    Math.pow(camera.eye.z || 0, 2)
-                );
-
-            const factor =
-                Math.exp(
-                    event.deltaY *
-                    WHEEL_ZOOM_FACTOR
-                );
-
-            const nextRadius =
-                Math.max(
-                    MIN_CAMERA_RADIUS,
-                    Math.min(
-                        MAX_CAMERA_RADIUS,
-                        currentRadius * factor
-                    )
-                );
-
-            const scale =
-                currentRadius > 0
-                    ? nextRadius / currentRadius
-                    : 1;
-
-            autoUpdating = true;
-
-            Plotly.relayout(
-                graphDiv,
-                {
-                    "scene.camera.eye": {
-                        x:
-                            (camera.eye.x || 0) *
-                            scale,
-                        y:
-                            (camera.eye.y || 0) *
-                            scale,
-                        z:
-                            (camera.eye.z || 0) *
-                            scale
-                    }
-                }
-            ).finally(() => {
-
-                autoUpdating = false;
-
-            });
-
-        },
-        { passive: false }
-    );
-
-
-    requestAnimationFrame(tick);
-
-}
-
-
-// ============================================================
-// CONJUNCTION CALCULATION
-// ============================================================
-
-function computeConjunctions(
-    satellites
-) {
-
+function computeConjunctions(satellites) {
     const events = [];
-
-    const now =
-        new Date();
-
+    const now = new Date();
     const STEP_MINUTES = 2;
     const HOURS_AHEAD = 24;
+    const STEP_MS = STEP_MINUTES * 60 * 1000;
+    const HORIZON_MS = HOURS_AHEAD * 60 * 60 * 1000;
+    const totalSteps = Math.floor(HORIZON_MS / STEP_MS);
 
-    const STEP_MS =
-        STEP_MINUTES *
-        60 *
-        1000;
-
-    const HORIZON_MS =
-        HOURS_AHEAD *
-        60 *
-        60 *
-        1000;
-
-    const totalSteps =
-        Math.floor(
-            HORIZON_MS / STEP_MS
-        );
-
-
-    function getState(
-        satrec,
-        time
-    ) {
-
-        const result =
-            satellite.propagate(
-                satrec,
-                time.getUTCFullYear(),
-                time.getUTCMonth() + 1,
-                time.getUTCDate(),
-                time.getUTCHours(),
-                time.getUTCMinutes(),
-                time.getUTCSeconds()
-            );
-
-
-        if (
-            !result ||
-            !result.position ||
-            !result.velocity
-        ) {
-
-            return null;
-
-        }
-
-
-        return {
-
-            position:
-                result.position,
-
-            velocity:
-                result.velocity
-
-        };
-
-    }
-
-
-    function distanceBetween(
-        a,
-        b
-    ) {
-
-        const dx =
-            a.x - b.x;
-
-        const dy =
-            a.y - b.y;
-
-        const dz =
-            a.z - b.z;
-
-
-        return Math.sqrt(
-            dx * dx +
-            dy * dy +
-            dz * dz
-        );
-
-    }
-
-
-    function relativeVelocity(
-        a,
-        b
-    ) {
-
-        const vx =
-            a.x - b.x;
-
-        const vy =
-            a.y - b.y;
-
-        const vz =
-            a.z - b.z;
-
-
-        return Math.sqrt(
-            vx * vx +
-            vy * vy +
-            vz * vz
-        );
-
-    }
-
-
-    function stateAt(
-        satrec,
-        offsetMs
-    ) {
-
-        const time =
-            new Date(
-                now.getTime() +
-                offsetMs
-            );
-
-        return getState(
+    function getState(satrec, time) {
+        const result = satellite.propagate(
             satrec,
-            time
+            time.getUTCFullYear(),
+            time.getUTCMonth() + 1,
+            time.getUTCDate(),
+            time.getUTCHours(),
+            time.getUTCMinutes(),
+            time.getUTCSeconds()
         );
-
+        if (!result || !result.position || !result.velocity) return null;
+        return { position: result.position, velocity: result.velocity };
     }
 
+    function distanceBetween(a, b) {
+        const dx = a.x - b.x, dy = a.y - b.y, dz = a.z - b.z;
+        return Math.sqrt(dx * dx + dy * dy + dz * dz);
+    }
 
-    // --------------------------------------------------------
-    // PRE-COMPUTE ALL STATES
-    //
-    // The old implementation propagated both satellites again
-    // for every pair. That is unnecessarily expensive and made
-    // the dashboard slow. We propagate each object once per
-    // time step, then reuse those states for every pair.
-    // --------------------------------------------------------
+    function relativeVelocity(a, b) {
+        const vx = a.x - b.x, vy = a.y - b.y, vz = a.z - b.z;
+        return Math.sqrt(vx * vx + vy * vy + vz * vz);
+    }
 
-    const stateGrid =
-        satellites.map(
-            sat => {
-
-                const states = [];
-
-                for (
-                    let step = 0;
-                    step <= totalSteps;
-                    step++
-                ) {
-
-                    states.push(
-                        getState(
-                            sat.satrec,
-                            new Date(
-                                now.getTime() +
-                                step * STEP_MS
-                            )
-                        )
-                    );
-
-                }
-
-                return states;
-
-            }
-        );
-
+    const stateGrid = satellites.map(sat => {
+        const states = [];
+        for (let step = 0; step <= totalSteps; step++) {
+            states.push(getState(sat.satrec, new Date(now.getTime() + step * STEP_MS)));
+        }
+        return states;
+    });
 
     let closestOverall = null;
 
-
-    // --------------------------------------------------------
-    // REFINE TCA
-    //
-    // A two-minute grid is only used to locate the minimum.
-    // The final TCA is refined inside the surrounding interval
-    // with a golden-section search.
-    // --------------------------------------------------------
-
-    function refineTca(
-        satrecA,
-        satrecB,
-        leftMs,
-        rightMs
-    ) {
-
-        if (
-            rightMs <= leftMs
-        ) {
-
-            const stateA =
-                stateAt(
-                    satrecA,
-                    leftMs
-                );
-
-            const stateB =
-                stateAt(
-                    satrecB,
-                    leftMs
-                );
-
-            if (
-                !stateA ||
-                !stateB
-            ) {
-
-                return null;
-
-            }
-
-            return {
-
-                offsetMs:
-                    leftMs,
-
-                distance:
-                    distanceBetween(
-                        stateA.position,
-                        stateB.position
-                    ),
-
-                relativeVelocity:
-                    relativeVelocity(
-                        stateA.velocity,
-                        stateB.velocity
-                    )
-
-            };
-
-        }
-
-
-        const phi =
-            (Math.sqrt(5) - 1) / 2;
-
-        let a =
-            leftMs;
-
-        let b =
-            rightMs;
-
-        let c =
-            b -
-            phi * (b - a);
-
-        let d =
-            a +
-            phi * (b - a);
-
-
-        function distanceAt(
-            offsetMs
-        ) {
-
-            const stateA =
-                stateAt(
-                    satrecA,
-                    offsetMs
-                );
-
-            const stateB =
-                stateAt(
-                    satrecB,
-                    offsetMs
-                );
-
-            if (
-                !stateA ||
-                !stateB
-            ) {
-
-                return Infinity;
-
-            }
-
-            return distanceBetween(
-                stateA.position,
-                stateB.position
-            );
-
-        }
-
-
-        let fc =
-            distanceAt(c);
-
-        let fd =
-            distanceAt(d);
-
-
-        for (
-            let iteration = 0;
-            iteration < 22;
-            iteration++
-        ) {
-
-            if (
-                fc < fd
-            ) {
-
-                b = d;
-                d = c;
-                fd = fc;
-
-                c =
-                    b -
-                    phi * (b - a);
-
-                fc =
-                    distanceAt(c);
-
-            } else {
-
-                a = c;
-                c = d;
-                fc = fd;
-
-                d =
-                    a +
-                    phi * (b - a);
-
-                fd =
-                    distanceAt(d);
-
-            }
-
-        }
-
-
-        const offsetMs =
-            (a + b) / 2;
-
-        const stateA =
-            stateAt(
-                satrecA,
-                offsetMs
-            );
-
-        const stateB =
-            stateAt(
-                satrecB,
-                offsetMs
-            );
-
-        if (
-            !stateA ||
-            !stateB
-        ) {
-
-            return null;
-
-        }
-
-
-        return {
-
-            offsetMs:
-                offsetMs,
-
-            distance:
-                distanceBetween(
-                    stateA.position,
-                    stateB.position
-                ),
-
-            relativeVelocity:
-                relativeVelocity(
-                    stateA.velocity,
-                    stateB.velocity
-                )
-
-        };
-
-    }
-
-
-    // --------------------------------------------------------
-    // PHYSICAL PLATFORM GROUPING
-    // --------------------------------------------------------
-    // CelesTrak can contain separate TLEs for modules/components
-    // of the same spacecraft or station. For example:
-    //   ISS (ZARYA)
-    //   ISS (UNITY)
-    // are two tracked TLEs for the same International Space
-    // Station. They must NOT be treated as a conjunction pair.
-    //
-    // We keep all components in the orbital visualization, but
-    // exclude pairs belonging to the same physical platform from
-    // both the close-approach and conjunction calculations.
-    // --------------------------------------------------------
-
     function areSamePhysicalPlatform(a, b) {
-
         const nameA = String(a.name || '').trim().toUpperCase();
         const nameB = String(b.name || '').trim().toUpperCase();
-
-        if (nameA === nameB || (a.noradId && a.noradId === b.noradId)) {
-            return true;
-        }
-
-        // ISS modules
-        if ((/^ISS\s*\(/.test(nameA) || nameA === 'ISS') && (/^ISS\s*\(/.test(nameB) || nameB === 'ISS')) {
-            return true;
-        }
-
-        // Tiangong modules
-        if (nameA.includes('TIANGONG') && nameB.includes('TIANGONG')) {
-            return true;
-        }
-
-        // Intra-constellation pairs (Starlink vs Starlink, OneWeb vs OneWeb)
-        if (nameA.startsWith('STARLINK') && nameB.startsWith('STARLINK')) {
-            return true;
-        }
-
-        if (nameA.startsWith('ONEWEB') && nameB.startsWith('ONEWEB')) {
-            return true;
-        }
-
+        if (nameA === nameB || (a.noradId && a.noradId === b.noradId)) return true;
+        if ((/^ISS\s*\(/.test(nameA) || nameA === 'ISS') && (/^ISS\s*\(/.test(nameB) || nameB === 'ISS')) return true;
+        if (nameA.includes('TIANGONG') && nameB.includes('TIANGONG')) return true;
+        if (nameA.startsWith('STARLINK') && nameB.startsWith('STARLINK')) return true;
+        if (nameA.startsWith('ONEWEB') && nameB.startsWith('ONEWEB')) return true;
         return false;
-
     }
 
+    for (let i = 0; i < satellites.length; i++) {
+        for (let j = i + 1; j < satellites.length; j++) {
+            if (areSamePhysicalPlatform(satellites[i], satellites[j])) continue;
 
-    // --------------------------------------------------------
-    // SATELLITE PAIRS
-    // --------------------------------------------------------
+            let minimumDistance = Infinity;
+            let minimumStep = -1;
 
-    for (
-        let i = 0;
-        i < satellites.length;
-        i++
-    ) {
+            for (let step = 0; step <= totalSteps; step++) {
+                const stateA = stateGrid[i][step];
+                const stateB = stateGrid[j][step];
+                if (!stateA || !stateB) continue;
 
-        for (
-            let j = i + 1;
-            j < satellites.length;
-            j++
-        ) {
-
-            // Never compare two TLEs that represent components of
-            // the same physical platform. In particular this
-            // prevents ISS (ZARYA) ↔ ISS (UNITY) from becoming a
-            // false conjunction or the dashboard's next approach.
-            if (
-                areSamePhysicalPlatform(
-                    satellites[i],
-                    satellites[j]
-                )
-            ) {
-                continue;
+                const dist = distanceBetween(stateA.position, stateB.position);
+                if (dist < minimumDistance) {
+                    minimumDistance = dist;
+                    minimumStep = step;
+                }
             }
 
+            if (minimumStep >= 0 && minimumDistance < Infinity) {
+                const stateA = stateGrid[i][minimumStep];
+                const stateB = stateGrid[j][minimumStep];
+                const relVel = relativeVelocity(stateA.velocity, stateB.velocity);
+                const tcaMinutes = minimumStep * STEP_MINUTES;
 
-            let minimumDistance =
-                Infinity;
+                const candidate = {
+                    objA: satellites[i].name,
+                    objB: satellites[j].name,
+                    dist: minimumDistance.toFixed(2),
+                    tca: `+${Math.round(tcaMinutes)} min`,
+                    tcaMinutes: tcaMinutes,
+                    relVel: relVel.toFixed(2),
+                    risk: minimumDistance < 2 ? "HIGH" : (minimumDistance < 10 ? "MEDIUM" : "LOW")
+                };
 
-            let minimumStep =
-                -1;
-
-
-            // ------------------------------------------------
-            // COARSE SEARCH
-            // ------------------------------------------------
-
-            for (
-                let step = 0;
-                step <= totalSteps;
-                step++
-            ) {
-
-                const stateA =
-                    stateGrid[i][step];
-
-                const stateB =
-                    stateGrid[j][step];
-
-
-                if (
-                    !stateA ||
-                    !stateB
-                ) {
-
-                    continue;
-
+                if (!closestOverall || minimumDistance < Number(closestOverall.dist)) {
+                    closestOverall = candidate;
                 }
 
-
-                const distance =
-                    distanceBetween(
-                        stateA.position,
-                        stateB.position
-                    );
-
-
-                if (
-                    distance <
-                    minimumDistance
-                ) {
-
-                    minimumDistance =
-                        distance;
-
-                    minimumStep =
-                        step;
-
+                if (minimumDistance <= CONJUNCTION_SCREEN_KM) {
+                    events.push(candidate);
                 }
-
             }
+        }
+    }
 
+    events.sort((a, b) => Number(a.dist) - Number(b.dist));
+    return { events, closestOverall };
+}
 
-            if (
-                minimumStep < 0 ||
-                !isFinite(
-                    minimumDistance
-                )
-            ) {
+// Render Conjunctions into DOM
+function renderConjunctions({ events, closestOverall }) {
+    const highRiskEvents = events.filter(e => e.risk === "HIGH");
+    document.getElementById("cardConjunctions").innerText = events.length.toString();
+    document.getElementById("cardHighRisk").innerText = highRiskEvents.length.toString();
 
-                continue;
+    const focalEvent = events[0] || closestOverall;
 
-            }
+    if (focalEvent) {
+        document.getElementById("cardNextTca").innerText = focalEvent.tca;
+        document.getElementById("cardNextPair").innerText = `${focalEvent.objA} ↔ ${focalEvent.objB}`;
 
+        document.getElementById("riskDist").innerText = `${focalEvent.dist} km`;
+        document.getElementById("riskTca").innerText = focalEvent.tca;
+        document.getElementById("riskVel").innerText = `${focalEvent.relVel} km/s`;
+        document.getElementById("riskObjA").innerText = focalEvent.objA;
+        document.getElementById("riskObjB").innerText = focalEvent.objB;
 
-            // ------------------------------------------------
-            // REFINE AROUND THE COARSE MINIMUM
-            // ------------------------------------------------
+        const distNum = Number(focalEvent.dist);
+        let score = Math.max(5, Math.min(99, Math.round(100 - (distNum / 25) * 80)));
+        if (distNum < 1) score = 98;
 
-            const leftStep =
-                Math.max(
-                    0,
-                    minimumStep - 1
-                );
+        document.getElementById("riskScore").innerText = score;
+        const riskLevelEl = document.getElementById("riskLevel");
+        const riskCircle = document.getElementById("riskCircle");
 
-            const rightStep =
-                Math.min(
-                    totalSteps,
-                    minimumStep + 1
-                );
-
-            const refined =
-                refineTca(
-                    satellites[i].satrec,
-                    satellites[j].satrec,
-                    leftStep * STEP_MS,
-                    rightStep * STEP_MS
-                );
-
-
-            if (!refined) {
-                continue;
-            }
-
-
-            minimumDistance =
-                refined.distance;
-
-
-            const tcaOffsetMs =
-                Math.max(
-                    0,
-                    Math.min(
-                        HORIZON_MS,
-                        refined.offsetMs
-                    )
-                );
-
-
-            const tcaTime =
-                new Date(
-                    now.getTime() +
-                    tcaOffsetMs
-                );
-
-
-            const timeToTcaMinutes =
-                tcaOffsetMs /
-                (60 * 1000);
-
-
-            const tcaRelativeVelocity =
-                refined.relativeVelocity;
-
-
-            // ------------------------------------------------
-            // TRACK THE CLOSEST APPROACH OVERALL
-            //
-            // This is NOT automatically a conjunction.
-            // It is used only for the "Next Close Approach"
-            // card when no true conjunction is inside the screen.
-            // ------------------------------------------------
-
-            const approach = {
-
-                objA:
-                    satellites[i].name,
-
-                objB:
-                    satellites[j].name,
-
-                dist:
-                    minimumDistance.toFixed(1),
-
-                distValue:
-                    minimumDistance,
-
-                tca:
-                    `${Math.round(
-                        timeToTcaMinutes
-                    )} min`,
-
-                tcaValue:
-                    Math.round(
-                        timeToTcaMinutes
-                    ),
-
-                relVel:
-                    tcaRelativeVelocity.toFixed(2),
-
-                tcaDate:
-                    tcaTime
-
-            };
-
-
-            if (
-                !closestOverall ||
-                approach.distValue <
-                    closestOverall.distValue
-            ) {
-
-                closestOverall =
-                    approach;
-
-            }
-
-
-            // ------------------------------------------------
-            // TRUE CONJUNCTION SCREEN
-            // ------------------------------------------------
-
-            if (
-                minimumDistance >
-                CONJUNCTION_SCREEN_KM
-            ) {
-
-                continue;
-
-            }
-
-            // Physical platform filter: If relative velocity is near 0 (< 0.20 km/s),
-            // the two objects are parts of the same physical structure (e.g. docked modules
-            // of ISS) or controlled formation, NOT an orbital collision risk.
-            if (
-                tcaRelativeVelocity < 0.20
-            ) {
-                continue;
-            }
-
-
-            let riskLevel =
-                "LOW";
-
-
-            if (
-                minimumDistance <
-                HIGH_RISK_KM
-            ) {
-
-                riskLevel =
-                    "HIGH";
-
-            } else if (
-                minimumDistance <
-                MEDIUM_RISK_KM
-            ) {
-
-                riskLevel =
-                    "MEDIUM";
-
-            }
-
-
-            events.push({
-
-                ...approach,
-
-                risk:
-                    riskLevel
-
-            });
-
+        if (score > 75) {
+            riskLevelEl.innerText = "CRITICAL RISK";
+            riskLevelEl.style.color = "var(--red)";
+            riskCircle.style.background = `conic-gradient(var(--red) 0% ${score}%, #172236 ${score}% 100%)`;
+        } else if (score > 40) {
+            riskLevelEl.innerText = "ELEVATED RISK";
+            riskLevelEl.style.color = "var(--orange)";
+            riskCircle.style.background = `conic-gradient(var(--orange) 0% ${score}%, #172236 ${score}% 100%)`;
+        } else {
+            riskLevelEl.innerText = "NOMINAL RISK";
+            riskLevelEl.style.color = "var(--green)";
+            riskCircle.style.background = `conic-gradient(var(--green) 0% ${score}%, #172236 ${score}% 100%)`;
         }
 
+        const badge = document.getElementById("riskBadge");
+        badge.className = `badge ${focalEvent.risk.toLowerCase()}`;
+        badge.innerText = focalEvent.risk;
     }
 
-
-    // Earliest TCA is what the dashboard calls the "next"
-    // conjunction. If two events have the same TCA, the closer
-    // one wins.
-    events.sort(
-        (a, b) =>
-            a.tcaValue -
-            b.tcaValue ||
-            a.distValue -
-            b.distValue
-    );
-
-
-    // Attach the nearest monitored approach without polluting
-    // the conjunction table with large separations.
-    events.closestOverall =
-        closestOverall;
-
-
-    return events;
-
-}
-
-// ============================================================
-// RISK SCORE
-// ============================================================
-
-// ============================================================
-// PRELIMINARY RISK SCORE
-// ============================================================
-// This is deliberately NOT a Probability of Collision (Pc).
-// With TLE/SGP4 data we do not have covariance information, so
-// OrbitGuard uses miss distance as the dominant factor and
-// relative velocity as a secondary encounter modifier.
-//
-// Distance contribution: 80%
-// Relative-velocity contribution: 20%
-// Velocity is capped at 15 km/s so it cannot overwhelm a safe
-// miss distance.
-// ============================================================
-
-function riskScoreFromDistance(
-    distanceKm,
-    relativeVelocityKmS = 0
-) {
-
-    if (
-        !isFinite(distanceKm)
-    ) {
-
-        return 0;
-
-    }
-
-
-    const distance =
-        Math.max(
-            0,
-            Math.min(
-                distanceKm,
-                CONJUNCTION_SCREEN_KM
-            )
-        );
-
-
-    // Distance risk: 0 km -> 100, 25 km -> 0.
-    // A small floor is applied later so a real conjunction never
-    // displays as zero risk.
-    const distanceRisk =
-        100 *
-        (
-            1 -
-            distance /
-            CONJUNCTION_SCREEN_KM
-        );
-
-
-    // Relative velocity is a secondary factor only.
-    // 0 km/s -> 0, 15 km/s or more -> 100.
-    // This is an encounter modifier, NOT a physical collision
-    // probability.
-    const velocity =
-        isFinite(relativeVelocityKmS)
-            ? Math.max(
-                0,
-                Math.min(
-                    relativeVelocityKmS,
-                    RISK_VELOCITY_CAP_KM_S
-                )
-            )
-            : 0;
-
-
-    const velocityRisk =
-        (velocity / RISK_VELOCITY_CAP_KM_S) * 100;
-
-
-    const combined =
-        (RISK_DISTANCE_WEIGHT * distanceRisk) +
-        (RISK_VELOCITY_WEIGHT * velocityRisk);
-
-
-    return Math.round(
-        Math.max(
-            5,
-            Math.min(
-                99,
-                combined
-            )
-        )
-    );
-
-}
-
-// ============================================================
-// RISK CIRCLE
-// ============================================================
-
-function updateRiskCircle(
-    score,
-    riskLevel
-) {
-
-    let color;
-
-    if (
-        riskLevel ===
-        "HIGH"
-    ) {
-
-        color =
-            "var(--red)";
-
-    } else if (
-        riskLevel ===
-        "MEDIUM"
-    ) {
-
-        color =
-            "var(--orange)";
-
-    } else {
-
-        color =
-            "var(--green)";
-
-    }
-
-
-    document
-        .getElementById(
-            "riskCircle"
-        )
-        .style.background =
-        `conic-gradient(
-            ${color} 0 ${score}%,
-            #172236 ${score}% 100%
-        )`;
-
-}
-
-
-// ============================================================
-// RENDER CONJUNCTIONS
-// ============================================================
-
-function renderConjunctions(
-    events
-) {
-
-    const tbody =
-        document.getElementById(
-            "eventRows"
-        );
-
-    const closestOverall =
-        events.closestOverall ||
-        null;
-
-
-    document
-        .getElementById(
-            "riskHeader"
-        )
-        .innerText =
-        events.length > 0
-            ? "Selected conjunction"
-            : "Closest monitored approach";
-
-
+    const tbody = document.getElementById("eventRows");
     tbody.innerHTML = "";
 
-
-    // --------------------------------------------------------
-    // CARDS
-    // --------------------------------------------------------
-
-    document
-        .getElementById(
-            "cardConjunctions"
-        )
-        .innerText =
-        events.length;
-
-
-    const highRiskEvents =
-        events.filter(
-            e =>
-                e.risk ===
-                "HIGH"
-        );
-
-
-    document
-        .getElementById(
-            "cardHighRisk"
-        )
-        .innerText =
-        highRiskEvents.length
-            .toString()
-            .padStart(2, "0");
-
-
-    // --------------------------------------------------------
-    // NEXT EVENT / CLOSEST MONITORED APPROACH
-    // --------------------------------------------------------
-
-    const next =
-        events.length > 0
-            ? events[0]
-            : closestOverall;
-
-
-    if (next) {
-
-        document
-            .getElementById(
-                "cardNextTca"
-            )
-            .innerHTML =
-            `${next.tcaValue}
-             <span style="font-size:14px">
-                min
-             </span>`;
-
-
-        document
-            .getElementById(
-                "cardNextPair"
-            )
-            .innerText =
-            events.length > 0
-                ? `${next.objA} ↔ ${next.objB}`
-                : `Closest monitored: ${next.objA} ↔ ${next.objB}`;
-
-
-        // ----------------------------------------------------
-        // RISK PANEL
-        //
-        // A monitored approach above the screening threshold
-        // is deliberately NOT presented as a low-risk conjunction.
-        // ----------------------------------------------------
-
-        const score =
-            events.length > 0
-                ? riskScoreFromDistance(
-                    next.distValue,
-                    parseFloat(next.relVel)
-                )
-                : 0;
-
-
-        document
-            .getElementById(
-                "riskScore"
-            )
-            .innerText =
-            events.length > 0
-                ? score
-                : "—";
-
-
-        document
-            .getElementById(
-                "riskLevel"
-            )
-            .innerText =
-            events.length > 0
-                ? `${next.risk} RISK`
-                : "MONITORED APPROACH";
-
-
-        document
-            .getElementById(
-                "riskDist"
-            )
-            .innerText =
-            `${next.dist} km`;
-
-
-        document
-            .getElementById(
-                "riskTca"
-            )
-            .innerText =
-            next.tca;
-
-
-        document
-            .getElementById(
-                "riskVel"
-            )
-            .innerText =
-            `${next.relVel} km/s`;
-
-
-        document
-            .getElementById(
-                "riskObjA"
-            )
-            .innerText =
-            next.objA;
-
-
-        document
-            .getElementById(
-                "riskObjB"
-            )
-            .innerText =
-            next.objB;
-
-
-        const badge =
-            document.getElementById(
-                "riskBadge"
-            );
-
-
-        if (
-            events.length > 0
-        ) {
-
-            badge.className =
-                `badge ${
-                    next.risk.toLowerCase()
-                }`;
-
-            badge.innerText =
-                next.risk;
-
-            updateRiskCircle(
-                score,
-                next.risk
-            );
-
-        } else {
-
-            badge.className =
-                "badge low";
-
-            badge.innerText =
-                "MONITOR";
-
-            updateRiskCircle(
-                0,
-                "LOW"
-            );
-
-        }
-
-    } else {
-
-        document
-            .getElementById(
-                "cardNextTca"
-            )
-            .innerText =
-            "--";
-
-        document
-            .getElementById(
-                "cardNextPair"
-            )
-            .innerText =
-            "No valid approaches found";
-
-        document
-            .getElementById(
-                "riskScore"
-            )
-            .innerText =
-            "0";
-
-        document
-            .getElementById(
-                "riskLevel"
-            )
-            .innerText =
-            "NO DATA";
-
-        document
-            .getElementById(
-                "riskBadge"
-            )
-            .className =
-            "badge low";
-
-        document
-            .getElementById(
-                "riskBadge"
-            )
-            .innerText =
-            "NONE";
-
-        updateRiskCircle(
-            0,
-            "LOW"
-        );
-
-    }
-
-
-    // --------------------------------------------------------
-    // TABLE
-    // --------------------------------------------------------
-
-    if (
-        events.length === 0
-    ) {
-
+    if (events.length === 0) {
         tbody.innerHTML = `
-
             <tr>
-
-                <td
-                    colspan="6"
-                    style="
-                        text-align:center;
-                        padding:20px;
-                    "
-                >
-                    No conjunctions detected
-                    within ${CONJUNCTION_SCREEN_KM} km
-                    in the next 24 hours.
-
-                    ${
-                        closestOverall
-                            ? `<br>
-                               <span style="
-                                   color:var(--muted);
-                                   font-size:11px;
-                               ">
-                                   Closest monitored approach:
-                                   ${closestOverall.dist} km
-                                   at ${closestOverall.tca}
-                                   (${closestOverall.objA}
-                                   ↔
-                                   ${closestOverall.objB})
-                               </span>`
-                            : ""
-                    }
-
+                <td colspan="6" style="text-align:center; padding:24px; color:var(--muted);">
+                    No conjunctions below ${CONJUNCTION_SCREEN_KM} km detected in the next 24 hours.
+                    ${closestOverall ? `<br><small style="color:var(--cyan);">Closest approach: ${closestOverall.objA} ↔ ${closestOverall.objB} (${closestOverall.dist} km)</small>` : ''}
                 </td>
-
             </tr>
-
         `;
-
     } else {
-
-        events.forEach(
-            event => {
-
-                const tr =
-                    document.createElement(
-                        "tr"
-                    );
-
-
-                tr.innerHTML = `
-
-                    <td class="obj">
-                        ${event.objA}
-                    </td>
-
-                    <td class="obj">
-                        ${event.objB}
-                    </td>
-
-                    <td>
-                        ${event.dist} km
-                    </td>
-
-                    <td>
-                        ${event.tca}
-                    </td>
-
-                    <td>
-                        ${event.relVel} km/s
-                    </td>
-
-                    <td>
-
-                        <span
-                            class="badge
-                            ${event.risk.toLowerCase()}"
-                        >
-                            ${event.risk}
-                        </span>
-
-                    </td>
-
-                `;
-
-
-                tbody.appendChild(
-                    tr
-                );
-
-            }
-        );
-
+        events.forEach(event => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td class="obj">${event.objA}</td>
+                <td class="obj">${event.objB}</td>
+                <td><b style="font-family:var(--font-mono); color:${event.risk === 'HIGH' ? 'var(--red)' : '#fff'};">${event.dist} km</b></td>
+                <td><span style="font-family:var(--font-mono);">${event.tca}</span></td>
+                <td><span style="font-family:var(--font-mono);">${event.relVel} km/s</span></td>
+                <td><span class="badge ${event.risk.toLowerCase()}">${event.risk}</span></td>
+            `;
+            tbody.appendChild(tr);
+        });
     }
 
-
-    document
-        .getElementById(
-            "conjunctionCount"
-        )
-        .innerText =
-        events.length > 0
-            ? `Next 24 hours • ${events.length} conjunctions detected`
-            : `Next 24 hours • 0 conjunctions • closest monitored approach ${
-                closestOverall
-                    ? closestOverall.dist + " km"
-                    : "—"
-            }`;
-
+    document.getElementById("conjunctionCount").innerText = events.length > 0
+        ? `Next 24h • ${events.length} conjunctions detected`
+        : `Next 24h • 0 critical conjunctions • closest ${closestOverall ? closestOverall.dist + ' km' : '—'}`;
 }
 
 // ============================================================
 // INITIALIZE DASHBOARD
 // ============================================================
-
 async function initDashboard() {
+    initThreeScene();
 
     try {
+        const satData = await fetchCelesTrakData();
 
-        // ----------------------------------------------------
-        // FETCH DATA
-        // ----------------------------------------------------
-
-        const satData =
-            await fetchCelesTrakData();
-
-
-        if (
-            !Array.isArray(satData) ||
-            satData.length === 0
-        ) {
-
-            throw new Error(
-                "CelesTrak returned no data."
-            );
-
+        if (!Array.isArray(satData) || satData.length === 0) {
+            throw new Error("CelesTrak returned no data.");
         }
 
+        const source = window.orbitGuardDataSource || "CELESTRAK";
+        const isCached = source.includes("CACHED") || source.includes("OFFLINE");
 
-        // ----------------------------------------------------
-        // STATUS
-        // ----------------------------------------------------
+        document.getElementById("sysStatus").innerText = "Tracking system online";
+        document.getElementById("sysSub").innerText = isCached ? "Using cached TLE catalog" : "CelesTrak feed synced";
+        document.getElementById("liveStatus").innerHTML = `<span class="dot"></span> ${isCached ? "CACHED" : "LIVE"} • ${satData.length} active TLEs`;
+        document.getElementById("cardTracked").innerText = satData.length.toLocaleString();
 
-        document
-            .getElementById(
-                "sysStatus"
-            )
-            .innerText =
-            "Tracking system online";
+        const parsedSatellites = satData.map(sat => {
+            try {
+                const satrec = satellite.twoline2satrec(sat.line1, sat.line2);
+                return {
+                    name: sat.name || `NORAD ${sat.NORAD_CAT_ID}`,
+                    noradId: sat.NORAD_CAT_ID,
+                    satrec: satrec
+                };
+            } catch (err) {
+                return null;
+            }
+        }).filter(sat => sat && sat.satrec && sat.satrec.error === 0);
 
+        if (parsedSatellites.length === 0) throw new Error("No valid satellites parsed.");
 
-        const source =
-            window.orbitGuardDataSource ||
-            "CELESTRAK";
+        // Render 3D Orbits in Three.js
+        render3DOrbits(pickSatelliteSubset(parsedSatellites, MAX_ORBIT_SATS));
 
-
-        const isCached =
-            source ===
-            "CACHED CELESTRAK";
-
-
-        document
-            .getElementById(
-                "sysStatus"
-            )
-            .innerText =
-            isCached
-                ? "Tracking system online"
-                : "Tracking system online";
-
-
-        document
-            .getElementById(
-                "sysSub"
-            )
-            .innerText =
-            isCached
-                ? "Using cached CelesTrak TLEs"
-                : "CelesTrak feed synced";
-
-
-        document
-            .getElementById(
-                "liveStatus"
-            )
-            .innerHTML =
-            `<span class="dot"></span>
-             ${isCached ? "CACHED" : "LIVE"}
-             • ${satData.length}
-             active TLEs`;
-
-
-        document
-            .getElementById(
-                "cardTracked"
-            )
-            .innerText =
-            satData.length.toLocaleString();
-
-
-        // ----------------------------------------------------
-        // PARSE SATELLITES
-        // ----------------------------------------------------
-
-        const parsedSatellites =
-            satData
-                .map(
-                    sat => {
-
-                        try {
-
-                            const satrec =
-                                satellite.twoline2satrec(
-                                    sat.line1,
-                                    sat.line2
-                                );
-
-
-                            return {
-
-                                name:
-                                    sat.name ||
-                                    `NORAD ${
-                                        sat.NORAD_CAT_ID
-                                    }`,
-
-                                noradId:
-                                    sat.NORAD_CAT_ID,
-
-                                satrec:
-                                    satrec
-
-                            };
-
-                        } catch (
-                            error
-                        ) {
-
-                            console.warn(
-                                "Could not parse:",
-                                sat,
-                                error
-                            );
-
-                            return null;
-
-                        }
-
-                    }
-                )
-                .filter(
-                    sat =>
-                        sat &&
-                        sat.satrec &&
-                        sat.satrec.error === 0
-                );
-
-
-        if (
-            parsedSatellites.length === 0
-        ) {
-
-            throw new Error(
-                "No valid satellites."
-            );
-
-        }
-
-
-        // ----------------------------------------------------
-        // 3D ORBITS
-        // ----------------------------------------------------
-
-        await render3DOrbits(
-            pickSatelliteSubset(
-                parsedSatellites,
-                MAX_ORBIT_SATS
-            )
-        );
-
-
-        // ----------------------------------------------------
-        // CONJUNCTIONS
-        // ----------------------------------------------------
-
-        const conjunctions =
-            computeConjunctions(
-                pickSatelliteSubset(
-                    parsedSatellites,
-                    MAX_CONJUNCTION_SATS
-                )
-            );
-
-
-        renderConjunctions(
-            conjunctions
-        );
-
+        // Conjunctions & Risk calculation
+        const conjunctions = computeConjunctions(pickSatelliteSubset(parsedSatellites, MAX_CONJUNCTION_SATS));
+        renderConjunctions(conjunctions);
 
     } catch (error) {
-
-        console.error(
-            "Dashboard error:",
-            error
-        );
-
-
-        document
-            .getElementById(
-                "sysStatus"
-            )
-            .innerText =
-            "Connection Error";
-
-
-        document
-            .getElementById(
-                "sysSub"
-            )
-            .innerText =
-            "Unable to load CelesTrak";
-
-
-        document
-            .getElementById(
-                "sysDot"
-            )
-            .style.background =
-            "var(--red)";
-
-
-        document
-            .getElementById(
-                "sysDot"
-            )
-            .style.boxShadow =
-            "0 0 10px var(--red)";
-
-
-        document
-            .getElementById(
-                "liveStatus"
-            )
-            .innerHTML =
-            `<span class="dot"></span>
-             DATA UNAVAILABLE`;
-
-
-        document
-            .getElementById(
-                "eventRows"
-            )
-            .innerHTML = `
-
-                <tr>
-
-                    <td
-                        colspan="6"
-                        style="
-                            text-align:center;
-                            padding:20px;
-                        "
-                    >
-                        Could not load satellite
-                        data from CelesTrak.
-
-                        <br><br>
-
-                        The dashboard tried the direct
-                        CelesTrak feed, CORS fallbacks,
-                        and the local cache.
-
-                    </td>
-
-                </tr>
-
-            `;
-
+        console.error("Dashboard error:", error);
+        document.getElementById("sysStatus").innerText = "Connection Alert";
+        document.getElementById("sysSub").innerText = "Using offline fallback";
+        document.getElementById("sysDot").style.background = "var(--red)";
+        document.getElementById("sysDot").style.boxShadow = "0 0 10px var(--red)";
     }
-
 }
 
+// Search Filter
+document.getElementById("search").addEventListener("input", (e) => {
+    const query = e.target.value.toLowerCase();
+    document.querySelectorAll("#eventRows tr").forEach(row => {
+        row.style.display = row.innerText.toLowerCase().includes(query) ? "" : "none";
+    });
+});
 
-// ============================================================
-// SEARCH
-// ============================================================
-
-document
-    .getElementById(
-        "search"
-    )
-    .addEventListener(
-        "input",
-        event => {
-
-            const query =
-                event.target.value
-                    .toLowerCase();
-
-
-            document
-                .querySelectorAll(
-                    "#eventRows tr"
-                )
-                .forEach(
-                    row => {
-
-                        row.style.display =
-                            row.innerText
-                                .toLowerCase()
-                                .includes(
-                                    query
-                                )
-                                ? ""
-                                : "none";
-
-                    }
-                );
-
-        }
-    );
-
-
-// ============================================================
-// SIDEBAR TOGGLE LOGIC
-// ============================================================
-
+// Sidebar Controls
 const sidebar = document.getElementById("sidebar");
 const sidebarOverlay = document.getElementById("sidebarOverlay");
 const sidebarToggleBtn = document.getElementById("sidebarToggleBtn");
@@ -4786,61 +2114,30 @@ const sidebarCloseBtn = document.getElementById("sidebarCloseBtn");
 function openSidebar() {
     if (sidebar) sidebar.classList.add("open");
     if (sidebarOverlay) sidebarOverlay.classList.add("active");
-    if (window.Plotly) {
-        setTimeout(() => Plotly.Plots.resize("orbit"), 360);
-    }
+    setTimeout(handleResize, 360);
 }
 
 function closeSidebar() {
     if (sidebar) sidebar.classList.remove("open");
     if (sidebarOverlay) sidebarOverlay.classList.remove("active");
-    if (window.Plotly) {
-        setTimeout(() => Plotly.Plots.resize("orbit"), 360);
-    }
+    setTimeout(handleResize, 360);
 }
 
 function toggleSidebar() {
-    if (sidebar && sidebar.classList.contains("open")) {
-        closeSidebar();
-    } else {
-        openSidebar();
-    }
+    if (sidebar && sidebar.classList.contains("open")) closeSidebar();
+    else openSidebar();
 }
 
-if (sidebarToggleBtn) {
-    sidebarToggleBtn.addEventListener("click", toggleSidebar);
-}
-
-if (sidebarCloseBtn) {
-    sidebarCloseBtn.addEventListener("click", closeSidebar);
-}
-
-if (sidebarOverlay) {
-    sidebarOverlay.addEventListener("click", closeSidebar);
-}
+if (sidebarToggleBtn) sidebarToggleBtn.addEventListener("click", toggleSidebar);
+if (sidebarCloseBtn) sidebarCloseBtn.addEventListener("click", closeSidebar);
+if (sidebarOverlay) sidebarOverlay.addEventListener("click", closeSidebar);
 
 document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && sidebar && sidebar.classList.contains("open")) {
-        closeSidebar();
-    }
+    if (e.key === "Escape" && sidebar && sidebar.classList.contains("open")) closeSidebar();
 });
 
-// Window resize handler for Plotly responsiveness
-window.addEventListener("resize", () => {
-    if (window.Plotly) {
-        Plotly.Plots.resize("orbit");
-    }
-});
-
-// ============================================================
-// START
-// ============================================================
-
-window.addEventListener(
-    "DOMContentLoaded",
-    initDashboard
-);
-
+// Launch on DOM ready
+window.addEventListener("DOMContentLoaded", initDashboard);
 </script>
 
 </body>
