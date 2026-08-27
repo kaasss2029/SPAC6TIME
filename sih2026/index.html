@@ -1,0 +1,1505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OrbitGuard — Next-Gen Orbital Intelligence & Debris Defense</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Three.js & GSAP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+    <style>
+        :root {
+            --bg: #050811;
+            --bg-glass: rgba(13, 20, 34, 0.65);
+            --bg-glass-card: rgba(17, 26, 43, 0.55);
+            --border-glass: rgba(70, 217, 255, 0.15);
+            --border-glass-glow: rgba(70, 217, 255, 0.45);
+            --text-primary: #eef5ff;
+            --text-secondary: #8fa3c2;
+            --text-muted: #536785;
+            --cyan: #46d9ff;
+            --cyan-glow: rgba(70, 217, 255, 0.4);
+            --blue: #5b8cff;
+            --blue-glow: rgba(91, 140, 255, 0.35);
+            --purple: #b362ff;
+            --green: #42e6a4;
+            --red: #ff526d;
+            --orange: #ffad4d;
+            --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-primary);
+            font-family: var(--font-main);
+            overflow-x: hidden;
+            min-height: 100vh;
+            perspective: 1000px;
+        }
+
+        /* 3D WebGL Canvas */
+        #webgl-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+            outline: none;
+            pointer-events: all;
+        }
+
+        /* Glass Backdrop & Overlays */
+        .vignette-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: radial-gradient(circle at center, transparent 30%, rgba(5, 8, 17, 0.6) 80%, rgba(5, 8, 17, 0.95) 100%);
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .grid-lines-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-image: linear-gradient(rgba(70, 217, 255, 0.03) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(70, 217, 255, 0.03) 1px, transparent 1px);
+            background-size: 80px 80px;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        /* Audio / Mode HUD Quick Bar */
+        .hud-top-bar {
+            position: fixed;
+            top: 24px;
+            left: 32px;
+            right: 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            pointer-events: auto;
+        }
+
+        .brand-badge {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            backdrop-filter: blur(16px);
+            padding: 8px 18px;
+            border-radius: 999px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+        }
+
+        .brand-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--cyan), var(--blue));
+            display: grid;
+            place-items: center;
+            font-size: 11px;
+            color: #050811;
+            font-weight: 800;
+            box-shadow: 0 0 14px var(--cyan-glow);
+        }
+
+        .brand-name {
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            background: linear-gradient(90deg, #ffffff, var(--cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .status-pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            font-family: var(--font-mono);
+            color: var(--green);
+            background: rgba(66, 230, 164, 0.1);
+            border: 1px solid rgba(66, 230, 164, 0.25);
+            padding: 4px 10px;
+            border-radius: 999px;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 8px var(--green);
+            animation: pulse-dot 2s infinite ease-in-out;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.85); }
+        }
+
+        .hud-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .hud-btn {
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            backdrop-filter: blur(16px);
+            color: var(--text-secondary);
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            display: grid;
+            place-items: center;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            font-size: 14px;
+        }
+
+        .hud-btn:hover {
+            color: var(--cyan);
+            border-color: var(--border-glass-glow);
+            box-shadow: 0 0 20px var(--cyan-glow);
+            transform: translateY(-2px);
+        }
+
+        /* -------------------------------------------------------------
+           STAGE 1: INTRO / LOADER OVERLAY
+           ------------------------------------------------------------- */
+        .intro-loader-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 50;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            pointer-events: auto;
+            transition: opacity 0.8s ease, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .intro-loader-container.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(1.08) translateY(-20px);
+        }
+
+        .loader-card {
+            width: 90%;
+            max-width: 580px;
+            background: rgba(10, 16, 28, 0.75);
+            border: 1px solid var(--border-glass);
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6), 0 0 40px rgba(70, 217, 255, 0.08);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-radius: 24px;
+            padding: 36px 40px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .loader-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -50%;
+            width: 200%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--cyan), var(--purple), transparent);
+            animation: sweep 4s linear infinite;
+        }
+
+        @keyframes sweep {
+            0% { transform: translateX(-30%); }
+            100% { transform: translateX(30%); }
+        }
+
+        .loader-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 24px;
+        }
+
+        .loader-title {
+            font-size: 26px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #ffffff 40%, var(--cyan) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 6px;
+        }
+
+        .loader-subtitle {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+
+        .loader-telemetry-tag {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--cyan);
+            background: rgba(70, 217, 255, 0.08);
+            border: 1px solid rgba(70, 217, 255, 0.2);
+            padding: 4px 10px;
+            border-radius: 6px;
+        }
+
+        /* Live Matrix Code Stream */
+        .terminal-feed {
+            background: rgba(4, 7, 14, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 12px;
+            padding: 16px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            line-height: 1.6;
+            color: var(--text-secondary);
+            height: 105px;
+            overflow: hidden;
+            position: relative;
+            margin-bottom: 24px;
+        }
+
+        .terminal-feed::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 30px;
+            background: linear-gradient(to top, rgba(4, 7, 14, 0.9), transparent);
+            pointer-events: none;
+        }
+
+        .terminal-line {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            opacity: 0.9;
+        }
+
+        .terminal-line.active {
+            color: var(--cyan);
+            font-weight: 600;
+        }
+
+        .terminal-line .accent {
+            color: var(--green);
+        }
+
+        /* Progress Bar */
+        .progress-wrapper {
+            margin-bottom: 28px;
+        }
+
+        .progress-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 12px;
+            font-family: var(--font-mono);
+        }
+
+        .progress-label {
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .progress-percentage {
+            color: var(--cyan);
+            font-weight: 700;
+            font-size: 15px;
+        }
+
+        .progress-track {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 999px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-fill {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, var(--blue), var(--cyan), var(--green));
+            border-radius: 999px;
+            box-shadow: 0 0 16px var(--cyan-glow);
+            transition: width 0.15s ease-out;
+        }
+
+        /* Launch Action Button */
+        .launch-btn-container {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn-launch {
+            flex: 1;
+            background: linear-gradient(135deg, rgba(70, 217, 255, 0.2), rgba(91, 140, 255, 0.3));
+            border: 1px solid var(--border-glass-glow);
+            color: #ffffff;
+            padding: 14px 24px;
+            border-radius: 14px;
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 8px 24px rgba(70, 217, 255, 0.15);
+            backdrop-filter: blur(12px);
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .btn-launch.ready {
+            opacity: 1;
+            pointer-events: all;
+            background: linear-gradient(135deg, var(--cyan), var(--blue));
+            color: #050811;
+            box-shadow: 0 12px 32px var(--cyan-glow);
+            transform: translateY(0);
+        }
+
+        .btn-launch.ready:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 18px 42px rgba(70, 217, 255, 0.5);
+        }
+
+        .btn-quick-skip {
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            color: var(--text-secondary);
+            padding: 14px 18px;
+            border-radius: 14px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-quick-skip:hover {
+            color: var(--text-primary);
+            border-color: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* -------------------------------------------------------------
+           STAGE 2: HERO INTERFACE & MISSION MODULES
+           ------------------------------------------------------------- */
+        .hero-view-container {
+            position: relative;
+            z-index: 10;
+            min-height: 100vh;
+            padding: 110px 32px 60px 32px;
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            opacity: 0;
+            transform: translateY(40px) scale(0.96);
+            pointer-events: none;
+            transition: all 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .hero-view-container.active {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: auto;
+        }
+
+        .hero-badge-strip {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            backdrop-filter: blur(16px);
+            padding: 6px 14px;
+            border-radius: 999px;
+            margin-bottom: 20px;
+            width: fit-content;
+        }
+
+        .hero-badge-strip span {
+            font-size: 12px;
+            font-family: var(--font-mono);
+            color: var(--cyan);
+            letter-spacing: 0.5px;
+        }
+
+        .hero-title {
+            font-size: clamp(38px, 6vw, 68px);
+            font-weight: 800;
+            line-height: 1.08;
+            letter-spacing: -1.5px;
+            margin-bottom: 20px;
+            max-width: 860px;
+        }
+
+        .hero-title .gradient-text {
+            background: linear-gradient(135deg, #ffffff 20%, var(--cyan) 70%, var(--purple) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: inline-block;
+        }
+
+        .hero-description {
+            font-size: clamp(15px, 1.8vw, 18px);
+            color: var(--text-secondary);
+            max-width: 680px;
+            line-height: 1.65;
+            margin-bottom: 42px;
+            font-weight: 400;
+        }
+
+        /* Quick Stat Highlights */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 16px;
+            max-width: 780px;
+            margin-bottom: 48px;
+        }
+
+        .stat-card {
+            background: var(--bg-glass-card);
+            border: 1px solid var(--border-glass);
+            backdrop-filter: blur(16px);
+            padding: 16px 20px;
+            border-radius: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            border-color: var(--border-glass-glow);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 800;
+            font-family: var(--font-mono);
+            color: #ffffff;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: baseline;
+            gap: 4px;
+        }
+
+        .stat-value .unit {
+            font-size: 13px;
+            color: var(--cyan);
+            font-weight: 600;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Modules / Portals Grid */
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.2px;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title i {
+            color: var(--cyan);
+            font-size: 15px;
+        }
+
+        .module-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+            gap: 20px;
+        }
+
+        .module-card {
+            position: relative;
+            background: var(--bg-glass-card);
+            border: 1px solid var(--border-glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 28px 24px;
+            display: flex;
+            flex-direction: column;
+            text-decoration: none;
+            color: inherit;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .module-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 20px;
+            background: radial-gradient(circle at 80% 20%, rgba(70, 217, 255, 0.12), transparent 60%);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            pointer-events: none;
+        }
+
+        .module-card:hover {
+            transform: translateY(-6px) scale(1.015);
+            border-color: var(--border-glass-glow);
+            box-shadow: 0 20px 48px rgba(0, 0, 0, 0.5), 0 0 30px var(--cyan-glow);
+        }
+
+        .module-card:hover::after {
+            opacity: 1;
+        }
+
+        .module-card-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            background: rgba(70, 217, 255, 0.08);
+            border: 1px solid rgba(70, 217, 255, 0.2);
+            display: grid;
+            place-items: center;
+            font-size: 20px;
+            color: var(--cyan);
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .module-card:hover .module-card-icon {
+            background: linear-gradient(135deg, var(--cyan), var(--blue));
+            color: #050811;
+            box-shadow: 0 0 20px var(--cyan-glow);
+            transform: rotate(-5deg) scale(1.08);
+        }
+
+        .module-badge {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            font-family: var(--font-mono);
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 4px 8px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-secondary);
+        }
+
+        .module-title {
+            font-size: 19px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 8px;
+        }
+
+        .module-desc {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.55;
+            margin-bottom: 24px;
+            flex-grow: 1;
+        }
+
+        .module-cta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--cyan);
+            padding-top: 14px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            transition: color 0.2s ease;
+        }
+
+        .module-card:hover .module-cta {
+            color: #ffffff;
+        }
+
+        .module-cta i {
+            transition: transform 0.3s ease;
+        }
+
+        .module-card:hover .module-cta i {
+            transform: translateX(4px);
+        }
+
+        /* 3D Interaction Tooltip in Hero Mode */
+        .orbit-control-hint {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            backdrop-filter: blur(16px);
+            padding: 8px 18px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-family: var(--font-mono);
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 100;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 1s ease;
+        }
+
+        .orbit-control-hint.active {
+            opacity: 0.85;
+        }
+
+        .orbit-control-hint i {
+            color: var(--cyan);
+        }
+
+        /* Responsive Breakpoints */
+        @media (max-width: 768px) {
+            .hud-top-bar {
+                left: 16px;
+                right: 16px;
+                top: 16px;
+            }
+            .loader-card {
+                padding: 24px 20px;
+            }
+            .hero-view-container {
+                padding: 90px 16px 40px 16px;
+            }
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 3D WebGL Canvas Layer -->
+    <canvas id="webgl-canvas"></canvas>
+
+    <!-- Visual Overlays -->
+    <div class="vignette-overlay"></div>
+    <div class="grid-lines-overlay"></div>
+
+    <!-- Top HUD Navigation Bar -->
+    <header class="hud-top-bar">
+        <div class="brand-badge">
+            <div class="brand-icon"><i class="fa-solid fa-satellite"></i></div>
+            <span class="brand-name">OrbitGuard</span>
+            <div class="status-pill">
+                <span class="status-dot"></span>
+                <span>LEO LIVE</span>
+            </div>
+        </div>
+
+        <div class="hud-actions">
+            <button class="hud-btn" id="btn-sound" title="Toggle Audio Experience">
+                <i class="fa-solid fa-volume-xmark" id="sound-icon"></i>
+            </button>
+            <button class="hud-btn" id="btn-reset-cam" title="Recenter 3D Camera">
+                <i class="fa-solid fa-crosshairs"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- =========================================================================
+         PHASE 1: 3D LOADING & SUBSYSTEM DIAGNOSTICS SEQUENCE
+         ========================================================================= -->
+    <section class="intro-loader-container" id="intro-loader">
+        <div class="loader-card">
+            <div class="loader-header">
+                <div>
+                    <h1 class="loader-title">OrbitGuard Core</h1>
+                    <p class="loader-subtitle">Next-Gen Space Debris Tracking & Collision Avoidance</p>
+                </div>
+                <div class="loader-telemetry-tag">v2.4 TELEMETRY</div>
+            </div>
+
+            <!-- Real-time Terminal Log Feed -->
+            <div class="terminal-feed" id="terminal-feed">
+                <div class="terminal-line"><span class="accent">></span> Initializing WebGL Spacecraft & Celestial Shaders...</div>
+            </div>
+
+            <!-- Progress Meter -->
+            <div class="progress-wrapper">
+                <div class="progress-meta">
+                    <span class="progress-label" id="loader-status-text">INITIALIZING QUANTUM VORTEX...</span>
+                    <span class="progress-percentage" id="loader-percentage">0%</span>
+                </div>
+                <div class="progress-track">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+            </div>
+
+            <!-- Action Controls -->
+            <div class="launch-btn-container">
+                <button class="btn-launch" id="btn-launch">
+                    <span>ENTER ORBITGUARD</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+                <button class="btn-quick-skip" id="btn-quick-skip">Quick Launch</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================================================================
+         PHASE 2: HERO DASHBOARD & INTERACTIVE MISSION PORTAL
+         ========================================================================= -->
+    <main class="hero-view-container" id="hero-view">
+        <div class="hero-badge-strip">
+            <i class="fa-solid fa-shield-halved" style="color: var(--cyan);"></i>
+            <span>SPACE TRAFFIC MANAGEMENT & DEBRIS MITIGATION</span>
+        </div>
+
+        <h1 class="hero-title">
+            Safeguarding Earth's Orbital Commons with <span class="gradient-text">Real-time Telemetry.</span>
+        </h1>
+
+        <p class="hero-description">
+            High-precision 3D orbital propagation, conjunction collision probability assessment, and continuous NORAD catalog tracking across Low Earth Orbit (LEO), MEO, and GEO regimes.
+        </p>
+
+        <!-- Stats Overview -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">27,450<span class="unit">+</span></div>
+                <div class="stat-label">Tracked Objects</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">14<span class="unit">Active</span></div>
+                <div class="stat-label">Conjunction Alerts</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">7.8<span class="unit">km/s</span></div>
+                <div class="stat-label">Avg LEO Velocity</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">99.98<span class="unit">%</span></div>
+                <div class="stat-label">Ephemeris Precision</div>
+            </div>
+        </div>
+
+        <!-- Mission Navigation Modules -->
+        <div class="section-header">
+            <div class="section-title">
+                <i class="fa-solid fa-compass"></i>
+                <span>Mission Control Centers</span>
+            </div>
+        </div>
+
+        <div class="module-cards-grid">
+            <!-- Earth 3D Tracking -->
+            <a href="earth.html" class="module-card">
+                <span class="module-badge">3D Globe</span>
+                <div class="module-card-icon">
+                    <i class="fa-solid fa-earth-americas"></i>
+                </div>
+                <h3 class="module-title">3D Orbital Globe</h3>
+                <p class="module-desc">Full 3D interactive Earth globe with real-time satellite positions, debris clouds, orbital planes, and sensor sweeps.</p>
+                <div class="module-cta">
+                    <span>Launch 3D Earth</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </div>
+            </a>
+
+            <!-- Orbital Object Catalog -->
+            <a href="orb_obj.html" class="module-card">
+                <span class="module-badge">Database</span>
+                <div class="module-card-icon">
+                    <i class="fa-solid fa-cubes"></i>
+                </div>
+                <h3 class="module-title">Orbital Catalog</h3>
+                <p class="module-desc">In-depth database of active payloads, rocket bodies, fragmentation debris, TLE orbital elements, and inclination tables.</p>
+                <div class="module-cta">
+                    <span>Explore Catalog</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </div>
+            </a>
+
+            <!-- Collision Analytics -->
+            <a href="analytics.html" class="module-card">
+                <span class="module-badge">Analytics</span>
+                <div class="module-card-icon">
+                    <i class="fa-solid fa-chart-line"></i>
+                </div>
+                <h3 class="module-title">Collision Analytics</h3>
+                <p class="module-desc">Conjunction probability matrix, Miss-distance ellipsoids, Kessler syndrome forecasting, and orbital risk indices.</p>
+                <div class="module-cta">
+                    <span>View Analytics</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </div>
+            </a>
+
+            <!-- Spatial Grid & Sensors -->
+            <a href="grid.html" class="module-card">
+                <span class="module-badge">Sensor Grid</span>
+                <div class="module-card-icon">
+                    <i class="fa-solid fa-network-wired"></i>
+                </div>
+                <h3 class="module-title">Orbital Grid</h3>
+                <p class="module-desc">Real-time radar coverage footprint, optical ground station networks, and space situational awareness telemetry feeds.</p>
+                <div class="module-cta">
+                    <span>Open Sensor Grid</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </div>
+            </a>
+        </div>
+    </main>
+
+    <!-- Interactive Hint -->
+    <div class="orbit-control-hint" id="orbit-hint">
+        <i class="fa-solid fa-arrows-up-down-left-right"></i>
+        <span>Drag to rotate 3D Earth • Scroll to zoom • Move cursor for vortex parallax</span>
+    </div>
+
+    <!-- =========================================================================
+         THREE.JS 3D SCENE & INTERACTIVE ENGINE
+         ========================================================================= -->
+    <script>
+        /* -------------------------------------------------------------
+           Audio Synthesizer (Zero External Dependencies Web Audio API)
+           ------------------------------------------------------------- */
+        class SpaceSynth {
+            constructor() {
+                this.ctx = null;
+                this.enabled = false;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            playBeep(freq = 600, duration = 0.08, type = 'sine', gainVal = 0.05) {
+                if (!this.enabled || !this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(gainVal, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch(e){}
+            }
+
+            playWarp() {
+                if (!this.enabled || !this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(1200, this.ctx.currentTime + 1.2);
+                    gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 1.5);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 1.5);
+                } catch(e){}
+            }
+        }
+
+        const synth = new SpaceSynth();
+        const btnSound = document.getElementById('btn-sound');
+        const soundIcon = document.getElementById('sound-icon');
+
+        btnSound.addEventListener('click', () => {
+            synth.init();
+            synth.enabled = !synth.enabled;
+            if (synth.enabled) {
+                soundIcon.className = 'fa-solid fa-volume-high';
+                btnSound.style.borderColor = 'var(--cyan)';
+                synth.playBeep(880, 0.15);
+            } else {
+                soundIcon.className = 'fa-solid fa-volume-xmark';
+                btnSound.style.borderColor = 'var(--border-glass)';
+            }
+        });
+
+        /* -------------------------------------------------------------
+           THREE.JS SCENE SETUP
+           ------------------------------------------------------------- */
+        const canvas = document.getElementById('webgl-canvas');
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x050811, 0.0012);
+
+        const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 2000);
+        camera.position.set(0, 0, 180);
+
+        const renderer = new THREE.WebGLRenderer({
+            canvas: canvas,
+            antialias: true,
+            alpha: true,
+            powerPreference: "high-performance"
+        });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+        // Group container for celestial elements
+        const worldGroup = new THREE.Group();
+        scene.add(worldGroup);
+
+        /* -------------------------------------------------------------
+           1. HOLOGRAPHIC 3D EARTH WITH ATMOSPHERE GLOW
+           ------------------------------------------------------------- */
+        const earthRadius = 38;
+
+        // Inner Earth Sphere (Dark High-Tech Solid Core)
+        const earthCoreGeo = new THREE.SphereGeometry(earthRadius, 48, 48);
+        const earthCoreMat = new THREE.MeshBasicMaterial({
+            color: 0x071120,
+            wireframe: false
+        });
+        const earthCore = new THREE.Mesh(earthCoreGeo, earthCoreMat);
+        worldGroup.add(earthCore);
+
+        // Wireframe Earth Latitude/Longitude Grid
+        const earthWireGeo = new THREE.SphereGeometry(earthRadius + 0.1, 32, 24);
+        const earthWireMat = new THREE.MeshBasicMaterial({
+            color: 0x1d4677,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.35
+        });
+        const earthWire = new THREE.Mesh(earthWireGeo, earthWireMat);
+        worldGroup.add(earthWire);
+
+        // Holographic Points Earth (Continent & Surface Simulation)
+        const pointCount = 3500;
+        const earthPointsGeo = new THREE.BufferGeometry();
+        const earthPointsPos = new Float32Array(pointCount * 3);
+        const earthPointsColors = new Float32Array(pointCount * 3);
+
+        for (let i = 0; i < pointCount; i++) {
+            const phi = Math.acos(-1 + (2 * i) / pointCount);
+            const theta = Math.sqrt(pointCount * Math.PI) * phi;
+            const r = earthRadius + 0.4;
+
+            const x = r * Math.sin(phi) * Math.cos(theta);
+            const y = r * Math.sin(phi) * Math.sin(theta);
+            const z = r * Math.cos(phi);
+
+            earthPointsPos[i * 3] = x;
+            earthPointsPos[i * 3 + 1] = y;
+            earthPointsPos[i * 3 + 2] = z;
+
+            // Cyan & Blue glowing points
+            const isCyan = Math.random() > 0.4;
+            earthPointsColors[i * 3] = isCyan ? 0.27 : 0.35;
+            earthPointsColors[i * 3 + 1] = isCyan ? 0.85 : 0.55;
+            earthPointsColors[i * 3 + 2] = 1.0;
+        }
+
+        earthPointsGeo.setAttribute('position', new THREE.BufferAttribute(earthPointsPos, 3));
+        earthPointsGeo.setAttribute('color', new THREE.BufferAttribute(earthPointsColors, 3));
+
+        const earthPointsMat = new THREE.PointsMaterial({
+            size: 1.4,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.85,
+            blending: THREE.AdditiveBlending
+        });
+        const earthPointsMesh = new THREE.Points(earthPointsGeo, earthPointsMat);
+        worldGroup.add(earthPointsMesh);
+
+        // Outer Atmospheric Aura Ring
+        const auraGeo = new THREE.SphereGeometry(earthRadius + 3.2, 36, 36);
+        const auraMat = new THREE.MeshBasicMaterial({
+            color: 0x46d9ff,
+            transparent: true,
+            opacity: 0.08,
+            side: THREE.BackSide,
+            blending: THREE.AdditiveBlending
+        });
+        const auraMesh = new THREE.Mesh(auraGeo, auraMat);
+        worldGroup.add(auraMesh);
+
+        /* -------------------------------------------------------------
+           2. CONVERGING PARTICLE VORTEX & NEBULA DUST
+           ------------------------------------------------------------- */
+        const vortexCount = 6500;
+        const vortexGeo = new THREE.BufferGeometry();
+        const vortexPos = new Float32Array(vortexCount * 3);
+        const vortexInitialPos = new Float32Array(vortexCount * 3);
+        const vortexColors = new Float32Array(vortexCount * 3);
+        const vortexAngles = new Float32Array(vortexCount);
+        const vortexRadii = new Float32Array(vortexCount);
+        const vortexSpeeds = new Float32Array(vortexCount);
+
+        for (let i = 0; i < vortexCount; i++) {
+            // Spiral arms distribution
+            const radius = 55 + Math.random() * 220;
+            const angle = Math.random() * Math.PI * 2;
+            const height = (Math.random() - 0.5) * (radius * 0.45);
+
+            const x = Math.cos(angle) * radius;
+            const y = height;
+            const z = Math.sin(angle) * radius;
+
+            vortexPos[i * 3] = x;
+            vortexPos[i * 3 + 1] = y;
+            vortexPos[i * 3 + 2] = z;
+
+            vortexInitialPos[i * 3] = x;
+            vortexInitialPos[i * 3 + 1] = y;
+            vortexInitialPos[i * 3 + 2] = z;
+
+            vortexRadii[i] = radius;
+            vortexAngles[i] = angle;
+            vortexSpeeds[i] = 0.002 + (1 / radius) * 0.4;
+
+            // Cosmic Palette: Cyan, Electric Blue, Subtle Magenta
+            const colorChoice = Math.random();
+            if (colorChoice < 0.5) {
+                // Cyan
+                vortexColors[i * 3] = 0.27;
+                vortexColors[i * 3 + 1] = 0.85;
+                vortexColors[i * 3 + 2] = 1.0;
+            } else if (colorChoice < 0.85) {
+                // Electric Blue
+                vortexColors[i * 3] = 0.35;
+                vortexColors[i * 3 + 1] = 0.55;
+                vortexColors[i * 3 + 2] = 1.0;
+            } else {
+                // Violet Glow
+                vortexColors[i * 3] = 0.7;
+                vortexColors[i * 3 + 1] = 0.38;
+                vortexColors[i * 3 + 1] = 1.0;
+            }
+        }
+
+        vortexGeo.setAttribute('position', new THREE.BufferAttribute(vortexPos, 3));
+        vortexGeo.setAttribute('color', new THREE.BufferAttribute(vortexColors, 3));
+
+        const vortexMat = new THREE.PointsMaterial({
+            size: 1.6,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.75,
+            blending: THREE.AdditiveBlending
+        });
+
+        const vortexMesh = new THREE.Points(vortexGeo, vortexMat);
+        worldGroup.add(vortexMesh);
+
+        /* -------------------------------------------------------------
+           3. ORBITAL RINGS & DEBRIS CLUSTERS (LEO, MEO, GEO)
+           ------------------------------------------------------------- */
+        const debrisGroup = new THREE.Group();
+        worldGroup.add(debrisGroup);
+
+        function createOrbitalRing(radius, inclination, color, pointCount = 180) {
+            const ringGroup = new THREE.Group();
+            ringGroup.rotation.x = inclination;
+            ringGroup.rotation.z = Math.random() * Math.PI;
+
+            // Faint orbit path line
+            const curve = new THREE.EllipseCurve(0, 0, radius, radius, 0, 2 * Math.PI, false, 0);
+            const points = curve.getPoints(100);
+            const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+            const lineMat = new THREE.LineBasicMaterial({
+                color: color,
+                transparent: true,
+                opacity: 0.22
+            });
+            const line = new THREE.Line(lineGeo, lineMat);
+            line.rotation.x = Math.PI / 2;
+            ringGroup.add(line);
+
+            // Orbiting debris / satellites
+            const debGeo = new THREE.BufferGeometry();
+            const debPos = new Float32Array(pointCount * 3);
+            for (let i = 0; i < pointCount; i++) {
+                const angle = (i / pointCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.1;
+                const rOffset = (Math.random() - 0.5) * 2.5;
+                const r = radius + rOffset;
+                debPos[i * 3] = Math.cos(angle) * r;
+                debPos[i * 3 + 1] = (Math.random() - 0.5) * 2;
+                debPos[i * 3 + 2] = Math.sin(angle) * r;
+            }
+            debGeo.setAttribute('position', new THREE.BufferAttribute(debPos, 3));
+            const debMat = new THREE.PointsMaterial({
+                color: color,
+                size: 1.8,
+                transparent: true,
+                opacity: 0.85,
+                blending: THREE.AdditiveBlending
+            });
+            const debMesh = new THREE.Points(debGeo, debMat);
+            ringGroup.add(debMesh);
+
+            debrisGroup.add(ringGroup);
+            return ringGroup;
+        }
+
+        const ringLEO1 = createOrbitalRing(45, Math.PI / 4, 0x46d9ff, 120);
+        const ringLEO2 = createOrbitalRing(48, -Math.PI / 3, 0xff526d, 80);
+        const ringPolar = createOrbitalRing(52, Math.PI / 2.1, 0x42e6a4, 90);
+        const ringMEO = createOrbitalRing(68, Math.PI / 6, 0x5b8cff, 140);
+        const ringGEO = createOrbitalRing(92, 0.1, 0xffad4d, 160);
+
+        /* -------------------------------------------------------------
+           4. BACKGROUND COSMIC STARFIELD
+           ------------------------------------------------------------- */
+        const starCount = 2000;
+        const starGeo = new THREE.BufferGeometry();
+        const starPos = new Float32Array(starCount * 3);
+        for (let i = 0; i < starCount; i++) {
+            starPos[i * 3] = (Math.random() - 0.5) * 1600;
+            starPos[i * 3 + 1] = (Math.random() - 0.5) * 1600;
+            starPos[i * 3 + 2] = (Math.random() - 0.5) * 1600;
+        }
+        starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+        const starMat = new THREE.PointsMaterial({
+            color: 0xffffff,
+            size: 1.1,
+            transparent: true,
+            opacity: 0.5
+        });
+        const starMesh = new THREE.Points(starGeo, starMat);
+        scene.add(starMesh);
+
+        /* -------------------------------------------------------------
+           INTERACTION & MOUSE PARALLAX CONTROLS
+           ------------------------------------------------------------- */
+        let mouseX = 0;
+        let mouseY = 0;
+        let targetWorldRotX = 0.2;
+        let targetWorldRotY = 0;
+        let isDragging = false;
+        let previousMouseX = 0;
+        let previousMouseY = 0;
+        let targetCameraZ = 180;
+        let isHeroMode = false;
+
+        window.addEventListener('mousemove', (e) => {
+            const normX = (e.clientX / window.innerWidth) * 2 - 1;
+            const normY = -(e.clientY / window.innerHeight) * 2 + 1;
+            mouseX = normX * 0.4;
+            mouseY = normY * 0.4;
+
+            if (isDragging) {
+                const deltaX = e.clientX - previousMouseX;
+                const deltaY = e.clientY - previousMouseY;
+                targetWorldRotY += deltaX * 0.006;
+                targetWorldRotX += deltaY * 0.006;
+                previousMouseX = e.clientX;
+                previousMouseY = e.clientY;
+            }
+        });
+
+        window.addEventListener('mousedown', (e) => {
+            if (e.target.closest('.module-card') || e.target.closest('.hud-btn') || e.target.closest('.btn-launch') || e.target.closest('.btn-quick-skip')) {
+                return;
+            }
+            isDragging = true;
+            previousMouseX = e.clientX;
+            previousMouseY = e.clientY;
+        });
+
+        window.addEventListener('mouseup', () => { isDragging = false; });
+        window.addEventListener('mouseleave', () => { isDragging = false; });
+
+        // Wheel Zoom
+        window.addEventListener('wheel', (e) => {
+            if (!isHeroMode) return;
+            targetCameraZ = Math.max(90, Math.min(260, targetCameraZ + e.deltaY * 0.12));
+        }, { passive: true });
+
+        // Recenter Camera Button
+        document.getElementById('btn-reset-cam').addEventListener('click', () => {
+            gsap.to(worldGroup.rotation, { x: 0.2, y: 0, z: 0, duration: 1.2, ease: "power3.out" });
+            gsap.to(camera.position, { x: isHeroMode ? 35 : 0, y: isHeroMode ? 8 : 0, z: isHeroMode ? 130 : 180, duration: 1.2, ease: "power3.out" });
+            synth.playBeep(700, 0.1);
+        });
+
+        // Touch support
+        window.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 1 && isDragging) {
+                const deltaX = e.touches[0].clientX - previousMouseX;
+                const deltaY = e.touches[0].clientY - previousMouseY;
+                targetWorldRotY += deltaX * 0.006;
+                targetWorldRotX += deltaY * 0.006;
+                previousMouseX = e.touches[0].clientX;
+                previousMouseY = e.touches[0].clientY;
+            }
+        }, { passive: true });
+
+        window.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) {
+                isDragging = true;
+                previousMouseX = e.touches[0].clientX;
+                previousMouseY = e.touches[0].clientY;
+            }
+        }, { passive: true });
+
+        window.addEventListener('touchend', () => { isDragging = false; });
+
+        // Resize handler
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            if (isHeroMode && window.innerWidth < 768) {
+                camera.position.x = 0;
+            }
+        });
+
+        /* -------------------------------------------------------------
+           DIAGNOSTIC TELEMETRY BOOT SEQUENCE LOGIC
+           ------------------------------------------------------------- */
+        const terminalFeed = document.getElementById('terminal-feed');
+        const progressFill = document.getElementById('progress-fill');
+        const loaderPercentage = document.getElementById('loader-percentage');
+        const loaderStatusText = document.getElementById('loader-status-text');
+        const btnLaunch = document.getElementById('btn-launch');
+        const btnQuickSkip = document.getElementById('btn-quick-skip');
+        const introLoader = document.getElementById('intro-loader');
+        const heroView = document.getElementById('hero-view');
+        const orbitHint = document.getElementById('orbit-hint');
+
+        const bootSequenceSteps = [
+            { pct: 15, text: "INITIALIZING QUANTUM VORTEX...", log: "Calibrating 6,500 Particle Velocity Vectors... [OK]" },
+            { pct: 35, text: "SYNCING SGP4/SDP4 PROPAGATOR...", log: "Loaded NORAD Ephemeris & TLE Catalog. [SYNCED]" },
+            { pct: 58, text: "CALCULATING LEO CONJUNCTION MATRIX...", log: "Processing 27,450+ Space Debris Orbits. [OPTIMIZED]" },
+            { pct: 82, text: "ESTABLISHING SENSOR GROUND NETWORK...", log: "14 Optical & Radar Tracking Nodes Online. [ACTIVE]" },
+            { pct: 100, text: "ORBITGUARD TELEMETRY READY", log: "<span class='accent'>✓</span> System Ready. All Celestial Telemetry Online." }
+        ];
+
+        let currentProgress = 0;
+        let stepIndex = 0;
+
+        function addTerminalLog(message) {
+            const line = document.createElement('div');
+            line.className = 'terminal-line';
+            line.innerHTML = `<span class="accent">></span> ${message}`;
+            terminalFeed.appendChild(line);
+            terminalFeed.scrollTop = terminalFeed.scrollHeight;
+            synth.playBeep(520 + Math.random() * 300, 0.04);
+        }
+
+        // Auto progress runner
+        const bootInterval = setInterval(() => {
+            if (stepIndex < bootSequenceSteps.length) {
+                const step = bootSequenceSteps[stepIndex];
+                currentProgress = step.pct;
+                progressFill.style.width = `${currentProgress}%`;
+                loaderPercentage.innerText = `${currentProgress}%`;
+                loaderStatusText.innerText = step.text;
+                addTerminalLog(step.log);
+                stepIndex++;
+
+                if (currentProgress === 100) {
+                    clearInterval(bootInterval);
+                    btnLaunch.classList.add('ready');
+                    synth.playBeep(980, 0.2, 'triangle', 0.08);
+                }
+            }
+        }, 650);
+
+        /* -------------------------------------------------------------
+           CAMERA FLY-THROUGH TRANSITION TO HERO VIEW
+           ------------------------------------------------------------- */
+        function triggerHeroTransition() {
+            if (isHeroMode) return;
+            isHeroMode = true;
+            synth.playWarp();
+
+            // Hide loader UI
+            introLoader.classList.add('hidden');
+
+            // Timeline Orchestration: Warp Fly-through
+            const tl = gsap.timeline({
+                onComplete: () => {
+                    heroView.classList.add('active');
+                    orbitHint.classList.add('active');
+                }
+            });
+
+            // Fast Camera Zoom in & Re-angle for dashboard layout
+            const targetX = window.innerWidth > 900 ? 38 : 0;
+            const targetY = window.innerWidth > 900 ? 6 : -10;
+
+            tl.to(camera.position, {
+                x: targetX,
+                y: targetY,
+                z: 125,
+                duration: 2.2,
+                ease: "power3.inOut"
+            }, 0)
+            .to(worldGroup.rotation, {
+                x: 0.35,
+                y: Math.PI * 0.45,
+                duration: 2.2,
+                ease: "power3.inOut"
+            }, 0)
+            .to(vortexMat, {
+                size: 2.2,
+                opacity: 0.9,
+                duration: 1.2,
+                yoyo: true,
+                repeat: 1
+            }, 0);
+        }
+
+        btnLaunch.addEventListener('click', triggerHeroTransition);
+        btnQuickSkip.addEventListener('click', () => {
+            clearInterval(bootInterval);
+            progressFill.style.width = '100%';
+            loaderPercentage.innerText = '100%';
+            triggerHeroTransition();
+        });
+
+        /* -------------------------------------------------------------
+           RENDER & ANIMATION LOOP
+           ------------------------------------------------------------- */
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const elapsedTime = clock.getElapsedTime();
+            const positions = vortexGeo.attributes.position.array;
+
+            // 1. Vortex Particles Dynamic Motion
+            for (let i = 0; i < vortexCount; i++) {
+                vortexAngles[i] += vortexSpeeds[i];
+                const angle = vortexAngles[i];
+                const r = vortexRadii[i];
+
+                positions[i * 3] = Math.cos(angle) * r;
+                positions[i * 3 + 2] = Math.sin(angle) * r;
+                // Gentle undulation
+                positions[i * 3 + 1] = vortexInitialPos[i * 3 + 1] + Math.sin(elapsedTime * 1.5 + r * 0.05) * 3;
+            }
+            vortexGeo.attributes.position.needsUpdate = true;
+
+            // 2. Earth & Rings Rotation
+            earthWire.rotation.y += 0.0018;
+            earthPointsMesh.rotation.y += 0.0022;
+            earthCore.rotation.y += 0.0018;
+
+            ringLEO1.rotation.y += 0.004;
+            ringLEO2.rotation.y -= 0.005;
+            ringPolar.rotation.z += 0.003;
+            ringMEO.rotation.y += 0.002;
+            ringGEO.rotation.y += 0.001;
+
+            starMesh.rotation.y = elapsedTime * 0.0003;
+
+            // 3. Smooth Camera & World Parallax Interpolation
+            if (!isDragging) {
+                targetWorldRotY += 0.0012;
+            }
+
+            worldGroup.rotation.x += (targetWorldRotX + mouseY * 0.2 - worldGroup.rotation.x) * 0.06;
+            worldGroup.rotation.y += (targetWorldRotY + mouseX * 0.3 - worldGroup.rotation.y) * 0.06;
+
+            if (isHeroMode) {
+                camera.position.z += (targetCameraZ - camera.position.z) * 0.08;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // Check if server is running or if opened as file://
+        (function checkServer() {
+            if (window.location.protocol === "file:") {
+                // Test if server on port 8000 is active and auto-redirect to live server
+                fetch("http://localhost:8000/active.tle", { method: "HEAD", mode: "no-cors" })
+                    .then(() => {
+                        window.location.href = "http://localhost:8000/index.html";
+                    })
+                    .catch(() => {
+                        console.log("Tip: Run ./start.sh or 'python3 server.py' for full auto-sync functionality.");
+                    });
+            }
+        })();
+    </script>
+</body>
+</html>
