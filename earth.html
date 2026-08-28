@@ -1135,7 +1135,7 @@
 // CONSTANTS & CONFIGURATION
 // ============================================================
 const CELESTRAK_API_URL = "https://celestrak.org/NORAD/elements/gp.php?GROUP=ACTIVE&FORMAT=TLE";
-const BACKEND_TLE_API_URL = "http://localhost:4000/api/tle/latest";
+const BACKEND_TLE_API_URL = "/api/tle/latest";
 const ISS_NORAD_ID = 25544;
 
 const MAX_ORBIT_SATS = 50;
@@ -2134,15 +2134,21 @@ async function fetchCelesTrakData() {
 
     const cached = readCache();
 
-    // 1. LOCAL DATASET (active.tle) + AUTO-SYNC
+    // 1. LOCAL DATASET (MongoDB Backend API / active.tle) + AUTO-SYNC
     if (window.location.protocol !== "file:") {
         try {
             fetch("/api/tle/sync").catch(() => {});
-            const localFileText = await fetchText("active.tle", 2500);
+            // Try backend API first, then local active.tle file
+            let localFileText = null;
+            try {
+                localFileText = await fetchText(BACKEND_TLE_API_URL, 15000);
+            } catch (e) {
+                localFileText = await fetchText("active.tle", 15000);
+            }
             const parsedLocal = parseTleCatalog(localFileText);
             if (parsedLocal.length > 0) {
                 cacheData(localFileText);
-                window.orbitGuardDataSource = "LOCAL ACTIVE TLE";
+                window.orbitGuardDataSource = `LOCAL BACKEND (${parsedLocal.length} SATS)`;
                 return parsedLocal;
             }
         } catch (err) {}
@@ -2291,143 +2297,122 @@ function pickSatelliteSubset(satellites, limit) {
 }
 
 // ============================================================
-// CONJUNCTION CALCULATION & RISK MODEL
+// CONJUNCTION DATA MANAGEMENT & RISK MODEL
 // ============================================================
-function computeConjunctions(satellites) {
-    const events = [];
-    const now = new Date();
-    const STEP_MINUTES = 2;
-    const HOURS_AHEAD = 24;
-    const STEP_MS = STEP_MINUTES * 60 * 1000;
-    const HORIZON_MS = HOURS_AHEAD * 60 * 60 * 1000;
-    const totalSteps = Math.floor(HORIZON_MS / STEP_MS);
+let globalConjunctions = [];
+let liveCountdownInterval = null;
 
-    function getState(satrec, time) {
-        const result = satellite.propagate(
-            satrec,
-            time.getUTCFullYear(),
-            time.getUTCMonth() + 1,
-            time.getUTCDate(),
-            time.getUTCHours(),
-            time.getUTCMinutes(),
-            time.getUTCSeconds()
-        );
-        if (!result || !result.position || !result.velocity) return null;
-        return { position: result.position, velocity: result.velocity };
-    }
-
-    function distanceBetween(a, b) {
-        const dx = a.x - b.x, dy = a.y - b.y, dz = a.z - b.z;
-        return Math.sqrt(dx * dx + dy * dy + dz * dz);
-    }
-
-    function relativeVelocity(a, b) {
-        const vx = a.x - b.x, vy = a.y - b.y, vz = a.z - b.z;
-        return Math.sqrt(vx * vx + vy * vy + vz * vz);
-    }
-
-    const stateGrid = satellites.map(sat => {
-        const states = [];
-        for (let step = 0; step <= totalSteps; step++) {
-            states.push(getState(sat.satrec, new Date(now.getTime() + step * STEP_MS)));
-        }
-        return states;
-    });
-
-    let closestOverall = null;
-
-    function areSamePhysicalPlatform(a, b) {
-        const nameA = String(a.name || '').trim().toUpperCase();
-        const nameB = String(b.name || '').trim().toUpperCase();
-        if (nameA === nameB || (a.noradId && a.noradId === b.noradId)) return true;
-        if ((/^ISS\s*\(/.test(nameA) || nameA === 'ISS') && (/^ISS\s*\(/.test(nameB) || nameB === 'ISS')) return true;
-        if (nameA.includes('TIANGONG') && nameB.includes('TIANGONG')) return true;
-        if (nameA.startsWith('STARLINK') && nameB.startsWith('STARLINK')) return true;
-        if (nameA.startsWith('ONEWEB') && nameB.startsWith('ONEWEB')) return true;
-        return false;
-    }
-
-    for (let i = 0; i < satellites.length; i++) {
-        for (let j = i + 1; j < satellites.length; j++) {
-            if (areSamePhysicalPlatform(satellites[i], satellites[j])) continue;
-
-            let minimumDistance = Infinity;
-            let minimumStep = -1;
-
-            for (let step = 0; step <= totalSteps; step++) {
-                const stateA = stateGrid[i][step];
-                const stateB = stateGrid[j][step];
-                if (!stateA || !stateB) continue;
-
-                const dist = distanceBetween(stateA.position, stateB.position);
-                if (dist < minimumDistance) {
-                    minimumDistance = dist;
-                    minimumStep = step;
-                }
-            }
-
-            if (minimumStep >= 0 && minimumDistance < Infinity) {
-                const stateA = stateGrid[i][minimumStep];
-                const stateB = stateGrid[j][minimumStep];
-                const relVel = relativeVelocity(stateA.velocity, stateB.velocity);
-                const tcaMinutes = minimumStep * STEP_MINUTES;
-
-                const candidate = {
-                    objA: satellites[i].name,
-                    objB: satellites[j].name,
-                    dist: minimumDistance.toFixed(2),
-                    tca: `+${Math.round(tcaMinutes)} min`,
-                    tcaMinutes: tcaMinutes,
-                    relVel: relVel.toFixed(2),
-                    risk: minimumDistance < 2 ? "HIGH" : (minimumDistance < 10 ? "MEDIUM" : "LOW")
-                };
-
-                if (!closestOverall || minimumDistance < Number(closestOverall.dist)) {
-                    closestOverall = candidate;
-                }
-
-                if (minimumDistance <= CONJUNCTION_SCREEN_KM) {
-                    events.push(candidate);
-                }
+async function fetchLiveConjunctions() {
+    // 1. Try local MongoDB / Node.js backend
+    try {
+        const resp = await fetch("/api/conjunctions", { cache: "no-store" });
+        if (resp.ok) {
+            const data = await resp.json();
+            if (data.success && Array.isArray(data.conjunctions) && data.conjunctions.length > 0) {
+                return data.conjunctions;
             }
         }
+    } catch (e) {
+        console.warn("Backend /api/conjunctions unavailable, checking local storage...");
     }
 
-    events.sort((a, b) => Number(a.dist) - Number(b.dist));
-    return { events, closestOverall };
+    // 2. Offline / local storage fallback
+    const cached = localStorage.getItem("orbitguard_conjunctions_cache");
+    if (cached) {
+        try {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        } catch (e) {}
+    }
+
+    return [];
+}
+
+function formatTcaRemaining(tcaTimestamp) {
+    const targetMs = new Date(tcaTimestamp).getTime();
+    const diffMs = targetMs - Date.now();
+    if (diffMs <= 0) return "TCA PASSED";
+    const totalSecs = Math.floor(diffMs / 1000);
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
+    if (mins >= 60) {
+        const hours = Math.floor(mins / 60);
+        const remMins = mins % 60;
+        return `+${hours}h ${remMins}m`;
+    }
+    return `+${mins} min`;
+}
+
+function formatCountdown(tcaTimestamp) {
+    const targetMs = new Date(tcaTimestamp).getTime();
+    const diffMs = targetMs - Date.now();
+    if (diffMs <= 0) return "TCA REACHED";
+    const totalSecs = Math.floor(diffMs / 1000);
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
+    return `T - ${mins.toString().padStart(2, "0")}m ${secs.toString().padStart(2, "0")}s`;
 }
 
 // Render Conjunctions into DOM
-function renderConjunctions({ events, closestOverall }) {
-    const highRiskEvents = events.filter(e => e.risk === "HIGH");
-    document.getElementById("cardConjunctions").innerText = events.length.toString();
+function renderConjunctions(conjunctionsList) {
+    if (!conjunctionsList || conjunctionsList.length === 0) {
+        document.getElementById("cardConjunctions").innerText = "0";
+        document.getElementById("cardHighRisk").innerText = "0";
+        document.getElementById("cardNextTca").innerText = "—";
+        document.getElementById("cardNextPair").innerText = "No critical encounters";
+        document.getElementById("eventRows").innerHTML = `
+            <tr>
+                <td colspan="6" style="text-align:center; padding:24px; color:var(--muted);">
+                    No conjunctions detected in the next 24 hours.
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    // Save to local cache
+    try {
+        localStorage.setItem("orbitguard_conjunctions_cache", JSON.stringify(conjunctionsList));
+    } catch (e) {}
+
+    globalConjunctions = conjunctionsList;
+
+    const highRiskEvents = conjunctionsList.filter(e => e.riskTier === "critical" || e.risk === "HIGH");
+    document.getElementById("cardConjunctions").innerText = conjunctionsList.length.toString();
     document.getElementById("cardHighRisk").innerText = highRiskEvents.length.toString();
 
-    const focalEvent = events[0] || closestOverall;
+    const focalEvent = conjunctionsList[0];
 
     if (focalEvent) {
-        document.getElementById("cardNextTca").innerText = focalEvent.tca;
-        document.getElementById("cardNextPair").innerText = `${focalEvent.objA} ↔ ${focalEvent.objB}`;
+        const tcaFormatted = formatTcaRemaining(focalEvent.tcaTimestamp || focalEvent.tca);
+        document.getElementById("cardNextTca").innerText = tcaFormatted;
+        document.getElementById("cardNextPair").innerText = `${focalEvent.objA.name || focalEvent.objA} ↔ ${focalEvent.objB.name || focalEvent.objB}`;
 
-        document.getElementById("riskDist").innerText = `${focalEvent.dist} km`;
-        document.getElementById("riskTca").innerText = focalEvent.tca;
-        document.getElementById("riskVel").innerText = `${focalEvent.relVel} km/s`;
-        document.getElementById("riskObjA").innerText = focalEvent.objA;
-        document.getElementById("riskObjB").innerText = focalEvent.objB;
+        const distNum = typeof focalEvent.missDistanceKm === "number" ? focalEvent.missDistanceKm : Number(focalEvent.dist);
+        const velNum = typeof focalEvent.relVelKmS === "number" ? focalEvent.relVelKmS : Number(focalEvent.relVel);
 
-        const distNum = Number(focalEvent.dist);
-        let score = Math.max(5, Math.min(99, Math.round(100 - (distNum / 25) * 80)));
-        if (distNum < 1) score = 98;
+        document.getElementById("riskDist").innerText = `${distNum.toFixed(2)} km`;
+        document.getElementById("riskTca").innerText = tcaFormatted;
+        document.getElementById("riskVel").innerText = `${velNum.toFixed(2)} km/s`;
+        document.getElementById("riskObjA").innerText = focalEvent.objA.name || focalEvent.objA;
+        document.getElementById("riskObjB").innerText = focalEvent.objB.name || focalEvent.objB;
+
+        // Score
+        const distFactor = Math.max(0, Math.min(1, (25 - distNum) / 25));
+        const velFactor  = Math.max(0, Math.min(1, velNum / 10));
+        let score = Math.max(5, Math.min(99, Math.round((0.6 * distFactor + 0.4 * velFactor) * 100)));
 
         document.getElementById("riskScore").innerText = score;
         const riskLevelEl = document.getElementById("riskLevel");
         const riskCircle = document.getElementById("riskCircle");
 
-        if (score > 75) {
+        const riskTierStr = (focalEvent.riskTier || focalEvent.risk || "nominal").toLowerCase();
+
+        if (score > 75 || riskTierStr === "critical" || riskTierStr === "high") {
             riskLevelEl.innerText = "CRITICAL RISK";
             riskLevelEl.style.color = "var(--red)";
             riskCircle.style.background = `conic-gradient(var(--red) 0% ${score}%, #172236 ${score}% 100%)`;
-        } else if (score > 40) {
+        } else if (score > 40 || riskTierStr === "warning" || riskTierStr === "medium") {
             riskLevelEl.innerText = "ELEVATED RISK";
             riskLevelEl.style.color = "var(--orange)";
             riskCircle.style.background = `conic-gradient(var(--orange) 0% ${score}%, #172236 ${score}% 100%)`;
@@ -2438,40 +2423,54 @@ function renderConjunctions({ events, closestOverall }) {
         }
 
         const badge = document.getElementById("riskBadge");
-        badge.className = `badge ${focalEvent.risk.toLowerCase()}`;
-        badge.innerText = focalEvent.risk;
+        const badgeTier = (riskTierStr === "critical" ? "high" : (riskTierStr === "warning" ? "medium" : "low"));
+        badge.className = `badge ${badgeTier}`;
+        badge.innerText = badgeTier.toUpperCase();
     }
 
     const tbody = document.getElementById("eventRows");
     tbody.innerHTML = "";
 
-    if (events.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="6" style="text-align:center; padding:24px; color:var(--muted);">
-                    No conjunctions below ${CONJUNCTION_SCREEN_KM} km detected in the next 24 hours.
-                    ${closestOverall ? `<br><small style="color:var(--cyan);">Closest approach: ${closestOverall.objA} ↔ ${closestOverall.objB} (${closestOverall.dist} km)</small>` : ''}
-                </td>
-            </tr>
-        `;
-    } else {
-        events.forEach(event => {
-            const tr = document.createElement("tr");
-            tr.innerHTML = `
-                <td class="obj">${event.objA}</td>
-                <td class="obj">${event.objB}</td>
-                <td><b style="font-family:var(--font-mono); color:${event.risk === 'HIGH' ? 'var(--red)' : '#fff'};">${event.dist} km</b></td>
-                <td><span style="font-family:var(--font-mono);">${event.tca}</span></td>
-                <td><span style="font-family:var(--font-mono);">${event.relVel} km/s</span></td>
-                <td><span class="badge ${event.risk.toLowerCase()}">${event.risk}</span></td>
-            `;
-            tbody.appendChild(tr);
-        });
-    }
+    conjunctionsList.forEach(event => {
+        const objAName = event.objA.name || event.objA;
+        const objBName = event.objB.name || event.objB;
+        const distNum = typeof event.missDistanceKm === "number" ? event.missDistanceKm : Number(event.dist);
+        const velNum = typeof event.relVelKmS === "number" ? event.relVelKmS : Number(event.relVel);
+        const tcaStr = formatTcaRemaining(event.tcaTimestamp || event.tca);
+        const rawTier = (event.riskTier || event.risk || "nominal").toLowerCase();
+        const displayTier = rawTier === "critical" || rawTier === "high" ? "HIGH" : (rawTier === "warning" || rawTier === "medium" ? "MEDIUM" : "LOW");
 
-    document.getElementById("conjunctionCount").innerText = events.length > 0
-        ? `Next 24h • ${events.length} conjunctions detected`
-        : `Next 24h • 0 critical conjunctions • closest ${closestOverall ? closestOverall.dist + ' km' : '—'}`;
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td class="obj">${objAName}</td>
+            <td class="obj">${objBName}</td>
+            <td><b style="font-family:var(--font-mono); color:${displayTier === 'HIGH' ? 'var(--red)' : '#fff'};">${distNum.toFixed(2)} km</b></td>
+            <td><span style="font-family:var(--font-mono);" class="live-tca-cell" data-tca="${event.tcaTimestamp || ''}">${tcaStr}</span></td>
+            <td><span style="font-family:var(--font-mono);">${velNum.toFixed(2)} km/s</span></td>
+            <td><span class="badge ${displayTier.toLowerCase()}">${displayTier}</span></td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    document.getElementById("conjunctionCount").innerText = `Next 24h • ${conjunctionsList.length} orbital conjunctions tracked`;
+
+    // Real-time ticking for TCA countdowns
+    if (liveCountdownInterval) clearInterval(liveCountdownInterval);
+    liveCountdownInterval = setInterval(() => {
+        if (!globalConjunctions || globalConjunctions.length === 0) return;
+        const first = globalConjunctions[0];
+        if (first && first.tcaTimestamp) {
+            const formatted = formatTcaRemaining(first.tcaTimestamp);
+            document.getElementById("cardNextTca").innerText = formatted;
+            document.getElementById("riskTca").innerText = formatted;
+        }
+        document.querySelectorAll(".live-tca-cell").forEach(cell => {
+            const tcaIso = cell.getAttribute("data-tca");
+            if (tcaIso) {
+                cell.textContent = formatTcaRemaining(tcaIso);
+            }
+        });
+    }, 1000);
 }
 
 // ============================================================
@@ -2481,6 +2480,7 @@ async function initDashboard() {
     initThreeScene();
 
     try {
+        // 1. Fetch TLEs for 3D Globe Rendering
         const satData = await fetchCelesTrakData();
 
         if (!Array.isArray(satData) || satData.length === 0) {
@@ -2513,8 +2513,8 @@ async function initDashboard() {
         // Render 3D Orbits in Three.js
         render3DOrbits(pickSatelliteSubset(parsedSatellites, MAX_ORBIT_SATS));
 
-        // Conjunctions & Risk calculation
-        const conjunctions = computeConjunctions(pickSatelliteSubset(parsedSatellites, MAX_CONJUNCTION_SATS));
+        // 2. Fetch Precomputed Conjunctions from MongoDB Backend (Consistent across all pages & refreshes)
+        const conjunctions = await fetchLiveConjunctions();
         renderConjunctions(conjunctions);
 
     } catch (error) {
