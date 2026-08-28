@@ -132,7 +132,7 @@ td{color:#cbd7e8}tr:hover{background:#101a2b}
 
   <div class="grid">
     <section class="panel">
-      <div class="panelTitle"><strong>Orbital Environment</strong><span>Propagated +72h • ECI frame</span></div>
+      <div class="panelTitle"><strong>Orbital Environment</strong><!--<span>Propagated +3h • ECI frame</span>--><span>Propagated +3h • TEME frame</span></div>
       <div id="orbit"></div>
       <div class="footerNote">Demo visualization • Positions propagated from TLE data using SGP4 • distances shown in km</div>
     </section>
@@ -215,7 +215,8 @@ td{color:#cbd7e8}tr:hover{background:#101a2b}
   <section class="panel events">
     <div class="panelTitle">
       <strong>Upcoming Conjunctions</strong>
-      <span>Next 72 hours • 14 detected</span>
+<!--      <span>Next 72 hours • 14 detected</span>    -->
+      <span id="eventSummary">Next 72 hours</span>
     </div>
     
 <!--    <div class="panelTitle"><strong>Upcoming Conjunctions</strong><span>Next 24 hours • 37 detected</span></div>    -->
@@ -451,25 +452,32 @@ fetch("dashboard_data.json")
   })
   .then(data => {
 
-    // ==========================================
-    // STEP 2: SUMMARY CARDS
-    // ==========================================
+      // ==========================================
+      // STEP 2: SUMMARY CARDS
+      // ==========================================
 
-    document.getElementById("trackedObjects").textContent =
-      data.summary.tracked_objects.toLocaleString();
+      document.getElementById("trackedObjects").textContent =
+        data.summary.tracked_objects.toLocaleString();
 
-    document.getElementById("conjunctionCount").textContent =
-      data.summary.conjunctions_flagged;
+      document.getElementById("conjunctionCount").textContent =
+        data.summary.conjunctions_flagged;
 
-    document.getElementById("highRiskCount").textContent =
-      String(data.summary.high_risk_count).padStart(2, "0");
-      
-        // ==========================================
-        // STEP 3: REAL RISK MONITOR
-        // ==========================================
+      document.getElementById("highRiskCount").textContent =
+        String(data.summary.high_risk_count).padStart(2, "0");
 
-        const top = data.summary.top_event;
+//      document.getElementById("eventSummary").textContent =
+//        "Next 72 hours • " + data.summary.conjunctions_flagged + " detected";
+      document.getElementById("eventSummary").textContent =
+        "Next " + data.metadata.window_hours + " hours • " +
+        data.summary.conjunctions_flagged + " detected";
 
+
+      // ==========================================
+      // STEP 3: REAL RISK MONITOR
+      // ==========================================
+
+      const top = data.summary.top_event;
+    
         if (top) {
 
           // Display Pc inside the risk circle

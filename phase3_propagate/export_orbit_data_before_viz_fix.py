@@ -13,22 +13,8 @@ OUTPUT_FILE = "../dashboard/orbit_data.json"
 
 DEMO_EPOCH = datetime(2026, 8, 26, 12, 0, 0)
 
-# ============================================================
-# VISUALIZATION CONFIGURATION
-# ============================================================
-
-# Keep the conjunction-analysis window separate from
-# the visualization window.
-#
-# Conjunction detection still uses 72 hours elsewhere.
-# The dashboard orbit visualization only needs a short,
-# densely sampled window to produce smooth orbital curves.
-
-VIZ_PROPAGATION_HOURS = 3
-VIZ_STEP_SECONDS = 60
-
-#PROPAGATION_HOURS = 72
-#STEP_MINUTES = 60
+PROPAGATION_HOURS = 72
+STEP_MINUTES = 60
 
 # Objects to visualize.
 # These are selected from the actual conjunction dataset.
@@ -105,10 +91,8 @@ orbit_data = []
 
 print("===== ORBIT DATA EXPORT =====")
 print(f"Demo epoch : {DEMO_EPOCH.isoformat()}")
-#print(f"Window     : {PROPAGATION_HOURS} hours")
-#print(f"Step       : {STEP_MINUTES} minutes")
-print(f"Viz window : {VIZ_PROPAGATION_HOURS} hours")
-print(f"Viz step   : {VIZ_STEP_SECONDS} seconds")
+print(f"Window     : {PROPAGATION_HOURS} hours")
+print(f"Step       : {STEP_MINUTES} minutes")
 print()
 
 
@@ -121,25 +105,16 @@ for norad_id in OBJECTS:
 
     positions = []
 
-    # total_steps = int(
-    #     PROPAGATION_HOURS * 60 / STEP_MINUTES
-    # ) + 1
-
-    # for i in range(total_steps):
-
-    #     t = DEMO_EPOCH + timedelta(
-    #         minutes=i * STEP_MINUTES
-    #     )
     total_steps = int(
-        VIZ_PROPAGATION_HOURS * 3600 / VIZ_STEP_SECONDS
+        PROPAGATION_HOURS * 60 / STEP_MINUTES
     ) + 1
 
     for i in range(total_steps):
 
         t = DEMO_EPOCH + timedelta(
-         seconds=i * VIZ_STEP_SECONDS
+            minutes=i * STEP_MINUTES
         )
-       
+
         position = propagate(sat, t)
 
         if position is None:
@@ -175,10 +150,8 @@ output = {
     "metadata": {
         "demo_mode": True,
         "demo_epoch": DEMO_EPOCH.isoformat(),
-#        "window_hours": PROPAGATION_HOURS,
-#        "step_minutes": STEP_MINUTES,
-        "window_hours": VIZ_PROPAGATION_HOURS,
-        "step_seconds": VIZ_STEP_SECONDS,
+        "window_hours": PROPAGATION_HOURS,
+        "step_minutes": STEP_MINUTES,
         "frame": "TEME",
         "source": "SGP4 propagation from Phase 2 TLE catalog"
     },
