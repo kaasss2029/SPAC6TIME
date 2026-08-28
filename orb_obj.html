@@ -683,7 +683,7 @@
             "https://celestrak.org/NORAD/elements/gp.php?GROUP=ACTIVE&FORMAT=TLE";
 
         const BACKEND_TLE_API_URL =
-            "http://localhost:4000/api/tle/latest";
+            "/api/tle/latest";
 
         const ISS_NORAD_ID = 25544;
 
@@ -811,39 +811,42 @@
         }
 
         async function fetchTLEData() {
-            // 1. Fresh cache check
-            const freshCache = readCache(CACHE_MAX_AGE);
-            if (freshCache) {
-                console.log("Using cached CelesTrak TLE catalog");
-                const parsed = parseTLE(freshCache);
-                if (parsed.length > 0) {
-                    setSystemStatus("ONLINE", "Cached CelesTrak TLE", "green");
-                    setDataSourceLabel("CELESTRAK (CACHE)");
-                    return parsed;
-                }
-            }
-
-            // 2. Local Backend
-            if (BACKEND_TLE_API_URL && window.location.protocol !== "file:") {
+            // 1. Local Backend (MongoDB API / active.tle)
+            if (window.location.protocol !== "file:") {
                 try {
-                    const resp = await fetch(BACKEND_TLE_API_URL, { cache: "no-store" });
+                    const resp = await fetch(BACKEND_TLE_API_URL || "/api/tle/latest", { cache: "no-store" });
                     if (resp.ok) {
-                        const data = await resp.json();
-                        if (Array.isArray(data.satellites) && data.satellites.length > 0) {
-                            const tleText = data.satellites
-                                .map(s => `${s.name}\n${s.line1}\n${s.line2}`)
-                                .join("\n");
-                            const parsed = parseTLE(tleText);
-                            if (parsed.length > 0) {
-                                cacheData(tleText);
-                                setSystemStatus("ONLINE", "Connected to Local Backend", "green");
-                                setDataSourceLabel("LOCAL BACKEND API");
-                                return parsed;
-                            }
+                        const rawText = await resp.text();
+                        const parsed = parseTLE(rawText);
+                        if (parsed.length > 0) {
+                            cacheData(rawText);
+                            setSystemStatus("ONLINE", `Connected to MongoDB (${parsed.length} objects)`, "green");
+                            setDataSourceLabel("MONGODB API");
+                            return parsed;
                         }
                     }
                 } catch (err) {
-                    console.warn("Local backend check skipped, proceeding to CelesTrak:", err);
+                    try {
+                        const fileText = await fetchText("active.tle", 15000);
+                        const parsed = parseTLE(fileText);
+                        if (parsed.length > 0) {
+                            cacheData(fileText);
+                            setSystemStatus("ONLINE", `Local File (${parsed.length} objects)`, "green");
+                            setDataSourceLabel("LOCAL ACTIVE.TLE");
+                            return parsed;
+                        }
+                    } catch (fe) {}
+                }
+            }
+
+            // 2. Fresh cache check
+            const freshCache = readCache(CACHE_MAX_AGE);
+            if (freshCache) {
+                const parsed = parseTLE(freshCache);
+                if (parsed.length > 500) {
+                    setSystemStatus("ONLINE", "Cached CelesTrak TLE", "green");
+                    setDataSourceLabel("CELESTRAK (CACHE)");
+                    return parsed;
                 }
             }
 

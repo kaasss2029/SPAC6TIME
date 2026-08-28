@@ -911,19 +911,19 @@ async function fetchText(url, timeoutMs = 10000) {
 }
 
 async function fetchCelesTrakData() {
-    // 1. Check local cache
+    // 1. Check local cache (only if fresh and full catalog)
     try {
         const cached = localStorage.getItem(CACHE_KEY);
         const cachedTime = Number(localStorage.getItem(CACHE_TIME_KEY) || 0);
         if (cached) {
             const parsed = parseTleCatalog(cached);
-            if (parsed.length > 50 && (Date.now() - cachedTime) < CACHE_MAX_AGE) {
+            if (parsed.length > 10000 && (Date.now() - cachedTime) < CACHE_MAX_AGE) {
                 return { satellites: parsed, source: 'CACHED', count: parsed.length };
             }
         }
     } catch (e) {}
 
-    // 2. Fetch fresh from Live CelesTrak
+    // 2. Fetch fresh from Backend API / Network
     try {
         return await fetchFromNetwork();
     } catch(err) {
@@ -944,6 +944,10 @@ async function fetchCelesTrakData() {
 
 async function fetchFromNetwork() {
     const urlsToTry = [
+        // Local MongoDB Backend API
+        '/api/tle/latest',
+        // Local active.tle static file
+        'active.tle',
         // Fast CORS Proxy with Active CelesTrak (Primary)
         'https://corsproxy.io/?' + encodeURIComponent(CELESTRAK_URL),
         // Direct CelesTrak (works in standard HTTP/server environments)
@@ -958,15 +962,15 @@ async function fetchFromNetwork() {
 
     for (const url of urlsToTry) {
         try {
-            const text = await fetchText(url, 12000);
+            const text = await fetchText(url, 15000);
             const parsed = parseTleCatalog(text);
             if (parsed.length > 20) {
                 try {
                     localStorage.setItem(CACHE_KEY, text);
                     localStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
                 } catch(e) {}
-                const isDirect = url === CELESTRAK_URL;
-                return { satellites: parsed, source: isDirect ? 'LIVE (DIRECT)' : 'LIVE (CELESTRAK TLE)', count: parsed.length };
+                const isLocal = url.startsWith('/') || url === 'active.tle';
+                return { satellites: parsed, source: isLocal ? 'MONGODB / LOCAL TLE' : 'LIVE (CELESTRAK TLE)', count: parsed.length };
             }
         } catch(e) {
             console.warn('Fetch attempt failed for', url, e.message);
