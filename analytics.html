@@ -8,6 +8,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <!-- satellite.js -->
     <script src="https://cdn.jsdelivr.net/npm/satellite.js@6.0.2/dist/satellite.min.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         :root {
             --bg: #070b14;
@@ -40,27 +42,162 @@
 
         .app { display: flex; min-height: 100vh; }
 
-        /* ── Sidebar ── */
+        /* ── Sidebar (Hidable - Default Hidden) ── */
         .sidebar {
-            width: 230px;
-            background: rgba(7, 11, 20, .92);
-            backdrop-filter: blur(12px);
+            width: 250px;
+            background: rgba(7, 11, 20, 0.96);
             border-right: 1px solid var(--line);
             padding: 24px 16px;
             position: fixed;
             inset: 0 auto 0 0;
+            z-index: 1000;
+            transform: translateX(-100%);
+            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 12px 0 40px rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             display: flex;
             flex-direction: column;
             height: 100vh;
-            z-index: 50;
         }
-        .logo { display: flex; align-items: center; gap: 11px; font-weight: 800; font-size: 19px; margin: 4px 10px 32px; letter-spacing: -0.5px; }
-        .logoMark { width: 34px; height: 34px; border: 1px solid #2b7190; border-radius: 11px; display: grid; place-items: center; color: var(--cyan); box-shadow: 0 0 24px #46d9ff22; }
-        .navTitle { font-size: 10px; color: #50617a; letter-spacing: 1.6px; margin: 20px 12px 8px; text-transform: uppercase; font-weight: 700; }
-        .nav a { display: flex; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 10px; color: var(--muted); text-decoration: none; font-size: 13px; margin: 3px 0; transition: all 0.18s ease; }
-        .nav a:hover { background: #142238; color: #fff; transform: translateX(2px); }
-        .nav a.active { background: #142238; color: #fff; box-shadow: inset 3px 0 var(--cyan); font-weight: 600; }
-        .nav a b { font-size: 15px; width: 18px; text-align: center; }
+
+        .sidebar.open {
+            transform: translateX(0);
+        }
+
+        .sidebar-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(4, 7, 14, 0.65);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .sidebar-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .sidebarHeader {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            font-weight: 800;
+            font-size: 19px;
+            letter-spacing: -0.5px;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .logoMark {
+            width: 34px;
+            height: 34px;
+            border: 1px solid #2b7190;
+            border-radius: 11px;
+            display: grid;
+            place-items: center;
+            color: var(--cyan);
+            box-shadow: 0 0 24px #46d9ff22;
+        }
+
+        .sidebarCloseBtn {
+            background: transparent;
+            border: 1px solid var(--line);
+            color: var(--muted);
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: grid;
+            place-items: center;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .sidebarCloseBtn:hover {
+            color: var(--cyan);
+            border-color: var(--cyan);
+            background: rgba(70, 217, 255, 0.1);
+        }
+
+        .sidebarToggleBtn {
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+            background: rgba(13, 21, 36, 0.85);
+            border: 1px solid var(--line);
+            color: var(--text);
+            padding: 9px 15px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+            margin-right: 16px;
+        }
+
+        .sidebarToggleBtn:hover {
+            border-color: var(--cyan);
+            color: var(--cyan);
+            box-shadow: 0 0 16px rgba(70, 217, 255, 0.25);
+            transform: translateY(-1px);
+        }
+
+        .navTitle {
+            font-size: 10px;
+            color: #50617a;
+            letter-spacing: 1.6px;
+            margin: 22px 12px 9px;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+
+        .nav a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            margin: 4px 0;
+            border-radius: 9px;
+            text-decoration: none;
+            color: var(--muted);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .nav a:hover {
+            background: #142238;
+            color: var(--text);
+        }
+
+        .nav a.active {
+            background: #142238;
+            color: #fff;
+            box-shadow: inset 2px 0 var(--cyan);
+            border-left: 3px solid var(--cyan);
+            font-weight: 600;
+        }
+
+        .nav b {
+            font-size: 15px;
+            width: 18px;
+            text-align: center;
+            display: inline-block;
+        }
 
         .system {
             margin-top: auto;
@@ -68,15 +205,42 @@
             border: 1px solid var(--line);
             border-radius: 12px;
             background: #0c1320;
+            margin-bottom: 8px;
         }
-        .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px var(--green); margin-right: 7px; }
-        .dot.pulse { animation: pulseDot 1.8s infinite; }
-        @keyframes pulseDot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.85); } }
+
+        .dot {
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 10px var(--green);
+            margin-right: 7px;
+        }
+
+        .dot.orange {
+            background: var(--orange);
+            box-shadow: 0 0 10px var(--orange);
+        }
+
+        .dot.red {
+            background: var(--red);
+            box-shadow: 0 0 10px var(--red);
+        }
+
+        .dot.pulse {
+            animation: pulseDot 1.8s infinite;
+        }
+
+        @keyframes pulseDot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.85); }
+        }
 
         /* ── Main Layout ── */
         .main {
-            margin-left: 230px;
-            width: calc(100% - 230px);
+            margin-left: 0;
+            width: 100%;
             padding: 24px 32px 48px;
             min-height: 100vh;
         }
@@ -298,6 +462,18 @@
         }
         .chartWrap canvas { width: 100% !important; max-height: 290px; }
 
+        /* Extended Height for Keplerian Semi-Log Scatter Chart */
+        .chartWrap-keplerian {
+            min-height: 520px !important;
+            height: 520px !important;
+            padding: 18px 22px;
+        }
+        .chartWrap-keplerian canvas {
+            width: 100% !important;
+            max-height: 480px !important;
+            height: 480px !important;
+        }
+
         /* ── Orbital Data Table Section ── */
         .tablePanel {
             background: rgba(10, 17, 29, 0.9);
@@ -350,15 +526,38 @@
             padding: 2px 7px;
             border-radius: 4px;
             font-weight: 600;
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
         }
         .tag-leo { background: rgba(70, 217, 255, 0.15); color: var(--cyan); border: 1px solid rgba(70, 217, 255, 0.3); }
         .tag-meo { background: rgba(91, 140, 255, 0.15); color: var(--blue); border: 1px solid rgba(91, 140, 255, 0.3); }
         .tag-geo { background: rgba(255, 173, 77, 0.15); color: var(--orange); border: 1px solid rgba(255, 173, 77, 0.3); }
         .tag-heo { background: rgba(199, 125, 255, 0.15); color: var(--purple); border: 1px solid rgba(199, 125, 255, 0.3); }
-        .tag-sat { background: rgba(66, 230, 164, 0.12); color: var(--green); }
-        .tag-deb { background: rgba(255, 82, 109, 0.15); color: var(--red); }
-        .tag-rb  { background: rgba(255, 173, 77, 0.15); color: var(--orange); }
+        
+        /* 4 Segment Theme Colors */
+        .tag-station { background: rgba(255, 209, 102, 0.18); color: var(--yellow); border: 1px solid rgba(255, 209, 102, 0.45); }
+        .tag-constellation { background: rgba(199, 125, 255, 0.18); color: var(--purple); border: 1px solid rgba(199, 125, 255, 0.45); }
+        .tag-active { background: rgba(70, 217, 255, 0.18); color: var(--cyan); border: 1px solid rgba(70, 217, 255, 0.45); }
+        .tag-debris { background: rgba(255, 82, 109, 0.18); color: var(--red); border: 1px solid rgba(255, 82, 109, 0.45); }
+
+        .segment-dot {
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            margin-right: 6px;
+            vertical-align: middle;
+            flex-shrink: 0;
+        }
+        .segment-dot.station { background: var(--yellow); box-shadow: 0 0 6px rgba(255, 209, 102, 0.9); }
+        .segment-dot.constellation { background: var(--purple); box-shadow: 0 0 6px rgba(199, 125, 255, 0.9); }
+        .segment-dot.active { background: var(--cyan); box-shadow: 0 0 6px rgba(70, 217, 255, 0.9); }
+        .segment-dot.debris { background: var(--red); box-shadow: 0 0 6px rgba(255, 82, 109, 0.9); }
+
+        .name-station { color: #ffe699 !important; font-weight: 700; }
+        .name-constellation { color: #e2b3ff !important; font-weight: 600; }
+        .name-active { color: #c0eeff !important; font-weight: 600; }
+        .name-debris { color: #ff99a8 !important; font-weight: 600; }
 
         .tableFooter {
             padding: 10px 18px;
@@ -479,9 +678,6 @@
             .cards { grid-template-columns: repeat(3, 1fr); }
         }
         @media(max-width:1050px) {
-            .sidebar { width: 72px; }
-            .logo span, .nav a span, .navTitle, .system { display: none; }
-            .main { margin-left: 72px; width: calc(100% - 72px); padding: 20px; }
             .cards { grid-template-columns: repeat(2, 1fr); }
             .chartGrid { grid-template-columns: 1fr; }
             .panel.fullWidth { grid-column: span 1; }
@@ -491,18 +687,228 @@
             .top { flex-direction: column; }
             .filterBar { flex-direction: column; align-items: stretch; }
         }
+        @media(max-width:1300px) {
+            .cards { grid-template-columns: repeat(3, 1fr); }
+        }
+        @media(max-width:1050px) {
+            .cards { grid-template-columns: repeat(2, 1fr); }
+            .chartGrid { grid-template-columns: 1fr; }
+            .panel.fullWidth { grid-column: span 1; }
+        }
+        @media(max-width:650px) {
+            .cards { grid-template-columns: 1fr; }
+            .top { flex-direction: column; }
+            .filterBar { flex-direction: column; align-items: stretch; }
+        }
+
+        /* ============================================================
+           FAST SPACE-THEME WARP TRANSITION OVERLAY
+           ============================================================ */
+        .space-warp-loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 999999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at center, rgba(8, 16, 32, 0.96) 0%, rgba(3, 6, 15, 0.99) 100%);
+            backdrop-filter: blur(22px);
+            -webkit-backdrop-filter: blur(22px);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.24s cubic-bezier(0.16, 1, 0.3, 1), transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+            transform: scale(1.02);
+        }
+
+        .space-warp-loader.active {
+            opacity: 1;
+            pointer-events: all;
+            transform: scale(1);
+        }
+
+        .space-warp-bg {
+            position: absolute;
+            inset: 0;
+            background: 
+                radial-gradient(1px 1px at 20% 30%, rgba(255, 255, 255, 0.8), rgba(0,0,0,0)),
+                radial-gradient(1.5px 1.5px at 40% 70%, rgba(70, 217, 255, 0.9), rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 60% 20%, rgba(255, 209, 102, 0.8), rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 80% 60%, rgba(70, 217, 255, 0.9), rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 90% 90%, rgba(255, 255, 255, 0.7), rgba(0,0,0,0));
+            background-size: 250px 250px;
+            opacity: 0.6;
+            animation: warpStarMotion 12s linear infinite;
+        }
+
+        @keyframes warpStarMotion {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-250px); }
+        }
+
+        .space-warp-hud {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            z-index: 2;
+        }
+
+        .space-gyro-ring {
+            position: relative;
+            width: 76px;
+            height: 76px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .space-gyro-outer {
+            position: absolute;
+            inset: 0;
+            border: 2px dashed rgba(70, 217, 255, 0.7);
+            border-top-color: var(--cyan, #46d9ff);
+            border-bottom-color: #ffd166;
+            border-radius: 50%;
+            animation: gyroSpin 1.4s linear infinite;
+            box-shadow: 0 0 20px rgba(70, 217, 255, 0.35);
+        }
+
+        .space-gyro-inner {
+            position: absolute;
+            inset: 9px;
+            border: 1.5px solid rgba(70, 217, 255, 0.3);
+            border-left-color: #46d9ff;
+            border-right-color: #46d9ff;
+            border-radius: 50%;
+            animation: gyroSpinRev 0.9s linear infinite;
+        }
+
+        .space-gyro-core {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(70, 217, 255, 0.15);
+            border: 1px solid rgba(70, 217, 255, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #46d9ff;
+            font-size: 13px;
+            box-shadow: 0 0 16px rgba(70, 217, 255, 0.5);
+            animation: corePulse 0.8s ease-in-out infinite alternate;
+        }
+
+        @keyframes gyroSpin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes gyroSpinRev {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(-360deg); }
+        }
+
+        @keyframes corePulse {
+            0% { transform: scale(0.92); filter: drop-shadow(0 0 4px #46d9ff); }
+            100% { transform: scale(1.08); filter: drop-shadow(0 0 14px #46d9ff); }
+        }
+
+        .space-warp-title {
+            font-family: monospace;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 2.2px;
+            color: #fff;
+            text-transform: uppercase;
+            text-shadow: 0 0 12px rgba(70, 217, 255, 0.6);
+        }
+
+        .space-warp-status {
+            font-family: monospace;
+            font-size: 10px;
+            letter-spacing: 1.2px;
+            color: var(--cyan, #46d9ff);
+            height: 14px;
+            font-weight: 600;
+            text-shadow: 0 0 8px rgba(70, 217, 255, 0.5);
+        }
+
+        .space-warp-bar-wrap {
+            width: 190px;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 999px;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid rgba(70, 217, 255, 0.2);
+        }
+
+        .space-warp-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #46d9ff, #ffd166);
+            box-shadow: 0 0 10px #46d9ff;
+            transition: width 0.26s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .space-warp-coords {
+            display: flex;
+            gap: 12px;
+            font-family: monospace;
+            font-size: 9px;
+            color: #647690;
+            letter-spacing: 0.8px;
+        }
     </style>
 </head>
 
 <body>
+
+<!-- SPACE-THEME FAST WARP TRANSITION OVERLAY -->
+<div class="space-warp-loader active" id="spaceWarpLoader">
+    <div class="space-warp-bg"></div>
+    <div class="space-warp-hud">
+        <div class="space-gyro-ring">
+            <div class="space-gyro-outer"></div>
+            <div class="space-gyro-inner"></div>
+            <div class="space-gyro-core">
+                <i class="fa-solid fa-chart-line" id="spaceWarpIcon"></i>
+            </div>
+        </div>
+        <div class="space-warp-title">ORBITGUARD TELEMETRY</div>
+        <div class="space-warp-status" id="spaceWarpStatus">COMPILING KEPLERIAN ANALYTICS...</div>
+        <div class="space-warp-bar-wrap">
+            <div class="space-warp-bar" id="spaceWarpBar" style="width: 25%;"></div>
+        </div>
+        <div class="space-warp-coords">
+            <span>RA: 18h 36m</span>
+            <span>DEC: +38° 47'</span>
+            <span>EPOCH: J2000</span>
+        </div>
+    </div>
+</div>
+
+<!-- SIDEBAR OVERLAY -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
 <div class="app">
 
     <!-- SIDEBAR -->
-    <aside class="sidebar">
-        <a href="index.html" class="logo" style="text-decoration:none; color:inherit; cursor:pointer;">
-            <div class="logoMark">◉</div>
-            <span>OrbitGuard</span>
-        </a>
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebarHeader">
+            <a href="index.html" class="logo" style="text-decoration:none; color:inherit; cursor:pointer;">
+                <div class="logoMark">◉</div>
+                <span>OrbitGuard</span>
+            </a>
+            <button class="sidebarCloseBtn" id="sidebarCloseBtn" title="Close Menu">✕</button>
+        </div>
 
         <div class="navTitle">Monitor</div>
         <nav class="nav">
@@ -530,11 +936,16 @@
 
         <!-- HEADER -->
         <div class="top">
-            <div>
-                <div class="eyebrow">
-                    <span>⚡</span> Space Environment & Collision Risk Intelligence
+            <div style="display:flex; align-items:center;">
+                <button class="sidebarToggleBtn" id="sidebarToggleBtn" title="Toggle Navigation Menu">
+                    <span>☰ Menu</span>
+                </button>
+                <div>
+                    <div class="eyebrow">
+                        <span>⚡</span> Space Environment & Collision Risk Intelligence
+                    </div>
+                    <h1>Orbital Analytics Dashboard</h1>
                 </div>
-                <h1>Orbital Analytics Dashboard</h1>
             </div>
             <div class="topRight">
                 <div class="badge-live" id="sourceLabel">
@@ -554,6 +965,12 @@
 
         <!-- FILTER & CONTROLS BAR -->
         <div class="filterBar">
+            <div class="filterGroup">
+                <span class="filterLabel">Distribution:</span>
+                <button class="chip active" id="chipStratified" onclick="setDistributionMode('STRATIFIED', this)">🌐 Stratified (200km – 100k km [35 Sats])</button>
+                <button class="chip" id="chipAll" onclick="setDistributionMode('ALL', this)">All Catalog Objects</button>
+            </div>
+
             <div class="filterGroup">
                 <span class="filterLabel">Regime:</span>
                 <button class="chip active" data-regime="ALL" onclick="setRegimeFilter('ALL', this)">All</button>
@@ -632,47 +1049,54 @@
             <div class="spinner"></div>
             <div>Fetching CelesTrak active catalog & computing orbital analytics...</div>
         </div>
-                <!-- INTERACTIVE ORBITAL OBJECTS TABLE -->
-                <div class="tablePanel" id="tableContainer" style="display:none;">
-                    <div class="tableHeader">
-                        <div style="font-size:13px;font-weight:700;">
-                            <span>📋</span> Filtered Orbital Objects Sample (<span id="tableMatchCount">0</span> objects)
-                        </div>
-                        <div style="font-size:11px;color:var(--muted)">Click any row for detailed Keplerian orbital telemetry</div>
+        <!-- INTERACTIVE ORBITAL OBJECTS TABLE -->
+        <div class="tablePanel" id="tableContainer" style="display:none;">
+            <div class="tableHeader" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                <div>
+                    <div style="font-size:13px;font-weight:700;">
+                        <span>📋</span> Filtered Orbital Objects Sample (<span id="tableMatchCount">0</span> objects)
                     </div>
-                    <div class="tableWrap">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th onclick="sortTable('noradId')">NORAD ID ⬍</th>
-                                    <th onclick="sortTable('name')">Name ⬍</th>
-                                    <th onclick="sortTable('type')">Type ⬍</th>
-                                    <th onclick="sortTable('regime')">Regime ⬍</th>
-                                    <th onclick="sortTable('altitude')">Mean Alt (km) ⬍</th>
-                                    <th onclick="sortTable('perigee')">Perigee (km) ⬍</th>
-                                    <th onclick="sortTable('apogee')">Apogee (km) ⬍</th>
-                                    <th onclick="sortTable('inclination')">Inclination (°) ⬍</th>
-                                    <th onclick="sortTable('period')">Period (min) ⬍</th>
-                                    <th onclick="sortTable('velocity')">Velocity (km/s) ⬍</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tableBody">
-                                <!-- Rendered dynamically -->
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="tableFooter">
-                        <div id="tablePageInfo">Showing 1-20 of 0</div>
-                        <div class="pagination">
-                            <button class="pageBtn" id="btnPrevPage" onclick="changePage(-1)">← Previous</button>
-                            <button class="pageBtn" id="btnNextPage" onclick="changePage(1)">Next →</button>
-                        </div>
-                    </div>
+                    <div style="font-size:11px;color:var(--muted)">Click any row for detailed Keplerian orbital telemetry</div>
                 </div>
+                <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center;">
+                    <span class="tag tag-station"><span class="segment-dot station"></span>Space Stations</span>
+                    <span class="tag tag-constellation"><span class="segment-dot constellation"></span>Mega-Constellations</span>
+                    <span class="tag tag-active"><span class="segment-dot active"></span>Active Satellites</span>
+                    <span class="tag tag-debris"><span class="segment-dot debris"></span>Debris / Rockets</span>
+                </div>
+            </div>
+            <div class="tableWrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th onclick="sortTable('noradId')">NORAD ID ⬍</th>
+                            <th onclick="sortTable('name')">Name ⬍</th>
+                            <th onclick="sortTable('type')">Type ⬍</th>
+                            <th onclick="sortTable('regime')">Regime ⬍</th>
+                            <th onclick="sortTable('altitude')">Mean Alt (km) ⬍</th>
+                            <th onclick="sortTable('perigee')">Perigee (km) ⬍</th>
+                            <th onclick="sortTable('apogee')">Apogee (km) ⬍</th>
+                            <th onclick="sortTable('inclination')">Inclination (°) ⬍</th>
+                            <th onclick="sortTable('period')">Period (min) ⬍</th>
+                            <th onclick="sortTable('velocity')">Velocity (km/s) ⬍</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <!-- Rendered dynamically -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="tableFooter">
+                <div id="tablePageInfo">Showing 1-20 of 0</div>
+                <div class="pagination">
+                    <button class="pageBtn" id="btnPrevPage" onclick="changePage(-1)">← Previous</button>
+                    <button class="pageBtn" id="btnNextPage" onclick="changePage(1)">Next →</button>
+                </div>
+            </div>
+        </div>
 
         <!-- CHARTS GRID (10 Analytics Panels) -->
         <div class="chartGrid" id="chartsContainer" style="display:none;">
-            
 
             <!-- 1. Orbital Regime Distribution -->
             <div class="panel">
@@ -710,13 +1134,13 @@
                 <div class="chartWrap"><canvas id="chartInclination"></canvas></div>
             </div>
 
-            <!-- 5. Period vs Altitude (Keplerian Relation) -->
+            <!-- 5. Period vs Altitude (Keplerian Relation - Elongated Y-Axis) -->
             <div class="panel fullWidth">
                 <div class="panelTitle">
                     <strong><span>📈</span> Orbital Period vs. Semi-Major Altitude (Kepler's 3rd Law)</strong>
-                    <span>Interactive Scatter (Period in min × Altitude in km)</span>
+                    <span>Interactive Scatter: Linear Orbital Period (min) × Linear Altitude (km)</span>
                 </div>
-                <div class="chartWrap" style="min-height:320px;"><canvas id="chartScatter"></canvas></div>
+                <div class="chartWrap chartWrap-keplerian"><canvas id="chartScatter"></canvas></div>
             </div>
 
             <!-- 6. Megaconstellation & Operator Share -->
@@ -826,52 +1250,204 @@ const CACHE_MAX_AGE = 60 * 60 * 1000; // 1 hour
 let globalSatellites = [];
 let parsedObjects = [];
 let filteredObjects = [];
+let currentDistributionMode = 'STRATIFIED'; // 'STRATIFIED' (200km–100,000km wide distribution) or 'ALL'
 let currentRegimeFilter = 'ALL';
 let currentTypeFilter = 'ALL';
 let searchQuery = '';
 let currentPage = 1;
-const pageSize = 25;
+const pageSize = 35; // Show full 30-35 distributed satellites on page 1
 let sortCol = 'altitude';
 let sortAsc = true;
 let chartInstances = {};
 
-// Fallback high-fidelity dataset if completely offline
+// Fallback high-fidelity dataset spanning 200 km to 100,000+ km
 const FALLBACK_SAMPLE_TLE = `ISS (ZARYA)
-1 25544U 98067A   24056.54321234  .00016717  00000-0  10270-3 0  9993
-2 25544  51.6416 112.4321 0004567  89.1234 271.0123 15.49876543441234
+1 25544U 98067A   26058.48270833  .00016717  00000+0  10270-3 0  9028
+2 25544  51.6416 112.5642 0005478 284.8143 175.2952 15.49889419441238
+TIANGONG (CSS)
+1 48274U 21035A   26058.46197917  .00021456  00000+0  22145-3 0  9993
+2 48274  41.4721  74.3219 0004128 118.2341 241.9125 15.58912345274123
+NAUKA (ISS MODULE)
+1 49044U 21066A   26058.48000000  .00018500  00000+0  12000-3 0  9994
+2 49044  51.6430 115.1234 0004850 280.1234 180.0123 15.49512345164120
+KIBO (JEM MODULE)
+1 32958U 08027A   26058.48000000  .00016500  00000+0  10100-3 0  9995
+2 32958  51.6410 110.1234 0005200 286.1234 174.0123 15.49912345881230
+TIANZHOU-7 (CARGO)
+1 58788U 24013A   26058.46000000  .00020500  00000+0  21000-3 0  9992
+2 58788  41.4710  76.1234 0004300 120.1234 240.0123 15.58812345051200
 STARLINK-1007
-1 44713U 19074A   24056.45212345  .00001234  00000-0  78901-4 0  9992
-2 44713  53.0541 210.1234 0001567 120.3456 239.7890 15.06412345241234
+1 44713U 19074A   26058.50000000  .00001200  00000+0  85000-4 0  9992
+2 44713  53.0541 210.3412 0001421  85.2341 274.8912 15.06412341354120
 STARLINK-30125
-1 56123U 23045A   24056.32145678  .00002345  00000-0  14567-3 0  9998
+1 56123U 23045A   26058.50000000  .00001400  00000+0  90000-4 0  9998
 2 56123  43.0012 312.4567 0001234  78.9012 281.2345 15.12345678 51234
 ONEWEB-0120
-1 45140U 20008K   24056.23456789  .00000123  00000-0  12345-4 0  9991
+1 45140U 20008K   26058.45000000  .00000123  00000+0  12345-4 0  9991
 2 45140  87.9012  45.6789 0001234 290.1234  69.8765 13.12345678213456
-COSMOS 2251 DEB
-1 34001U 93036AAA 24056.12345678  .00004567  00000-0  34567-3 0  9990
-2 34001  74.0123 189.4567 0023456 312.4567  47.1234 14.34567890451234
-FENGYUN 1C DEB
-1 29712U 99025AAA 24056.65432109  .00001234  00000-0  89123-4 0  9999
-2 29712  98.6543  12.3456 0034567 150.1234 210.4567 13.87654321781234
-NAVSTAR 80 (USA 309)
-1 46826U 20078A   24056.78901234  .00000012  00000-0  00000-0 0  9995
-2 46826  55.2345  78.9012 0089123 210.4567 149.1234  2.00567890 24567
-GALILEO 26 (GSAT0224)
-1 49810U 21116A   24056.89012345  .00000023  00000-0  00000-0 0  9997
-2 49810  56.0123 145.6789 0004567 340.1234  19.8765  1.70891234 18234
-GOES 18
-1 51850U 22022A   24056.90123456  .00000005  00000-0  00000-0 0  9994
-2 51850   0.0543 289.1234 0001234  45.6789 314.3456  1.00271234  7123
-TIANGONG (CSS)
-1 48274U 21035A   24056.43210987  .00018901  00000-0  11234-3 0  9996
-2 48274  41.4723 245.6789 0005678  67.8901 292.3456 15.5890123416234
-SL-16 R/B
-1 22803U 93060B   24056.51234567  .00003456  00000-0  24567-3 0  9992
-2 22803  71.0123 310.4567 0045678 190.1234 169.8765 14.89123456381234
 FLOCK 4P 1
-1 45115U 20006A   24056.34567890  .00003120  00000-0  18901-3 0  9993
-2 45115  97.4521 160.1234 0012345 220.4567 139.5678 15.1987654322456`;
+1 45115U 20006A   26058.47000000  .00003120  00000+0  18901-3 0  9993
+2 45115  97.4521 160.1234 0012345 220.4567 139.5678 15.19876543224560
+GLOBALSTAR M075
+1 25965U 99062D   26058.48000000  .00000045  00000+0  31000-5 0  9993
+2 25965  52.0123 215.1234 0001250  90.1234 270.0123 12.61212341351200
+SPIRE LEMUR-2
+1 43810U 18096N   26058.49000000  .00002100  00000+0  15000-3 0  9994
+2 43810  97.5123 180.1234 0014500 210.1234 150.0123 15.21012341251200
+SWARM-64
+1 47420U 21006BA  26058.50000000  .00001800  00000+0  13000-3 0  9997
+2 47420  97.6123 195.1234 0011500 190.1234 170.0123 15.15012341181200
+COSMOS 2251 DEB
+1 34001U 93036KC  26058.45000000  .00003500  00000+0  21000-3 0  9992
+2 34001  74.0212 142.1234 0021450 145.1234 215.0123 14.89112341311204
+FENGYUN 1C DEB
+1 31245U 99025BY  26058.46000000  .00004200  00000+0  28000-3 0  9998
+2 31245  98.8123 310.4123 0031200 168.1234 192.0123 14.62112341291245
+SL-16 R/B
+1 22803U 93059B   26058.47000000  .00002200  00000+0  14000-3 0  9991
+2 22803  71.0123 210.1234 0011500 110.1234 250.0123 14.51212341331200
+IRIDIUM 33 DEB
+1 33785U 97051AM  26058.48000000  .00003100  00000+0  19000-3 0  9993
+2 33785  86.4123  65.1234 0019500 135.1234 225.0123 14.81212341321200
+THOR ABLESTAR DEB
+1 00021U 60007B   26058.45000000  .00002900  00000+0  18000-3 0  9997
+2 00021  66.7123  80.1234 0019500 140.1234 220.0123 14.72112341301205
+CENTAUR UPPER STAGE
+1 25000U 97068B   26058.44000000  .00000080  00000+0  00000+0 0  9998
+2 25000  28.5123 190.1234 7120000 180.1234 180.0123  2.21012341121200
+SENTINEL-2A
+1 40697U 15028A   26058.49000000  .00000070  00000+0  42000-5 0  9995
+2 40697  98.5712  85.4123 0001150  68.1234 292.0123 14.39812341401241
+LANDSAT 8
+1 39084U 13008A   26058.49000000  .00000080  00000+0  48000-5 0  9996
+2 39084  98.2145 340.1234 0001350  80.1234 280.0123 14.57112341381220
+USA 200 (MEO 3200KM)
+1 33445U 08055A   26058.45000000  .00000020  00000+0  12000-5 0  9997
+2 33445  55.1234 180.1234 0012000 115.1234 245.0123  9.05212341241200
+LAGEOS-1 (5900KM)
+1 08820U 76039A   26058.45000000  .00000010  00000+0  00000+0 0  9998
+2 08820 109.8412  35.1234 0043500 150.1234 210.0123  6.38123451181200
+O3B PFM (8060KM)
+1 39201U 13031A   26058.46500000  .00000014  00000+0  00000+0 0  9996
+2 39201   0.0412 110.1234 0012000  95.1234 265.0123  5.00212341251200
+TRANSIT 15 (10200KM)
+1 16120U 85090A   26058.45000000  .00000011  00000+0  00000+0 0  9993
+2 16120  89.4123 310.1234 0021000 140.1234 220.0123  4.12123451321200
+NAVSTAR 80 (GPS 20200KM)
+1 46826U 20078A   26058.45000000  .00000012  00000+0  00000+0 0  9995
+2 46826  55.2345  78.9012 0089123 210.4567 149.1234  2.00567890 24567
+GALILEO 26 (23222KM)
+1 49810U 21116A   26058.46000000  .00000023  00000+0  00000+0 0  9997
+2 49810  56.0123 145.6789 0004567 340.1234  19.8765  1.70891234 18234
+GLONASS-755 (19100KM)
+1 40315U 14075A   26058.45000000  .00000018  00000+0  00000+0 0  9998
+2 40315  64.8123  45.1234 0012500 140.1234 220.0123  2.13101234141200
+BEIDOU-3 M1 (21500KM)
+1 43155U 18003A   26058.45500000  .00000016  00000+0  00000+0 0  9999
+2 43155  55.2123  95.1234 0004500 105.1234 255.0123  1.86241234131200
+GOES 18 (GEO 35786KM)
+1 51850U 22022A   26058.50000000  .00000005  00000+0  00000+0 0  9994
+2 51850   0.0543 289.1234 0001234  45.6789 314.3456  1.00271234  7123
+INSAT-3D (GEO 35786KM)
+1 39216U 13038B   26058.50000000  .00000010  00000+0  00000+0 0  9991
+2 39216   0.0541  82.0123 0001200  90.1234 270.0123  1.00271234051200
+METEOSAT-11 (GEO 35786KM)
+1 40732U 15034A   26058.50000000  .00000010  00000+0  00000+0 0  9997
+2 40732   0.0385   0.0123 0001050  88.1234 272.0123  1.00271234051230
+TDRS-13 (GEO 35786KM)
+1 42915U 17047A   26058.50000000  .00000010  00000+0  00000+0 0  9998
+2 42915   3.5123 315.1234 0002500  85.1234 275.0123  1.00271234051240
+MOLNIYA 1-93 (HEO 52000KM)
+1 28163U 04005A   26058.45000000  .00000050  00000+0  00000+0 0  9992
+2 28163  62.8123 185.1234 7125000 280.1234  80.0123  2.00561234121200
+COSMOS 2388 (HEO 58000KM)
+1 27409U 02017A   26058.45000000  .00000045  00000+0  00000+0 0  9996
+2 27409  63.1234 220.1234 6850000 290.1234  70.0123  1.85412341141200
+CHANDRA X-RAY (HEO 70000KM)
+1 25867U 99040B   26058.40000000  .00000020  00000+0  00000+0 0  9995
+2 25867  28.5123 150.1234 7850000 310.1234  50.0123  0.37512341051200
+TESS (DEEP HEO 95000KM)
+1 43435U 18038A   26058.40000000  .00000010  00000+0  00000+0 0  9999
+2 43435  37.2145 190.1234 6450000 260.1234 100.0123  0.07301234021200`;
+
+// ============================================================
+// STRATIFIED ALTITUDE DISTRIBUTION (GUARANTEE ≥4 PER CATEGORY)
+// ============================================================
+function getStratifiedAltitudeDistribution(objects, targetCount = 36) {
+    if (!Array.isArray(objects) || objects.length <= targetCount) return [...objects];
+
+    const selected = [];
+    const usedIds = new Set();
+
+    function addSat(sat, tierLabel) {
+        if (!sat || usedIds.has(sat.noradId)) return false;
+        selected.push({ ...sat, altitudeTier: tierLabel || sat.altitudeTier });
+        usedIds.add(sat.noradId);
+        return true;
+    }
+
+    // Step 1: Guarantee at least 4 bodies from each category
+    const categories = ['station', 'constellation', 'debris', 'active'];
+    const minPerCategory = 4;
+
+    for (const catId of categories) {
+        const catMatching = objects.filter(o => {
+            if (usedIds.has(o.noradId)) return false;
+            const seg = getObjectSegment(o);
+            return seg.id === catId;
+        });
+
+        catMatching.sort((a, b) => a.altitude - b.altitude);
+
+        if (catMatching.length <= minPerCategory) {
+            for (const sat of catMatching) addSat(sat, 'Category Quota');
+        } else {
+            const step = catMatching.length / minPerCategory;
+            for (let i = 0; i < minPerCategory; i++) {
+                const idx = Math.min(catMatching.length - 1, Math.floor(i * step));
+                addSat(catMatching[idx], 'Category Quota');
+            }
+        }
+    }
+
+    // Step 2: Stratified sampling across 12 altitude tiers (200km - 100,000km)
+    const tiers = [
+        { min: 200, max: 450, quota: 2, label: 'VLEO (200–450 km)' },
+        { min: 450, max: 700, quota: 3, label: 'LEO Shell (450–700 km)' },
+        { min: 700, max: 1200, quota: 3, label: 'Polar SSO (700–1,200 km)' },
+        { min: 1200, max: 2500, quota: 2, label: 'Upper LEO (1,200–2,500 km)' },
+        { min: 2500, max: 4500, quota: 2, label: 'Inner MEO (~3,200 km)' },
+        { min: 4500, max: 8000, quota: 2, label: 'Mid MEO (~6,200 km)' },
+        { min: 8000, max: 15000, quota: 2, label: 'High MEO (~10,000 km)' },
+        { min: 15000, max: 24000, quota: 3, label: 'GNSS Nav (~20,200 km GPS/Galileo)' },
+        { min: 24000, max: 35000, quota: 2, label: 'Super-MEO (~30,000 km)' },
+        { min: 35000, max: 36500, quota: 3, label: 'Geostationary GEO (~35,786 km)' },
+        { min: 36500, max: 65000, quota: 2, label: 'High HEO (~50,000 km Molniya)' },
+        { min: 65000, max: 150000, quota: 2, label: 'Deep Space HEO (65k–100k+ km)' }
+    ];
+
+    for (const tier of tiers) {
+        const matching = objects.filter(o => !usedIds.has(o.noradId) && o.altitude >= tier.min && o.altitude < tier.max);
+        const toTake = matching.slice(0, tier.quota);
+        for (const sat of toTake) {
+            addSat(sat, tier.label);
+        }
+    }
+
+    // Step 3: Top-up until targetCount reached
+    if (selected.length < targetCount) {
+        const remaining = objects.filter(o => !usedIds.has(o.noradId));
+        remaining.sort((a, b) => a.altitude - b.altitude);
+        const step = Math.max(1, Math.floor(remaining.length / (targetCount - selected.length)));
+        for (let i = 0; i < remaining.length && selected.length < targetCount; i += step) {
+            addSat(remaining[i], 'Stratified Fill');
+        }
+    }
+
+    // Sort by altitude ascending
+    selected.sort((a, b) => a.altitude - b.altitude);
+    return selected;
+}
 
 // ============================================================
 // CELESTRAK TLE DATA FETCHING & PARSING
@@ -1375,26 +1951,42 @@ function renderAllCharts(stats) {
         }
     });
 
-    // 5. Scatter: Period vs Altitude (Kepler's Law)
+    // 5. Scatter: Period vs Altitude (Kepler's Law) - 4-Segment Color-Coded
     chartInstances.scatter = new Chart(document.getElementById('chartScatter'), {
         type: 'scatter',
         data: {
             datasets: [
                 {
-                    label: 'Payload Satellites',
-                    data: stats.scatterData.filter(d => d.type === 'Satellite'),
-                    backgroundColor: 'rgba(70, 217, 255, 0.45)',
+                    label: 'Space Stations',
+                    data: [],
+                    backgroundColor: 'rgba(255, 209, 102, 0.75)',
+                    borderColor: '#ffd166',
+                    pointRadius: 6,
+                    pointHoverRadius: 9
+                },
+                {
+                    label: 'Mega-Constellations',
+                    data: [],
+                    backgroundColor: 'rgba(199, 125, 255, 0.75)',
+                    borderColor: '#c77dff',
+                    pointRadius: 4.5,
+                    pointHoverRadius: 8
+                },
+                {
+                    label: 'Other Active Satellites',
+                    data: [],
+                    backgroundColor: 'rgba(70, 217, 255, 0.75)',
                     borderColor: '#46d9ff',
-                    pointRadius: 2.5,
-                    pointHoverRadius: 6
+                    pointRadius: 4.5,
+                    pointHoverRadius: 8
                 },
                 {
                     label: 'Debris / Rocket Stages',
-                    data: stats.scatterData.filter(d => d.type !== 'Satellite'),
-                    backgroundColor: 'rgba(255, 82, 109, 0.45)',
+                    data: [],
+                    backgroundColor: 'rgba(255, 82, 109, 0.75)',
                     borderColor: '#ff526d',
-                    pointRadius: 2.5,
-                    pointHoverRadius: 6
+                    pointRadius: 4.5,
+                    pointHoverRadius: 8
                 }
             ]
         },
@@ -1408,24 +2000,33 @@ function renderAllCharts(stats) {
                         title: items => items[0].raw.name || 'Orbital Object',
                         label: ctx => [
                             ` NORAD ID: ${ctx.raw.id || 'N/A'}`,
-                            ` Orbital Period: ${ctx.raw.x.toFixed(1)} min`,
-                            ` Semi-Major Altitude: ${Math.round(ctx.raw.y).toLocaleString()} km`
+                            ` Regime: ${ctx.raw.regime || 'LEO'} · Type: ${ctx.raw.type || 'Satellite'}`,
+                            ` Orbital Period: ${ctx.raw.x ? ctx.raw.x.toFixed(1) : 0} min`,
+                            ` Semi-Major Altitude: ${Math.round(ctx.raw.y || 0).toLocaleString()} km`,
+                            ` Velocity: ${ctx.raw.vel ? ctx.raw.vel + ' km/s' : 'N/A'}`
                         ]
                     }
                 }
             },
             scales: {
                 x: {
-                    title: { display: true, text: 'Orbital Period (minutes)', color: '#7f91ad', font: { size: 11 } },
+                    type: 'linear',
+                    title: { display: true, text: 'Orbital Period (minutes)', color: '#7f91ad', font: { size: 11, weight: 'bold' } },
                     grid: { color: '#1c294066' },
-                    ticks: { font: { size: 10 } },
-                    max: 1500
+                    ticks: { font: { size: 10 }, color: '#9db1cc' }
                 },
                 y: {
-                    title: { display: true, text: 'Altitude Above Earth (km)', color: '#7f91ad', font: { size: 11 } },
+                    type: 'linear',
+                    min: 0,
+                    title: { display: true, text: 'Altitude Above Earth (km)', color: '#7f91ad', font: { size: 11, weight: 'bold' } },
                     grid: { color: '#1c294066' },
-                    ticks: { font: { size: 10 } },
-                    max: 38000
+                    ticks: {
+                        font: { size: 10 },
+                        color: '#9db1cc',
+                        callback: function(value) {
+                            return value >= 1000 ? (value / 1000).toLocaleString() + 'k km' : value + ' km';
+                        }
+                    }
                 }
             }
         }
@@ -1538,11 +2139,159 @@ function renderAllCharts(stats) {
 }
 
 // ============================================================
-// TABLE & PAGINATION MANAGEMENT
+// 4-SEGMENT ORBITAL CLASSIFICATION (COLOR THEME ENGINE)
 // ============================================================
+function getObjectSegment(obj) {
+    if (!obj) return { id: 'active', label: 'Active Satellite', color: '#46d9ff', cssClass: 'tag-active', dotClass: 'active', nameClass: 'name-active' };
+
+    const name = (obj.name || '').toUpperCase();
+    const op = (obj.operator || '').toUpperCase();
+    const type = obj.type || '';
+
+    // 1. Space Stations = YELLOW (#ffd166)
+    if (name.includes('ISS') || name.includes('TIANGONG') || name.includes('CSS') || name.includes('ZARYA') || name.includes('SPACE STATION') || op.includes('SPACE STATIONS') || name.includes('MIR') || name.includes('SKYLAB') || name.includes('AXIOM')) {
+        return {
+            id: 'station',
+            label: 'Space Station',
+            color: '#ffd166',
+            rgb: '255, 209, 102',
+            cssClass: 'tag-station',
+            dotClass: 'station',
+            nameClass: 'name-station'
+        };
+    }
+
+    // 2. Debris & Rocket Stages = RED (#ff526d)
+    if (type === 'Debris' || type === 'Rocket Body' || name.includes('DEB') || name.includes('FRAGMENT') || name.includes('R/B') || name.includes('ROCKET') || name.includes('STAGE') || name.includes('CENTAUR') || name.includes('FALCON 9 R/B') || name.includes('SL-') || name.includes('DELTA') || name.includes('TITAN') || name.includes('THOR')) {
+        return {
+            id: 'debris',
+            label: type === 'Rocket Body' ? 'Rocket Stage' : 'Debris',
+            color: '#ff526d',
+            rgb: '255, 82, 109',
+            cssClass: 'tag-debris',
+            dotClass: 'debris',
+            nameClass: 'name-debris'
+        };
+    }
+
+    // 3. Mega-Constellations = PURPLE (#c77dff)
+    if (name.startsWith('STARLINK') || name.startsWith('ONEWEB') || name.startsWith('FLOCK') || name.startsWith('SKYSAT') || name.startsWith('PLANET') || name.startsWith('LEMUR') || name.startsWith('SPIRE') || name.startsWith('SWARM') || name.startsWith('SPACEBEE') || name.startsWith('GLOBALSTAR') || name.startsWith('IRIDIUM') || name.startsWith('KUIPER') || name.startsWith('O3B') || op.includes('SPACEX') || op.includes('ONEWEB') || op.includes('PLANET LABS') || op.includes('SPIRE') || op.includes('SWARM')) {
+        return {
+            id: 'constellation',
+            label: 'Mega-Constellation',
+            color: '#c77dff',
+            rgb: '199, 125, 255',
+            cssClass: 'tag-constellation',
+            dotClass: 'constellation',
+            nameClass: 'name-constellation'
+        };
+    }
+
+    // 4. Other Active Satellites = BLUE / CYAN (#46d9ff)
+    return {
+        id: 'active',
+        label: 'Active Satellite',
+        color: '#46d9ff',
+        rgb: '70, 217, 255',
+        cssClass: 'tag-active',
+        dotClass: 'active',
+        nameClass: 'name-active'
+    };
+}
+
+// ============================================================
+// DYNAMIC KEPLERIAN RELATION CHART ENGINE
+// ============================================================
+function updateKeplerianScatterChart(objects) {
+    if (!chartInstances.scatter) return;
+
+    const stationData = [];
+    const constellData = [];
+    const activeData = [];
+    const debData = [];
+
+    let maxAlt = 2000;
+    let maxPeriod = 120;
+
+    const list = Array.isArray(objects) ? objects : [];
+
+    for (const obj of list) {
+        if (!obj || !isFinite(obj.period) || !isFinite(obj.altitude)) continue;
+
+        const seg = getObjectSegment(obj);
+        const pt = {
+            x: obj.period,
+            y: obj.altitude,
+            name: obj.name,
+            id: obj.noradId,
+            type: obj.type,
+            segment: seg.label,
+            color: seg.color,
+            regime: obj.regime,
+            operator: obj.operator,
+            vel: obj.velocity,
+            inc: obj.inclination
+        };
+
+        if (seg.id === 'station') {
+            stationData.push(pt);
+        } else if (seg.id === 'constellation') {
+            constellData.push(pt);
+        } else if (seg.id === 'debris') {
+            debData.push(pt);
+        } else {
+            activeData.push(pt);
+        }
+
+        if (obj.altitude > maxAlt) maxAlt = obj.altitude;
+        if (obj.period > maxPeriod) maxPeriod = obj.period;
+    }
+
+    const isFew = list.length <= 150;
+    const ptRadius = isFew ? 5.5 : 3.0;
+    const ptHover = isFew ? 9 : 6;
+
+    // Dataset 0: Space Stations (Yellow)
+    chartInstances.scatter.data.datasets[0].data = stationData;
+    chartInstances.scatter.data.datasets[0].label = `Space Stations (${stationData.length})`;
+    chartInstances.scatter.data.datasets[0].pointRadius = isFew ? 7 : 4;
+    chartInstances.scatter.data.datasets[0].pointHoverRadius = 10;
+
+    // Dataset 1: Mega-Constellations (Purple)
+    chartInstances.scatter.data.datasets[1].data = constellData;
+    chartInstances.scatter.data.datasets[1].label = `Mega-Constellations (${constellData.length})`;
+    chartInstances.scatter.data.datasets[1].pointRadius = ptRadius;
+    chartInstances.scatter.data.datasets[1].pointHoverRadius = ptHover;
+
+    // Dataset 2: Other Active Satellites (Blue/Cyan)
+    chartInstances.scatter.data.datasets[2].data = activeData;
+    chartInstances.scatter.data.datasets[2].label = `Other Active Satellites (${activeData.length})`;
+    chartInstances.scatter.data.datasets[2].pointRadius = ptRadius;
+    chartInstances.scatter.data.datasets[2].pointHoverRadius = ptHover;
+
+    // Dataset 3: Debris / Rocket Stages (Red)
+    chartInstances.scatter.data.datasets[3].data = debData;
+    chartInstances.scatter.data.datasets[3].label = `Debris / Boosters (${debData.length})`;
+    chartInstances.scatter.data.datasets[3].pointRadius = ptRadius;
+    chartInstances.scatter.data.datasets[3].pointHoverRadius = ptHover;
+
+    // Dynamically adjust scales to fit filtered objects on linear scale up to 100,000+ km
+    chartInstances.scatter.options.scales.y.min = 0;
+    chartInstances.scatter.options.scales.y.max = Math.ceil(maxAlt * 1.08);
+    chartInstances.scatter.options.scales.x.max = Math.ceil(maxPeriod * 1.08);
+
+    chartInstances.scatter.update();
+}
+
+function setDistributionMode(mode, el) {
+    currentDistributionMode = mode;
+    el.parentElement.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    applyFilters();
+}
 
 function applyFilters() {
-    filteredObjects = parsedObjects.filter(obj => {
+    let pool = parsedObjects.filter(obj => {
         if (currentRegimeFilter !== 'ALL' && obj.regime !== currentRegimeFilter) return false;
         if (currentTypeFilter !== 'ALL' && obj.type !== currentTypeFilter) return false;
         if (searchQuery) {
@@ -1554,6 +2303,13 @@ function applyFilters() {
         }
         return true;
     });
+
+    // If Stratified Distribution mode is active, sample a wide bandwidth distribution across 200km - 100,000km
+    if (currentDistributionMode === 'STRATIFIED' && currentRegimeFilter === 'ALL' && currentTypeFilter === 'ALL' && !searchQuery) {
+        filteredObjects = getStratifiedAltitudeDistribution(pool, 35);
+    } else {
+        filteredObjects = [...pool];
+    }
 
     // Sort
     filteredObjects.sort((a, b) => {
@@ -1570,11 +2326,14 @@ function applyFilters() {
 
     currentPage = 1;
     renderTable();
+    updateKeplerianScatterChart(filteredObjects);
 }
 
 function renderTable() {
     const tbody = document.getElementById('tableBody');
     document.getElementById('tableMatchCount').textContent = filteredObjects.length.toLocaleString();
+    const vBadge = document.getElementById('vBadgeTable');
+    if (vBadge) vBadge.textContent = filteredObjects.length.toLocaleString();
 
     const startIdx = (currentPage - 1) * pageSize;
     const pageItems = filteredObjects.slice(startIdx, startIdx + pageSize);
@@ -1588,18 +2347,17 @@ function renderTable() {
     }
 
     tbody.innerHTML = pageItems.map(obj => {
+        const seg = getObjectSegment(obj);
+        const segmentTag = `<span class="tag ${seg.cssClass}"><span class="segment-dot ${seg.dotClass}"></span>${seg.label}</span>`;
         const regimeTag = `<span class="tag tag-${obj.regime.toLowerCase()}">${obj.regime}</span>`;
-        let typeTag = `<span class="tag tag-sat">Payload</span>`;
-        if (obj.type === 'Debris') typeTag = `<span class="tag tag-deb">Debris</span>`;
-        else if (obj.type === 'Rocket Body') typeTag = `<span class="tag tag-rb">Rocket</span>`;
 
         return `
             <tr onclick="openModal(${obj.noradId})">
-                <td style="font-family:monospace;font-weight:700;color:var(--cyan)">${obj.noradId}</td>
-                <td style="font-weight:600">${escapeHtml(obj.name)}</td>
-                <td>${typeTag}</td>
+                <td style="font-family:monospace;font-weight:700;color:${seg.color}">${obj.noradId}</td>
+                <td style="font-weight:600" class="${seg.nameClass}"><span class="segment-dot ${seg.dotClass}"></span>${escapeHtml(obj.name)}</td>
+                <td>${segmentTag}</td>
                 <td>${regimeTag}</td>
-                <td>${obj.altitude.toLocaleString()} km</td>
+                <td style="font-weight:600;color:${seg.color}">${obj.altitude.toLocaleString()} km</td>
                 <td>${obj.perigee.toLocaleString()} km</td>
                 <td>${obj.apogee.toLocaleString()} km</td>
                 <td>${obj.inclination}°</td>
@@ -1792,7 +2550,7 @@ async function init() {
         document.getElementById('sysDot').style.background = 'var(--green)';
         document.getElementById('sysDot').style.boxShadow = '0 0 10px var(--green)';
 
-        // Show Charts & Table
+        // Show Charts & Table in Grid Format
         loadEl.style.display = 'none';
         chartsEl.style.display = 'grid';
         tableEl.style.display = 'block';
@@ -1818,9 +2576,133 @@ async function init() {
     }
 }
 
+// Sidebar Controls
+const sidebar = document.getElementById("sidebar");
+const sidebarOverlay = document.getElementById("sidebarOverlay");
+const sidebarToggleBtn = document.getElementById("sidebarToggleBtn");
+const sidebarCloseBtn = document.getElementById("sidebarCloseBtn");
+
+function openSidebar() {
+    if (sidebar) sidebar.classList.add("open");
+    if (sidebarOverlay) sidebarOverlay.classList.add("active");
+    setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+    }, 360);
+}
+
+function closeSidebar() {
+    if (sidebar) sidebar.classList.remove("open");
+    if (sidebarOverlay) sidebarOverlay.classList.remove("active");
+    setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+    }, 360);
+}
+
+function toggleSidebar() {
+    if (sidebar && sidebar.classList.contains("open")) closeSidebar();
+    else openSidebar();
+}
+
+if (sidebarToggleBtn) sidebarToggleBtn.addEventListener("click", toggleSidebar);
+if (sidebarCloseBtn) sidebarCloseBtn.addEventListener("click", closeSidebar);
+if (sidebarOverlay) sidebarOverlay.addEventListener("click", closeSidebar);
+
+document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && sidebar && sidebar.classList.contains("open")) closeSidebar();
+});
+
 // Start
 init();
 
+// ============================================================
+// SPACE-THEMED FAST PAGE TRANSITION INTERCEPTOR
+// ============================================================
+(function initSpaceTransition() {
+    const loader = document.getElementById("spaceWarpLoader");
+    const bar = document.getElementById("spaceWarpBar");
+    const status = document.getElementById("spaceWarpStatus");
+    const icon = document.getElementById("spaceWarpIcon");
+
+    const telemetryStatusMsgs = [
+        "COMPUTING SGP4 EPHEMERIS...",
+        "ALIGNING SENSOR VECTOR...",
+        "SYNCHRONIZING ORBITAL MESH...",
+        "ACQUIRING TELEMETRY UPLINK...",
+        "CALIBRATING CONJUNCTION MATRIX..."
+    ];
+
+    function dismissEntranceLoader() {
+        if (loader) {
+            if (bar) bar.style.width = "100%";
+            setTimeout(() => {
+                loader.classList.remove("active");
+                setTimeout(() => {
+                    if (bar) bar.style.width = "0%";
+                }, 260);
+            }, 200);
+        }
+    }
+
+    if (document.readyState === "complete" || document.readyState === "interactive") {
+        dismissEntranceLoader();
+    } else {
+        window.addEventListener("DOMContentLoaded", dismissEntranceLoader);
+    }
+
+    document.addEventListener("click", (e) => {
+        const link = e.target.closest("a");
+        if (!link) return;
+
+        const href = link.getAttribute("href");
+        if (!href || href.startsWith("#") || href.startsWith("javascript:") || link.target === "_blank") {
+            return;
+        }
+
+        const validPages = ["earth.html", "orb_obj.html", "grid.html", "analytics.html", "index.html"];
+        const targetPage = href.split("?")[0].split("#")[0];
+
+        if (validPages.some(p => targetPage.endsWith(p))) {
+            e.preventDefault();
+
+            if (loader) {
+                if (status) {
+                    if (targetPage.includes("earth")) status.innerText = "ENGAGING 3D GLOBE RENDERER...";
+                    else if (targetPage.includes("orb_obj")) status.innerText = "QUERYING ORBITAL DATABASE...";
+                    else if (targetPage.includes("grid")) status.innerText = "PROCESSING CONJUNCTION SENSORS...";
+                    else if (targetPage.includes("analytics")) status.innerText = "COMPILING KEPLERIAN ANALYTICS...";
+                    else status.innerText = telemetryStatusMsgs[Math.floor(Math.random() * telemetryStatusMsgs.length)];
+                }
+
+                if (icon) {
+                    if (targetPage.includes("earth")) icon.className = "fa-solid fa-earth-americas";
+                    else if (targetPage.includes("orb_obj")) icon.className = "fa-solid fa-cubes";
+                    else if (targetPage.includes("grid")) icon.className = "fa-solid fa-triangle-exclamation";
+                    else if (targetPage.includes("analytics")) icon.className = "fa-solid fa-chart-line";
+                    else icon.className = "fa-solid fa-satellite";
+                }
+
+                loader.classList.add("active");
+                if (bar) {
+                    bar.style.width = "0%";
+                    setTimeout(() => { bar.style.width = "100%"; }, 20);
+                }
+
+                setTimeout(() => {
+                    window.location.href = href;
+                }, 280);
+            } else {
+                window.location.href = href;
+            }
+        }
+    });
+
+    window.addEventListener("pageshow", (e) => {
+        if (e.persisted && loader) {
+            loader.classList.remove("active");
+            if (bar) bar.style.width = "0%";
+        }
+    });
+})();
 </script>
 </body>
 </html>

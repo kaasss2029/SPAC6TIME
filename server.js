@@ -612,11 +612,31 @@ function calculateConjunctionRisk(missDistKm, relVelKmS, tcaMinutes) {
           const riskTier = riskEval.riskTier;
 
           // Deterministic Avoidance Maneuver (CAM) Parameters
-          const recDeltaV = minDist < 5.0 ? `+${(0.10 + (5.0 - minDist) * 0.035).toFixed(2)} m/s (Prograde)` : "Nominal (No burn required)";
-          const burnWindow = minDist < 5.0 ? `T - ${Math.max(15, Math.min(60, Math.round(tcaMinutes * 0.4)))} min (0.5 rev)` : "N/A";
-          const deltaVNum = minDist < 5.0 ? (0.10 + (5.0 - minDist) * 0.035) : 0;
-          const fuelGrams = deltaVNum > 0 ? `${Math.round(deltaVNum * 520)} g (Hydrazine)` : "0 g";
-          const postMissKm = parseFloat((minDist < 5.0 ? (16.5 + (5.0 - minDist) * 1.8) : minDist).toFixed(2));
+          const typeA = ((satA.type || satA.name || "")).toLowerCase();
+          const typeB = ((satB.type || satB.name || "")).toLowerCase();
+          const isDebrisOnDebris = (typeA.includes("deb") || typeA.includes("r/b") || typeA.includes("rocket")) &&
+                                   (typeB.includes("deb") || typeB.includes("r/b") || typeB.includes("rocket"));
+
+          const deltaVNum = minDist < 1.0 
+            ? (0.12 + Math.max(0, 5.0 - minDist) * 0.035) 
+            : (minDist < 5.0 ? (0.06 + Math.max(0, 5.0 - minDist) * 0.015) : 0.05);
+
+          const recDeltaV = isDebrisOnDebris 
+            ? "0.00 m/s (Passive Objects)" 
+            : `+${deltaVNum.toFixed(2)} m/s (${minDist < 1.0 ? 'Prograde Burn' : 'Along-Track'})`;
+
+          const burnLeadMins = Math.max(15, Math.min(90, Math.round(tcaMinutes * 0.5)));
+          const burnWindow = isDebrisOnDebris 
+            ? "Non-Maneuverable (Passive Debris)" 
+            : `T - ${burnLeadMins} min (0.5 rev / 180° phasing)`;
+
+          const satMassKg = (satA.name || "").toUpperCase().includes("ISS") ? 420000 : ((satA.name || "").toUpperCase().includes("TIANGONG") ? 66000 : 1000);
+          const fuelGramsVal = Math.max(1, Math.round(satMassKg * (1 - Math.exp(-deltaVNum / (220 * 9.80665))) * 1000));
+          const fuelGrams = isDebrisOnDebris 
+            ? "N/A (Defunct Stage / Passive)" 
+            : (fuelGramsVal > 1000 ? `${(fuelGramsVal / 1000).toFixed(2)} kg (Hydrazine)` : `${fuelGramsVal} g (Hydrazine)`);
+
+          const postMissKm = parseFloat((minDist < 5.0 ? (16.5 + Math.max(0, 5.0 - minDist) * 1.8) : (minDist + 18.25)).toFixed(2));
 
           conjunctionResults.push({
             conjunctionId: `CDM-${epochNow.getFullYear()}-${String(conjunctionResults.length + 1).padStart(3, "0")}`,
@@ -767,10 +787,31 @@ function calculateConjunctionRisk(missDistKm, relVelKmS, tcaMinutes) {
           const riskEval = calculateConjunctionRisk(d.miss, d.vRel, d.tcaMin);
           const riskScoreVal = riskEval.riskScore;
           const riskTier = riskEval.riskTier;
-          const recDeltaV = d.miss < 5.0 ? `+${(0.10 + (5.0 - d.miss) * 0.035).toFixed(2)} m/s (Prograde)` : "Nominal (No burn required)";
-          const deltaVNum = d.miss < 5.0 ? (0.10 + (5.0 - d.miss) * 0.035) : 0;
-          const fuelGrams = deltaVNum > 0 ? `${Math.round(deltaVNum * 520)} g (Hydrazine)` : "0 g";
-          const postMissKm = parseFloat((d.miss < 5.0 ? (16.5 + (5.0 - d.miss) * 1.8) : d.miss).toFixed(2));
+          const typeA = ((d.objA.type || d.objA.name || "")).toLowerCase();
+          const typeB = ((d.objB.type || d.objB.name || "")).toLowerCase();
+          const isDebrisOnDebris = (typeA.includes("deb") || typeA.includes("r/b") || typeA.includes("rocket")) &&
+                                   (typeB.includes("deb") || typeB.includes("r/b") || typeB.includes("rocket"));
+
+          const deltaVNum = d.miss < 1.0 
+            ? (0.12 + Math.max(0, 5.0 - d.miss) * 0.035) 
+            : (d.miss < 5.0 ? (0.06 + Math.max(0, 5.0 - d.miss) * 0.015) : 0.05);
+
+          const recDeltaV = isDebrisOnDebris 
+            ? "0.00 m/s (Passive Objects)" 
+            : `+${deltaVNum.toFixed(2)} m/s (${d.miss < 1.0 ? 'Prograde Burn' : 'Along-Track'})`;
+
+          const burnLeadMins = Math.max(15, Math.min(90, Math.round(d.tcaMin * 0.5)));
+          const burnWindow = isDebrisOnDebris 
+            ? "Non-Maneuverable (Passive Debris)" 
+            : `T - ${burnLeadMins} min (0.5 rev / 180° phasing)`;
+
+          const satMassKg = (d.objA.name || "").toUpperCase().includes("ISS") ? 420000 : ((d.objA.name || "").toUpperCase().includes("TIANGONG") ? 66000 : 1000);
+          const fuelGramsVal = Math.max(1, Math.round(satMassKg * (1 - Math.exp(-deltaVNum / (220 * 9.80665))) * 1000));
+          const fuelGrams = isDebrisOnDebris 
+            ? "N/A (Defunct Stage / Passive)" 
+            : (fuelGramsVal > 1000 ? `${(fuelGramsVal / 1000).toFixed(2)} kg (Hydrazine)` : `${fuelGramsVal} g (Hydrazine)`);
+
+          const postMissKm = parseFloat((d.miss < 5.0 ? (16.5 + Math.max(0, 5.0 - d.miss) * 1.8) : (d.miss + 18.25)).toFixed(2));
 
           conjunctionResults.push({
             conjunctionId: d.id,
