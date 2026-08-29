@@ -297,25 +297,134 @@
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
         }
 
+        .search-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            color: var(--muted);
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 2;
+        }
+
         .search {
             background: var(--bg-glass);
             border: 1px solid var(--border-glass);
             backdrop-filter: blur(14px);
             -webkit-backdrop-filter: blur(14px);
             color: #fff;
-            padding: 9px 15px;
+            padding: 9px 34px 9px 34px;
             border-radius: 10px;
             outline: none;
-            width: 220px;
+            width: 240px;
             font-family: var(--font-main);
             font-size: 13px;
-            transition: all 0.2s;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
         }
 
         .search:focus {
             border-color: var(--cyan);
-            box-shadow: 0 0 16px var(--cyan-glow);
+            box-shadow: 0 0 18px var(--cyan-glow);
+            width: 280px;
+        }
+
+        .search-clear-btn {
+            position: absolute;
+            right: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #c4d3e8;
+            font-size: 11px;
+            cursor: pointer;
+            width: 22px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.18s;
+            z-index: 2;
+        }
+
+        .search-clear-btn:hover {
+            color: #fff;
+            background: rgba(255, 82, 109, 0.4);
+            border-color: var(--red);
+            transform: scale(1.1);
+        }
+
+        /* Floating Glassmorphic Dropdown */
+        .search-dropdown {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            width: 320px;
+            max-height: 380px;
+            overflow-y: auto;
+            background: rgba(10, 17, 30, 0.96);
+            border: 1px solid var(--border-glass-glow);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-radius: 14px;
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.75), 0 0 24px rgba(70, 217, 255, 0.15);
+            z-index: 1000;
+            padding: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .search-dropdown-item {
+            padding: 8px 11px;
+            border-radius: 9px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            transition: all 0.15s ease;
+            border: 1px solid transparent;
+        }
+
+        .search-dropdown-item:hover {
+            background: rgba(70, 217, 255, 0.14);
+            border-color: rgba(70, 217, 255, 0.35);
+            transform: translateX(2px);
+        }
+
+        .search-dropdown-name {
+            font-size: 12px;
+            font-weight: 600;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .search-dropdown-meta {
+            font-size: 10px;
+            color: var(--muted);
+            font-family: var(--font-mono);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        .search-dropdown-empty {
+            padding: 16px;
+            text-align: center;
+            color: var(--muted);
+            font-size: 11px;
         }
 
         /* ── LARGE EXPANDED 3D ORBITAL ENVIRONMENT HERO STAGE ── */
@@ -587,7 +696,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            pointer-events: auto;
+            pointer-events: none;
             flex-wrap: wrap;
             gap: 12px;
         }
@@ -595,6 +704,7 @@
         .orbit-hud-controls {
             display: flex;
             gap: 8px;
+            pointer-events: auto;
         }
 
         .orbit-hud-btn {
@@ -836,14 +946,201 @@
             .orbit-hero-stage {
                 height: 840px;
             }
-            .orbit-hint-banner {
-                display: none;
-            }
+        }
+
+        /* ============================================================
+           FAST SPACE-THEME WARP TRANSITION OVERLAY
+           ============================================================ */
+        .space-warp-loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 999999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at center, rgba(8, 16, 32, 0.96) 0%, rgba(3, 6, 15, 0.99) 100%);
+            backdrop-filter: blur(22px);
+            -webkit-backdrop-filter: blur(22px);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.24s cubic-bezier(0.16, 1, 0.3, 1), transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+            transform: scale(1.02);
+        }
+
+        .space-warp-loader.active {
+            opacity: 1;
+            pointer-events: all;
+            transform: scale(1);
+        }
+
+        .space-warp-bg {
+            position: absolute;
+            inset: 0;
+            background: 
+                radial-gradient(1px 1px at 20% 30%, rgba(255, 255, 255, 0.8), rgba(0,0,0,0)),
+                radial-gradient(1.5px 1.5px at 40% 70%, rgba(70, 217, 255, 0.9), rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 60% 20%, rgba(255, 209, 102, 0.8), rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 80% 60%, rgba(70, 217, 255, 0.9), rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 90% 90%, rgba(255, 255, 255, 0.7), rgba(0,0,0,0));
+            background-size: 250px 250px;
+            opacity: 0.6;
+            animation: warpStarMotion 12s linear infinite;
+        }
+
+        @keyframes warpStarMotion {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-250px); }
+        }
+
+        .space-warp-hud {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            z-index: 2;
+        }
+
+        .space-gyro-ring {
+            position: relative;
+            width: 76px;
+            height: 76px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .space-gyro-outer {
+            position: absolute;
+            inset: 0;
+            border: 2px dashed rgba(70, 217, 255, 0.7);
+            border-top-color: var(--cyan, #46d9ff);
+            border-bottom-color: #ffd166;
+            border-radius: 50%;
+            animation: gyroSpin 1.4s linear infinite;
+            box-shadow: 0 0 20px rgba(70, 217, 255, 0.35);
+        }
+
+        .space-gyro-inner {
+            position: absolute;
+            inset: 9px;
+            border: 1.5px solid rgba(70, 217, 255, 0.3);
+            border-left-color: #46d9ff;
+            border-right-color: #46d9ff;
+            border-radius: 50%;
+            animation: gyroSpinRev 0.9s linear infinite;
+        }
+
+        .space-gyro-core {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(70, 217, 255, 0.15);
+            border: 1px solid rgba(70, 217, 255, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #46d9ff;
+            font-size: 13px;
+            box-shadow: 0 0 16px rgba(70, 217, 255, 0.5);
+            animation: corePulse 0.8s ease-in-out infinite alternate;
+        }
+
+        @keyframes gyroSpin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes gyroSpinRev {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(-360deg); }
+        }
+
+        @keyframes corePulse {
+            0% { transform: scale(0.92); filter: drop-shadow(0 0 4px #46d9ff); }
+            100% { transform: scale(1.08); filter: drop-shadow(0 0 14px #46d9ff); }
+        }
+
+        .space-warp-title {
+            font-family: var(--font-mono, monospace);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 2.2px;
+            color: #fff;
+            text-transform: uppercase;
+            text-shadow: 0 0 12px rgba(70, 217, 255, 0.6);
+        }
+
+        .space-warp-status {
+            font-family: var(--font-mono, monospace);
+            font-size: 10px;
+            letter-spacing: 1.2px;
+            color: var(--cyan, #46d9ff);
+            height: 14px;
+            font-weight: 600;
+            text-shadow: 0 0 8px rgba(70, 217, 255, 0.5);
+        }
+
+        .space-warp-bar-wrap {
+            width: 190px;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 999px;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid rgba(70, 217, 255, 0.2);
+        }
+
+        .space-warp-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #46d9ff, #ffd166);
+            box-shadow: 0 0 10px #46d9ff;
+            transition: width 0.26s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .space-warp-coords {
+            display: flex;
+            gap: 12px;
+            font-family: var(--font-mono, monospace);
+            font-size: 9px;
+            color: #647690;
+            letter-spacing: 0.8px;
         }
     </style>
 </head>
 
 <body>
+
+<!-- SPACE-THEME FAST WARP TRANSITION OVERLAY -->
+<div class="space-warp-loader active" id="spaceWarpLoader">
+    <div class="space-warp-bg"></div>
+    <div class="space-warp-hud">
+        <div class="space-gyro-ring">
+            <div class="space-gyro-outer"></div>
+            <div class="space-gyro-inner"></div>
+            <div class="space-gyro-core">
+                <i class="fa-solid fa-earth-americas" id="spaceWarpIcon"></i>
+            </div>
+        </div>
+        <div class="space-warp-title">ORBITGUARD TELEMETRY</div>
+        <div class="space-warp-status" id="spaceWarpStatus">ENGAGING 3D GLOBE RENDERER...</div>
+        <div class="space-warp-bar-wrap">
+            <div class="space-warp-bar" id="spaceWarpBar" style="width: 25%;"></div>
+        </div>
+        <div class="space-warp-coords">
+            <span>RA: 18h 36m</span>
+            <span>DEC: +38° 47'</span>
+            <span>EPOCH: J2000</span>
+        </div>
+    </div>
+</div>
 
 <div class="app">
 
@@ -923,7 +1220,14 @@
                 <div class="live" id="liveStatus">
                     <span class="dot"></span> FETCHING API...
                 </div>
-                <input class="search" id="search" placeholder="Search object...">
+                <div class="search-wrapper" id="searchWrapper">
+                    <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                    <input class="search" id="search" placeholder="Search satellite or NORAD ID..." autocomplete="off">
+                    <button class="search-clear-btn" id="searchClearBtn" title="Clear search & reset view" style="display:none;" onclick="clearSearchAndResetView()">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                    <div class="search-dropdown" id="searchDropdown" style="display:none;"></div>
+                </div>
             </div>
         </div>
 
@@ -1044,18 +1348,18 @@
                         </button>
 
                         <div class="zoom-slider-control" title="Earth Globe Zoom">
-                            <i class="fa-solid fa-magnifying-glass-minus"></i>
+                            <i class="fa-solid fa-magnifying-glass-minus" title="Zoom Out (Farther)"></i>
                             <input
                                 type="range"
                                 id="earth-zoom-slider"
                                 min="40"
                                 max="1000"
                                 step="1"
-                                value="120"
+                                value="840"
                                 aria-label="Earth globe zoom"
                             >
-                            <i class="fa-solid fa-magnifying-glass-plus"></i>
-                            <span id="earth-zoom-value">120</span>
+                            <i class="fa-solid fa-magnifying-glass-plus" title="Zoom In (Nearer)"></i>
+                            <span id="earth-zoom-value">200</span>
                         </div>
                     </div>
 
@@ -1085,6 +1389,10 @@
                 <div class="sat-tooltip-row">
                     <span>Inclination:</span>
                     <b id="sat-tt-inc">--°</b>
+                </div>
+                <div class="sat-tooltip-row">
+                    <span>Sub-Sat Point:</span>
+                    <b id="sat-tt-coords" style="color:var(--cyan);">--</b>
                 </div>
             </div>
 
@@ -1184,12 +1492,17 @@ const satTtNorad = document.getElementById('sat-tt-norad');
 const satTtAlt = document.getElementById('sat-tt-alt');
 const satTtVel = document.getElementById('sat-tt-vel');
 const satTtInc = document.getElementById('sat-tt-inc');
+const satTtCoords = document.getElementById('sat-tt-coords');
+
+// Dynamic Focal Axis & Pivot Vectors (Earth vs Satellite)
+const targetPivot = new THREE.Vector3(0, 0, 0);
+const currentPivot = new THREE.Vector3(0, 0, 0);
 
 // ============================================================
- // ZOOM SLIDER CONTROL
- // Camera distance is smaller = closer to Earth.
- // Minimum distance deliberately reduced to 40.
- // ============================================================
+// ZOOM SLIDER CONTROL (REVERSED)
+// Slider moved backward (left, towards min) => Earth moves farther (higher camera distance).
+// Slider moved forward (right, towards max) => Earth moves nearer (lower camera distance).
+// ============================================================
 const EARTH_ZOOM_MIN = 40;
 const EARTH_ZOOM_MAX = 1000;
 const EARTH_ZOOM_DEFAULT = 200;
@@ -1199,7 +1512,9 @@ const earthZoomValue = document.getElementById('earth-zoom-value');
 
 function updateZoomSlider() {
     if (!earthZoomSlider) return;
-    earthZoomSlider.value = String(Math.round(targetCameraDistance));
+    // Map cameraDistance (40..1000) into reversed slider value (1000..40)
+    const sliderVal = EARTH_ZOOM_MIN + (EARTH_ZOOM_MAX - targetCameraDistance);
+    earthZoomSlider.value = String(Math.round(sliderVal));
     if (earthZoomValue) {
         earthZoomValue.textContent = String(Math.round(targetCameraDistance));
     }
@@ -1214,16 +1529,19 @@ function setEarthZoom(distance) {
     updateZoomSlider();
 }
 
+function setEarthZoomFromSlider(sliderVal) {
+    // Inverse mapping: sliderVal -> camera distance
+    const distance = EARTH_ZOOM_MIN + (EARTH_ZOOM_MAX - Number(sliderVal));
+    setEarthZoom(distance);
+}
+
 if (earthZoomSlider) {
     earthZoomSlider.min = String(EARTH_ZOOM_MIN);
     earthZoomSlider.max = String(EARTH_ZOOM_MAX);
-    earthZoomSlider.value = String(EARTH_ZOOM_DEFAULT);
+    earthZoomSlider.value = String(EARTH_ZOOM_MIN + (EARTH_ZOOM_MAX - EARTH_ZOOM_DEFAULT));
 
     earthZoomSlider.addEventListener('input', (e) => {
-        autoRotate = false;
-        const btnAutoRotate = document.getElementById('btn-auto-rotate');
-        if (btnAutoRotate) btnAutoRotate.classList.remove('active');
-        setEarthZoom(e.target.value);
+        setEarthZoomFromSlider(e.target.value);
     });
 }
 
@@ -1269,9 +1587,10 @@ function initThreeScene() {
     worldGroup.add(orbitLinesGroup);
     worldGroup.add(satellitesGroup);
 
-    // 1. BUILD MULTI-LAYERED HOLOGRAPHIC 3D EARTH WITH LAND TRACES
+    // 1. BUILD MULTI-LAYERED HOLOGRAPHIC 3D EARTH WITH LAND TRACES & POLAR AXIS
     buildHolographicEarth();
     buildEarthLandTraces();
+    buildPolarAxis();
 
     // 2. BACKGROUND COSMIC STARFIELD
     buildStarfield();
@@ -1475,11 +1794,87 @@ earthGroup.add(haze);
     const eqMat = new THREE.LineBasicMaterial({
         color: 0x46d9ff,
         transparent: true,
-        opacity: 0.25
+        opacity: 0.30
     });
     const equatorLine = new THREE.Line(eqGeo, eqMat);
     equatorLine.rotation.x = Math.PI / 2;
     earthGroup.add(equatorLine);
+}
+
+// ============================================================
+// GOLDEN ROTATIONAL AXIS LINE & POLAR REFERENCE BEACONS (NP / SP)
+// ============================================================
+function buildPolarAxis() {
+    const axisHeight = (EARTH_RADIUS_3D + 22) * 2; // Spans through North and South Poles
+
+    // 1. Radiant Golden Core Axis Line (North Pole to South Pole)
+    const axisGeo = new THREE.CylinderGeometry(0.22, 0.22, axisHeight, 16);
+    const axisMat = new THREE.MeshBasicMaterial({
+        color: 0xffd166, // Radiant Gold
+        transparent: true,
+        opacity: 0.95
+    });
+    const axisMesh = new THREE.Mesh(axisGeo, axisMat);
+    earthGroup.add(axisMesh);
+
+    // 2. Luminous Golden Halo Beam (Atmospheric Penetration Glow)
+    const haloGeo = new THREE.CylinderGeometry(0.70, 0.70, axisHeight, 16);
+    const haloMat = new THREE.MeshBasicMaterial({
+        color: 0xffb703,
+        transparent: true,
+        opacity: 0.32,
+        blending: THREE.AdditiveBlending
+    });
+    const haloMesh = new THREE.Mesh(haloGeo, haloMat);
+    earthGroup.add(haloMesh);
+
+    // 3. North Pole (+Y) Diamond Beacon & Spire (90° N)
+    const npGeo = new THREE.OctahedronGeometry(1.4, 0);
+    const npMat = new THREE.MeshBasicMaterial({
+        color: 0xffe680,
+        wireframe: false
+    });
+    const npMesh = new THREE.Mesh(npGeo, npMat);
+    npMesh.position.set(0, EARTH_RADIUS_3D + 1.2, 0);
+    earthGroup.add(npMesh);
+
+    const npTipGeo = new THREE.OctahedronGeometry(1.0, 0);
+    const npTipMesh = new THREE.Mesh(npTipGeo, npMat);
+    npTipMesh.position.set(0, EARTH_RADIUS_3D + 22, 0);
+    earthGroup.add(npTipMesh);
+
+    // 4. South Pole (-Y) Diamond Beacon & Spire (90° S)
+    const spGeo = new THREE.OctahedronGeometry(1.4, 0);
+    const spMat = new THREE.MeshBasicMaterial({
+        color: 0xffb703,
+        wireframe: false
+    });
+    const spMesh = new THREE.Mesh(spGeo, spMat);
+    spMesh.position.set(0, -(EARTH_RADIUS_3D + 1.2), 0);
+    earthGroup.add(spMesh);
+
+    const spTipGeo = new THREE.OctahedronGeometry(1.0, 0);
+    const spTipMesh = new THREE.Mesh(spTipGeo, spMat);
+    spTipMesh.position.set(0, -(EARTH_RADIUS_3D + 22), 0);
+    earthGroup.add(spTipMesh);
+
+    // 5. Polar Latitude Circles (Arctic 66.5° N & Antarctic 66.5° S)
+    [66.5, -66.5].forEach(lat => {
+        const rad = Math.cos(lat * Math.PI / 180) * (EARTH_RADIUS_3D + 0.45);
+        const y = Math.sin(lat * Math.PI / 180) * (EARTH_RADIUS_3D + 0.45);
+        const curve = new THREE.EllipseCurve(0, 0, rad, rad, 0, 2 * Math.PI, false, 0);
+        const pts = curve.getPoints(64);
+        const rGeo = new THREE.BufferGeometry().setFromPoints(pts);
+        const rMat = new THREE.LineBasicMaterial({
+            color: 0xffd166,
+            transparent: true,
+            opacity: 0.45
+        });
+        const rLine = new THREE.Line(rGeo, rMat);
+        rLine.rotation.x = Math.PI / 2;
+        rLine.position.y = y;
+        earthGroup.add(rLine);
+    });
 }
 
 // ============================================================
@@ -1604,10 +1999,10 @@ function buildStarfield() {
     }
     starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
     const starMat = new THREE.PointsMaterial({
-        color: 0xffffff,
-        size: 1.2,
+        color: 0xF4F5F0,
+        size: 1.5,
         transparent: true,
-        opacity: 0.45
+        opacity: 1
     });
     const starMesh = new THREE.Points(starGeo, starMat);
     scene.add(starMesh);
@@ -1616,7 +2011,7 @@ function buildStarfield() {
 // ============================================================
 // POPULATE REAL-TIME PROPAGATED SATELLITES & 3D ORBIT TRACKS
 // ============================================================
-function render3DOrbits(satellites) {
+function render3DOrbits(satellites, highlightQuery = "") {
     if (!satellitesGroup || !orbitLinesGroup) return;
 
     // Clear existing satellites and orbit lines
@@ -1631,33 +2026,36 @@ function render3DOrbits(satellites) {
     }
 
     interactiveSatellites = [];
-
     const now = new Date();
+    const queryLower = (highlightQuery || "").trim().toLowerCase();
+    const hasActiveSearch = queryLower.length > 0;
+    let firstMatchedPos = null;
+    let firstMatchedAltKm = 0;
 
     satellites.forEach((sat, index) => {
+        const nameLower = (sat.name || "").toLowerCase();
+        const noradStr = (sat.noradId || sat.NORAD_CAT_ID || "").toString();
+        const isMatched = hasActiveSearch && (nameLower.includes(queryLower) || noradStr.includes(queryLower));
 
-        const colorHex =
-            SATELLITE_PALETTE[index % SATELLITE_PALETTE.length];
+        const isIss = Number(sat.noradId) === ISS_NORAD_ID;
 
-        const isIss =
-            Number(sat.noradId) === ISS_NORAD_ID;
+        // Choose color (radiant gold/cyan for searched match)
+        let colorHex = SATELLITE_PALETTE[index % SATELLITE_PALETTE.length];
+        if (isMatched) {
+            colorHex = 0xffd166;
+        }
 
         const orbitPoints = [];
-
         let currentPos3D = null;
         let currentVelKmS = 0;
         let currentAltKm = 0;
         let currentIncDeg = 0;
+        let currentLatDeg = 0;
+        let currentLonDeg = 0;
 
-        // ----------------------------------------------------
-        // Propagate satellite for +90 minutes
-        // ----------------------------------------------------
+        // Ground-track / Fixed Earth Geographic Geodetic Propagation (+90 min)
         for (let step = 0; step <= 90; step += 2) {
-
-            const time = new Date(
-                now.getTime() + step * 60000
-            );
-
+            const time = new Date(now.getTime() + step * 60000);
             const state = satellite.propagate(
                 sat.satrec,
                 time.getUTCFullYear(),
@@ -1669,238 +2067,140 @@ function render3DOrbits(satellites) {
             );
 
             if (state && state.position) {
+                // Convert ECI to Earth-Fixed Geodetic (Latitude, Longitude, Altitude)
+                const gmst = satellite.gstime(time);
+                const geodetic = satellite.eciToGeodetic(state.position, gmst);
+                const latDeg = (geodetic.latitude * 180) / Math.PI;
+                const lonDeg = (geodetic.longitude * 180) / Math.PI;
+                const altKm = Math.max(0, geodetic.height);
 
-                const x =
-                    state.position.x * KM_TO_3D_SCALE;
-
-                const y =
-                    state.position.z * KM_TO_3D_SCALE;
-
-                const z =
-                    -state.position.y * KM_TO_3D_SCALE;
-
-                const pt =
-                    new THREE.Vector3(x, y, z);
-
+                // Convert exact Lat/Lon/Alt into 3D spherical coordinate
+                const r3d = EARTH_RADIUS_3D + (altKm * KM_TO_3D_SCALE);
+                const pt = geoToVector3(lonDeg, latDeg, r3d);
                 orbitPoints.push(pt);
 
-                // Current satellite position
                 if (step === 0) {
-
                     currentPos3D = pt;
-
-                    // Velocity
+                    currentLatDeg = latDeg;
+                    currentLonDeg = lonDeg;
+                    currentAltKm = altKm;
                     if (state.velocity) {
-
-                        currentVelKmS = Math.sqrt(
-                            state.velocity.x *
-                            state.velocity.x +
-
-                            state.velocity.y *
-                            state.velocity.y +
-
-                            state.velocity.z *
-                            state.velocity.z
-                        );
+                        currentVelKmS = Math.sqrt(state.velocity.x**2 + state.velocity.y**2 + state.velocity.z**2);
                     }
-
-                    // Altitude
-                    const distFromCenter = Math.sqrt(
-                        state.position.x *
-                        state.position.x +
-
-                        state.position.y *
-                        state.position.y +
-
-                        state.position.z *
-                        state.position.z
-                    );
-
-                    currentAltKm = Math.max(
-                        0,
-                        distFromCenter - EARTH_KM_RADIUS
-                    );
-
-                    // Inclination
-                    currentIncDeg =
-                        (sat.satrec.inclo *
-                            180 /
-                            Math.PI) || 0;
+                    currentIncDeg = (sat.satrec.inclo * 180 / Math.PI) || 0;
                 }
             }
         }
 
-        // ----------------------------------------------------
-        // DRAW ORBIT
-        // ----------------------------------------------------
-        if (
-            orbitPoints.length > 2 &&
-            currentPos3D
-        ) {
+        if (orbitPoints.length > 2 && currentPos3D) {
+            if (isMatched && !firstMatchedPos) {
+                firstMatchedPos = currentPos3D;
+                firstMatchedAltKm = currentAltKm;
+            }
 
-            /*
-             * IMPORTANT:
-             *
-             * false = OPEN CURVE
-             *
-             * This prevents Three.js from connecting
-             * the final trajectory point back to the
-             * first trajectory point.
-             */
-            const curve =
-                new THREE.CatmullRomCurve3(
-                    orbitPoints,
-                    false
-                );
+            const curve = new THREE.CatmullRomCurve3(orbitPoints, false);
 
-            const tubeRadius =
-                isIss ? 0.37 : 0.10;
+            // SLEEK & ELEGANT TRAJECTORY TUBES (REFINED UI/UX)
+            const tubeRadius = isMatched ? 0.22 : (isIss ? 0.13 : 0.06);
+            const opacity = isMatched ? 1.0 : (hasActiveSearch ? 0.12 : (isIss ? 0.80 : 0.42));
 
-            /*
-             * IMPORTANT:
-             *
-             * false = OPEN TUBE
-             *
-             * Without this, TubeGeometry also closes
-             * the trajectory at the endpoints.
-             */
-            const orbitGeo =
-                new THREE.TubeGeometry(
-                    curve,
-                    84,
-                    tubeRadius,
-                    5,
-                    false
-                );
+            const orbitGeo = new THREE.TubeGeometry(curve, 96, tubeRadius, 6, false);
+            const orbitMat = new THREE.MeshBasicMaterial({
+                color: colorHex,
+                transparent: true,
+                opacity: opacity,
+                blending: THREE.AdditiveBlending
+            });
 
-            const orbitMat =
-                new THREE.MeshBasicMaterial({
-                    color: colorHex,
-                    transparent: true,
-                    opacity: isIss ? 0.85 : 0.48,
-                    blending: THREE.AdditiveBlending
-                });
+            const orbitMesh = new THREE.Mesh(orbitGeo, orbitMat);
+            orbitLinesGroup.add(orbitMesh);
 
-            const orbitMesh =
-                new THREE.Mesh(
-                    orbitGeo,
-                    orbitMat
-                );
-
-            orbitLinesGroup.add(
-                orbitMesh
-            );
-
-            // ------------------------------------------------
             // SATELLITE BEACON
-            // ------------------------------------------------
+            const satObjGroup = new THREE.Group();
+            satObjGroup.position.copy(currentPos3D);
 
-            const satObjGroup =
-                new THREE.Group();
-
-            satObjGroup.position.copy(
-                currentPos3D
-            );
-
-            // Core sphere
-            const satCoreGeo =
-                new THREE.SphereGeometry(
-                    isIss ? 1.8 : 1.1,
-                    16,
-                    16
-                );
-
-            const satCoreMat =
-                new THREE.MeshBasicMaterial({
-                    color:
-                        isIss
-                            ? 0xffffff
-                            : colorHex
-                });
-
-            const satCoreMesh =
-                new THREE.Mesh(
-                    satCoreGeo,
-                    satCoreMat
-                );
-
-            satObjGroup.add(
-                satCoreMesh
-            );
+            // Core sphere (sleek refined pips)
+            const coreRadius = isMatched ? 1.45 : (isIss ? 1.05 : 0.75);
+            const satCoreGeo = new THREE.SphereGeometry(coreRadius, 16, 16);
+            const satCoreMat = new THREE.MeshBasicMaterial({
+                color: isMatched ? 0xffffff : (isIss ? 0xffffff : colorHex)
+            });
+            const satCoreMesh = new THREE.Mesh(satCoreGeo, satCoreMat);
+            satObjGroup.add(satCoreMesh);
 
             // Glowing outer halo
-            const haloGeo =
-                new THREE.SphereGeometry(
-                    isIss ? 3.8 : 2.4,
-                    16,
-                    16
-                );
-
-            const haloMat =
-                new THREE.MeshBasicMaterial({
-                    color: colorHex,
-                    transparent: true,
-                    opacity: 0.38,
-                    blending:
-                        THREE.AdditiveBlending
-                });
-
-            const haloMesh =
-                new THREE.Mesh(
-                    haloGeo,
-                    haloMat
-                );
-
-            satObjGroup.add(
-                haloMesh
-            );
+            const haloRadius = isMatched ? 2.8 : (isIss ? 2.0 : 1.5);
+            const haloGeo = new THREE.SphereGeometry(haloRadius, 16, 16);
+            const haloMat = new THREE.MeshBasicMaterial({
+                color: isMatched ? 0xffd166 : colorHex,
+                transparent: true,
+                opacity: isMatched ? 0.80 : (hasActiveSearch ? 0.08 : 0.30),
+                blending: THREE.AdditiveBlending
+            });
+            const haloMesh = new THREE.Mesh(haloGeo, haloMat);
+            satObjGroup.add(haloMesh);
 
             // Invisible raycast target
-            const hitGeo =
-                new THREE.SphereGeometry(
-                    4.8,
-                    8,
-                    8
-                );
-
-            const hitMat =
-                new THREE.MeshBasicMaterial({
-                    visible: false
-                });
-
-            const hitMesh =
-                new THREE.Mesh(
-                    hitGeo,
-                    hitMat
-                );
+            const hitGeo = new THREE.SphereGeometry(3.6, 8, 8);
+            const hitMat = new THREE.MeshBasicMaterial({ visible: false });
+            const hitMesh = new THREE.Mesh(hitGeo, hitMat);
 
             hitMesh.userData = {
                 name: sat.name,
                 noradId: sat.noradId,
-                altitude:
-                    Math.round(currentAltKm),
-                velocity:
-                    currentVelKmS.toFixed(2),
-                inclination:
-                    currentIncDeg.toFixed(1),
+                altitude: Math.round(currentAltKm),
+                velocity: currentVelKmS.toFixed(2),
+                inclination: currentIncDeg.toFixed(1),
+                lat: `${Math.abs(currentLatDeg).toFixed(2)}° ${currentLatDeg >= 0 ? 'N' : 'S'}`,
+                lon: `${Math.abs(currentLonDeg).toFixed(2)}° ${currentLonDeg >= 0 ? 'E' : 'W'}`,
                 color: colorHex,
                 isIss: isIss,
+                isMatched: isMatched,
                 halo: haloMesh
             };
 
-            satObjGroup.add(
-                hitMesh
-            );
-
-            satellitesGroup.add(
-                satObjGroup
-            );
-
-            interactiveSatellites.push(
-                hitMesh
-            );
+            satObjGroup.add(hitMesh);
+            satellitesGroup.add(satObjGroup);
+            interactiveSatellites.push(hitMesh);
         }
     });
+
+    // ============================================================
+    // DYNAMIC FOCAL AXIS & CAMERA POSITIONING (20,000 KM RULE)
+    // Distance < 20,000 km  => Main axis at Earth, camera view at Earth
+    // Distance >= 20,000 km => Main axis at Satellite, camera focus at Satellite
+    // ============================================================
+    if (firstMatchedPos) {
+        const phi = Math.atan2(firstMatchedPos.x, firstMatchedPos.z);
+        const len = Math.sqrt(firstMatchedPos.x**2 + firstMatchedPos.y**2 + firstMatchedPos.z**2);
+        const theta = len > 0 ? Math.asin(firstMatchedPos.y / len) : 0;
+
+        if (firstMatchedAltKm >= 20000) {
+            // High Altitude Regime (GEO / HEO >= 20,000 km):
+            // 1. Auto-rotate must stop immediately
+            autoRotate = false;
+            const btnAutoRotate = document.getElementById('btn-auto-rotate');
+            if (btnAutoRotate) btnAutoRotate.classList.remove('active');
+
+            // 2. Main axis and camera focus shifts directly to satellite dead-center
+            targetPivot.copy(firstMatchedPos);
+            targetRotY = 0.45;
+            targetRotX = 0.22;
+            setEarthZoom(70); // Close focal inspection directly around satellite
+        } else {
+            // Low / Medium Altitude Regime (< 20,000 km): Main axis stays at Earth, camera view at Earth
+            targetPivot.set(0, 0, 0);
+            targetRotY = phi;
+            targetRotX = Math.max(-1.2, Math.min(1.2, -theta));
+
+            const SEARCH_ZOOM_LIMIT = 180;
+            const targetDist = Math.max(SEARCH_ZOOM_LIMIT, Math.min(220, Math.round(len + 120)));
+            setEarthZoom(targetDist);
+        }
+        lastInteractionTime = performance.now();
+    } else {
+        targetPivot.set(0, 0, 0);
+    }
 }
 
 // ============================================================
@@ -1909,12 +2209,15 @@ function render3DOrbits(satellites) {
 function attachSceneEventListeners(container) {
     const canvas = document.getElementById('earth-canvas');
 
-    // Mouse Drag Rotation on canvas
-    canvas.addEventListener('mousedown', (e) => {
+    // Mouse Drag Rotation attached to container (responsive everywhere)
+    container.addEventListener('mousedown', (e) => {
+        // Ignore clicks on interactive UI elements (buttons, inputs, glass cards, slider)
+        if (e.target.closest('button, input, .glass-card, .glass-risk-panel, .zoom-slider-control, a')) {
+            return;
+        }
         isDragging = true;
         previousMouseX = e.clientX;
         previousMouseY = e.clientY;
-        autoRotate = false;
         lastInteractionTime = performance.now();
     });
 
@@ -1950,6 +2253,9 @@ function attachSceneEventListeners(container) {
                 satTtAlt.innerText = `${satData.altitude} km`;
                 satTtVel.innerText = `${satData.velocity} km/s`;
                 satTtInc.innerText = `${satData.inclination}°`;
+                if (satTtCoords) {
+                    satTtCoords.innerText = `${satData.lat || '--'}, ${satData.lon || '--'}`;
+                }
 
                 satTooltip.style.left = `${e.clientX - rect.left}px`;
                 satTooltip.style.top = `${e.clientY - rect.top}px`;
@@ -1972,7 +2278,6 @@ function attachSceneEventListeners(container) {
     // Wheel Zoom with smooth damping
     container.addEventListener('wheel', (e) => {
         e.preventDefault();
-        autoRotate = false;
         lastInteractionTime = performance.now();
 
         // Lower minimum zoom distance so the globe can be viewed much closer.
@@ -1980,13 +2285,12 @@ function attachSceneEventListeners(container) {
         updateZoomSlider();
     }, { passive: false });
 
-    // Touch support
+    // Touch support on container
     container.addEventListener('touchstart', (e) => {
-        if (e.target === canvas && e.touches.length === 1) {
+        if (e.touches.length === 1 && !e.target.closest('button, input, .glass-card, .glass-risk-panel, .zoom-slider-control, a')) {
             isDragging = true;
             previousMouseX = e.touches[0].clientX;
             previousMouseY = e.touches[0].clientY;
-            autoRotate = false;
             lastInteractionTime = performance.now();
         }
     }, { passive: true });
@@ -2014,9 +2318,11 @@ function attachSceneEventListeners(container) {
     const btnToggleOrbits = document.getElementById('btn-toggle-orbits');
 
     btnResetCam.addEventListener('click', () => {
-        gsap.to(worldGroup.rotation, { x: 0.32, y: 0.45, duration: 1.2, ease: "power2.out" });
+        targetPivot.set(0, 0, 0);
         targetRotX = 0.32;
         targetRotY = 0.45;
+        worldGroup.rotation.x = 0.32;
+        worldGroup.rotation.y = 0.45;
         setEarthZoom(EARTH_ZOOM_DEFAULT);
     });
 
@@ -2063,17 +2369,21 @@ const clock = new THREE.Clock();
 function animateScene() {
     requestAnimationFrame(animateScene);
 
-    const delta = clock.getDelta();
-    const now = performance.now();
+    const delta = Math.min(clock.getDelta(), 0.1);
 
-    // Auto-rotation when idle
-    if (autoRotate || (now - lastInteractionTime > IDLE_RESUME_MS && !isDragging)) {
-        targetRotY += 0.12 * delta;
+    // Continuous rotation of the entire Earth & satellite system when Auto-Spin is ON
+    if (autoRotate && !isDragging) {
+        targetRotY += 0.18 * delta;
     }
 
-    // Smooth inertia interpolation for world rotation
+    // Smooth inertia interpolation for world rotation (Earth + satellites + orbits locked together)
     worldGroup.rotation.y += (targetRotY - worldGroup.rotation.y) * 0.08;
     worldGroup.rotation.x += (targetRotX - worldGroup.rotation.x) * 0.08;
+
+    // Smooth focal pivot translation (Earth vs Satellite focus centered in view)
+    currentPivot.lerp(targetPivot, 0.08);
+    const rotatedPivot = currentPivot.clone().applyEuler(worldGroup.rotation);
+    worldGroup.position.copy(rotatedPivot).negate();
 
     // Smooth zoom interpolation
     targetCameraDistance = Math.max(
@@ -2209,27 +2519,129 @@ STARLINK-1019
 STARLINK-1025
 1 44731U 19074T   26058.50000000  .00001220  00000+0  87000-4 0  9998
 2 44731  53.0545 225.1234 0001450  82.1123 278.1123 15.06412341354224
+STARLINK-1038
+1 44744U 19074AG  26058.50000000  .00001210  00000+0  86000-4 0  9990
+2 44744  53.0544 232.1456 0001430  88.2341 272.0123 15.06412341354190
+STARLINK-1055
+1 44761U 19074AY  26058.50000000  .00001190  00000+0  84000-4 0  9993
+2 44761  53.0542 245.1245 0001410  94.1234 266.1234 15.06412341354210
 STARLINK-3012
 1 52140U 22040A   26058.50000000  .00001500  00000+0  92000-4 0  9995
 2 52140  53.2184 140.2312 0001512 105.1234 254.9912 15.12412341214512
+STARLINK-3045
+1 52173U 22040AH  26058.50000000  .00001480  00000+0  91000-4 0  9997
+2 52173  53.2185 155.1234 0001500 110.1234 250.0123 15.12412341214530
 ONEWEB-0012
 1 44057U 19010A   26058.45000000  .00000120  00000+0  10000-4 0  9996
 2 44057  87.4123  35.2145 0001850  45.1234 314.9912 13.10412341341201
+ONEWEB-0024
+1 44069U 19010M   26058.45000000  .00000118  00000+0  98000-5 0  9998
+2 44069  87.4125  55.1234 0001830  52.1234 308.0123 13.10412341341220
+ONEWEB-0036
+1 44081U 19010Y   26058.45000000  .00000122  00000+0  10200-4 0  9991
+2 44081  87.4124  75.1456 0001860  48.1456 312.0145 13.10412341341215
 NOAA-20
 1 43013U 17073A   26058.41200000  .00000085  00000+0  54000-5 0  9993
 2 43013  98.7145 182.4123 0001210  78.1234 282.0123 14.19512341421501
+NOAA-21
+1 54234U 22153A   26058.42000000  .00000080  00000+0  51000-5 0  9995
+2 54234  98.7150 195.1234 0001200  82.1234 278.0123 14.19512341421520
+SUOMI NPP
+1 37849U 11061A   26058.43000000  .00000090  00000+0  58000-5 0  9997
+2 37849  98.7140 165.1234 0001230  72.1234 288.0123 14.19512341421480
 TERRA (EOS AM-1)
 1 25994U 99068A   26058.48000000  .00000210  00000+0  12000-4 0  9994
 2 25994  98.2045 295.1234 0001450  65.1234 295.0123 14.57112341381204
 AQUA (EOS PM-1)
 1 27424U 02022A   26058.46000000  .00000195  00000+0  11000-4 0  9997
 2 27424  98.2012 115.4123 0001380  72.1234 288.0123 14.57112341381190
+AURA
+1 28376U 04026A   26058.46500000  .00000190  00000+0  10800-4 0  9992
+2 28376  98.2025 130.1234 0001390  75.1234 285.0123 14.57112341381195
 SENTINEL-1A
 1 39634U 14016A   26058.47000000  .00000050  00000+0  34000-5 0  9991
 2 39634  98.1812 210.1234 0001250  55.1234 305.0123 14.59212341411200
 SENTINEL-2A
 1 40697U 15028A   26058.49000000  .00000070  00000+0  42000-5 0  9995
 2 40697  98.5712  85.4123 0001150  68.1234 292.0123 14.39812341401241
+SENTINEL-3A
+1 41335U 16011A   26058.48500000  .00000065  00000+0  39000-5 0  9996
+2 41335  98.6512 105.1234 0001180  62.1234 298.0123 14.45212341401210
+SENTINEL-5P
+1 42969U 17064A   26058.47500000  .00000060  00000+0  36000-5 0  9998
+2 42969  98.7412 145.1234 0001190  58.1234 302.0123 14.35112341401225
+CARTOSAT-3
+1 44804U 19081A   26058.49000000  .00000150  00000+0  89000-5 0  9994
+2 44804  97.4812 225.1234 0001420  76.1234 284.0123 15.11212341281200
+RISAT-2B
+1 44258U 19028A   26058.48500000  .00000140  00000+0  85000-5 0  9996
+2 44258  37.0123 110.1234 0001350  85.1234 275.0123 15.15412341271210
+INSAT-3D
+1 39216U 13038B   26058.50000000  .00000010  00000+0  00000+0 0  9991
+2 39216   0.0541  82.0123 0001200  90.1234 270.0123  1.00271234051200
+GOES-16
+1 41866U 16071A   26058.50000000  .00000010  00000+0  00000+0 0  9993
+2 41866   0.0412 284.8123 0001100  95.1234 265.0123  1.00271234051210
+GOES-17
+1 43226U 18022A   26058.50000000  .00000010  00000+0  00000+0 0  9995
+2 43226   0.0425 222.8123 0001150  92.1234 268.0123  1.00271234051225
+METEOSAT-11
+1 40732U 15034A   26058.50000000  .00000010  00000+0  00000+0 0  9997
+2 40732   0.0385   0.0123 0001050  88.1234 272.0123  1.00271234051230
+GPS BIIR-2
+1 24876U 97035A   26058.45000000  .00000012  00000+0  00000+0 0  9992
+2 24876  55.4123 150.1234 0051200 120.1234 240.0123  2.00561234121200
+GPS BIIF-1
+1 36585U 10022A   26058.45500000  .00000014  00000+0  00000+0 0  9994
+2 36585  55.4150 210.1234 0048500 135.1234 225.0123  2.00561234121215
+GALILEO-26
+1 43564U 18060A   26058.46000000  .00000015  00000+0  00000+0 0  9996
+2 43564  56.0123 310.1234 0002100 115.1234 245.0123  1.70471234151200
+GLONASS-755
+1 40315U 14075A   26058.45000000  .00000018  00000+0  00000+0 0  9998
+2 40315  64.8123  45.1234 0012500 140.1234 220.0123  2.13101234141200
+BEIDOU-3
+1 43155U 18003A   26058.45500000  .00000016  00000+0  00000+0 0  9999
+2 43155  55.2123  95.1234 0004500 105.1234 255.0123  1.86241234131200
+JASON-3
+1 41240U 16002A   26058.47000000  .00000055  00000+0  35000-5 0  9990
+2 41240  66.0412 180.1234 0008500  65.1234 295.0123 12.84512341361200
+SWOT
+1 54754U 22171A   26058.48000000  .00000060  00000+0  38000-5 0  9992
+2 54754  77.6123 205.1234 0001400  70.1234 290.0123 14.21512341391210
+GRACE-FO
+1 43476U 18047A   26058.49000000  .00000180  00000+0  10500-4 0  9994
+2 43476  89.0123 125.1234 0015500  55.1234 305.0123 15.24112341281220
+CHANDRAYAAN-2
+1 44441U 19042A   26058.49500000  .00000090  00000+0  55000-5 0  9996
+2 44441  90.0000 140.1234 0001200  80.1234 280.0123 14.50012341351200
+TDRS-13
+1 42915U 17047A   26058.50000000  .00000010  00000+0  00000+0 0  9998
+2 42915   3.5123 315.1234 0002500  85.1234 275.0123  1.00271234051240
+RADARSAT-2
+1 32382U 07061A   26058.48000000  .00000075  00000+0  46000-5 0  9991
+2 32382  98.5712 250.1234 0001300  60.1234 300.0123 14.29812341401210
+ALOS-2
+1 39766U 14029A   26058.48500000  .00000080  00000+0  49000-5 0  9993
+2 39766  97.9123 275.1234 0001350  64.1234 296.0123 14.78512341371215
+ENVISAT
+1 27386U 02009A   26058.47500000  .00000065  00000+0  41000-5 0  9995
+2 27386  98.5412 320.1234 0001150  56.1234 304.0123 14.37512341401220
+SCATSAT-1
+1 41783U 16059A   26058.48500000  .00000120  00000+0  75000-5 0  9997
+2 41783  98.1234 175.1234 0001250  74.1234 286.0123 14.61212341381210
+OCEANSAT-2
+1 35931U 09051A   26058.48000000  .00000115  00000+0  72000-5 0  9999
+2 35931  98.2412 190.1234 0001300  70.1234 290.0123 14.63512341381205
+ASTROSAT
+1 40930U 15052A   26058.49000000  .00000160  00000+0  95000-5 0  9991
+2 40930   6.0123  85.1234 0008500  92.1234 268.0123 14.85212341321200
+LANDSAT 8
+1 39084U 13008A   26058.49000000  .00000080  00000+0  48000-5 0  9996
+2 39084  98.2145 340.1234 0001350  80.1234 280.0123 14.57112341381220
+LANDSAT 9
+1 49260U 21088A   26058.49500000  .00000082  00000+0  49000-5 0  9998
+2 49260  98.2145 160.1234 0001340  82.1234 278.0123 14.57112341381245
 COSMOS 2251 DEB
 1 34001U 93036KC  26058.45000000  .00003500  00000+0  21000-3 0  9992
 2 34001  74.0212 142.1234 0021450 145.1234 215.0123 14.89112341311204
@@ -2242,12 +2654,18 @@ CZ-4C R/B (DEB)
 IRIDIUM 33 DEB
 1 33785U 97051AM  26058.48000000  .00003100  00000+0  19000-3 0  9993
 2 33785  86.4123  65.1234 0019500 135.1234 225.0123 14.81212341321200
-LANDSAT 8
-1 39084U 13008A   26058.49000000  .00000080  00000+0  48000-5 0  9996
-2 39084  98.2145 340.1234 0001350  80.1234 280.0123 14.57112341381220
-LANDSAT 9
-1 49260U 21088A   26058.49500000  .00000082  00000+0  49000-5 0  9998
-2 49260  98.2145 160.1234 0001340  82.1234 278.0123 14.57112341381245`;
+DELTA 1 DEB
+1 12345U 78026A   26058.46000000  .00002500  00000+0  15000-3 0  9995
+2 12345  45.1234 130.1234 0014500 120.1234 240.0123 14.65112341311200
+THOR ABLESTAR DEB
+1 00021U 60007B   26058.45000000  .00002900  00000+0  18000-3 0  9997
+2 00021  66.7123  80.1234 0019500 140.1234 220.0123 14.72112341301205
+SL-16 R/B
+1 22803U 93059B   26058.47000000  .00002200  00000+0  14000-3 0  9991
+2 22803  71.0123 210.1234 0011500 110.1234 250.0123 14.51212341331200
+TITAN 4B R/B
+1 24794U 97023B   26058.46500000  .00001900  00000+0  12000-3 0  9993
+2 24794  28.6123 160.1234 0010500 100.1234 260.0123 14.48112341341210`;
 
     window.orbitGuardDataSource = "EMBEDDED CATALOG (OFFLINE)";
     return parseTleCatalog(EMBEDDED_BACKUP_TLE);
@@ -2288,12 +2706,81 @@ function parseTleCatalog(tleText) {
     return records;
 }
 
-function pickSatelliteSubset(satellites, limit) {
-    if (satellites.length <= limit) return satellites.slice();
-    const iss = satellites.find(sat => Number(sat.noradId) === ISS_NORAD_ID);
-    const rest = satellites.filter(sat => Number(sat.noradId) !== ISS_NORAD_ID);
-    if (iss) return [iss, ...rest.slice(0, limit - 1)];
-    return rest.slice(0, limit);
+// Structured Categorization:
+// 1. ALL Space Stations (ISS, Tiangong CSS, Tianhe)
+// 2. 8 to 10 Mega-Constellations (Starlink, OneWeb)
+// 3. 30 to 40 Active Satellites (Landsat, Sentinel, NOAA, Terra, Aqua, Cartosat, etc.)
+// 4. 6 to 8 Debris & Rocket Bodies (Cosmos, Fengyun, CZ-4, SL-16, Titan 4B, etc.)
+function categorizeAndPickSatelliteSubset(allSatellites) {
+    if (!Array.isArray(allSatellites) || allSatellites.length === 0) return [];
+
+    const spaceStations = [];
+    const constellations = [];
+    const activeSatellites = [];
+    const debrisAndRockets = [];
+    const seenNorad = new Set();
+
+    allSatellites.forEach(sat => {
+        const norad = Number(sat.noradId || sat.NORAD_CAT_ID || 0);
+        if (seenNorad.has(norad)) return;
+
+        const name = (sat.name || "").toUpperCase();
+
+        // 1. ALL SPACE STATIONS
+        if (norad === ISS_NORAD_ID || norad === 48274 ||
+            name.includes("ISS") || name.includes("ZARYA") || 
+            name.includes("TIANGONG") || name.includes("CSS") || 
+            name.includes("TIANHE") || name.includes("SPACE STATION") ||
+            name.includes("WENTIAN") || name.includes("MENGTIAN")) {
+            spaceStations.push(sat);
+            seenNorad.add(norad);
+        }
+        // 2. 6 TO 8 DEBRIS & ROCKET BODIES
+        else if (name.includes("DEB") || name.includes("DEBRIS") || 
+                 name.includes("R/B") || name.includes("ROCKET") || 
+                 name.includes("COSMOS 2251") || name.includes("FENGYUN 1C") ||
+                 name.includes("SL-16") || name.includes("TITAN 4B") || 
+                 name.includes("DELTA 1") || name.includes("THOR ABLESTAR") ||
+                 name.includes("ARIANE 4")) {
+            if (debrisAndRockets.length < 8) {
+                debrisAndRockets.push(sat);
+                seenNorad.add(norad);
+            }
+        }
+        // 3. 8 TO 10 MEGA-CONSTELLATIONS
+        else if (name.includes("STARLINK") || name.includes("ONEWEB") || 
+                 name.includes("KUIPER") || name.includes("O3B")) {
+            if (constellations.length < 10) {
+                constellations.push(sat);
+                seenNorad.add(norad);
+            }
+        }
+        // 4. 30 TO 40 ACTIVE SATELLITES (EO, Weather, Nav, Science, Comms)
+        else {
+            if (activeSatellites.length < 38) {
+                activeSatellites.push(sat);
+                seenNorad.add(norad);
+            }
+        }
+    });
+
+    // If active satellites list has room, fill from remaining verified satellites
+    if (activeSatellites.length < 30) {
+        for (const sat of allSatellites) {
+            const norad = Number(sat.noradId || sat.NORAD_CAT_ID || 0);
+            if (!seenNorad.has(norad) && activeSatellites.length < 38) {
+                activeSatellites.push(sat);
+                seenNorad.add(norad);
+            }
+        }
+    }
+
+    return [
+        ...spaceStations,
+        ...constellations,
+        ...activeSatellites,
+        ...debrisAndRockets
+    ];
 }
 
 // ============================================================
@@ -2510,8 +2997,12 @@ async function initDashboard() {
 
         if (parsedSatellites.length === 0) throw new Error("No valid satellites parsed.");
 
-        // Render 3D Orbits in Three.js
-        render3DOrbits(pickSatelliteSubset(parsedSatellites, MAX_ORBIT_SATS));
+        // Store full catalog & default curated categorized subset
+        window.allFullParsedSatellites = parsedSatellites;
+        window.defaultCuratedSatellites = categorizeAndPickSatelliteSubset(parsedSatellites);
+
+        // Render 3D Orbits in Three.js (All Space Stations + 8-10 Constellations + 30-40 Active + 6-8 Debris/Rockets)
+        render3DOrbits(window.defaultCuratedSatellites);
 
         // 2. Fetch Precomputed Conjunctions from MongoDB Backend (Consistent across all pages & refreshes)
         const conjunctions = await fetchLiveConjunctions();
@@ -2526,12 +3017,174 @@ async function initDashboard() {
     }
 }
 
-// Search Filter
-document.getElementById("search").addEventListener("input", (e) => {
-    const query = e.target.value.toLowerCase();
+// ============================================================
+// LIVE SEARCH DROPDOWN & 3D GLOBE HOVER INSPECTION
+// ============================================================
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+const searchInput = document.getElementById("search");
+const searchClearBtn = document.getElementById("searchClearBtn");
+const searchDropdown = document.getElementById("searchDropdown");
+
+function renderSearchDropdown(matches, query) {
+    if (!searchDropdown) return;
+
+    if (!matches || matches.length === 0) {
+        searchDropdown.innerHTML = `<div class="search-dropdown-empty">No orbital objects found for "${escapeHtml(query)}"</div>`;
+        searchDropdown.style.display = "flex";
+        return;
+    }
+
+    searchDropdown.innerHTML = matches.map(sat => {
+        let typeBadge = '🛰️ Sat';
+        let badgeColor = 'var(--cyan)';
+        const nameUp = (sat.name || '').toUpperCase();
+        if (nameUp.includes('ISS') || nameUp.includes('TIANGONG') || nameUp.includes('CSS') || nameUp.includes('STATION')) {
+            typeBadge = '⭐ Station';
+            badgeColor = '#ffd166';
+        } else if (nameUp.includes('STARLINK') || nameUp.includes('ONEWEB') || nameUp.includes('KUIPER')) {
+            typeBadge = '🌐 Fleet';
+            badgeColor = '#c77dff';
+        } else if (nameUp.includes('DEB') || nameUp.includes('R/B') || nameUp.includes('FRAGMENT')) {
+            typeBadge = '☄ Debris';
+            badgeColor = '#ff526d';
+        }
+
+        const norad = sat.noradId || sat.NORAD_CAT_ID || '--';
+        const altText = sat.altitude ? `${Math.round(sat.altitude)} km` : '';
+
+        return `
+            <div class="search-dropdown-item" onclick="selectSatelliteFromSearch('${norad}')">
+                <div class="search-dropdown-name">
+                    <span>${escapeHtml(sat.name)}</span>
+                </div>
+                <div class="search-dropdown-meta">
+                    <span style="color:${badgeColor}">${typeBadge}</span>
+                    <span>#${norad}</span>
+                    ${altText ? `<span>${altText}</span>` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    searchDropdown.style.display = "flex";
+}
+
+function selectSatelliteFromSearch(noradId) {
+    const sat = (window.allFullParsedSatellites || []).find(s => String(s.noradId) === String(noradId) || String(s.NORAD_CAT_ID) === String(noradId));
+    if (!sat) return;
+
+    // Update search bar text & show clear button
+    if (searchInput) searchInput.value = sat.name;
+    if (searchClearBtn) searchClearBtn.style.display = "flex";
+    if (searchDropdown) searchDropdown.style.display = "none";
+
+    // 1. Filter conjunction event table
+    const query = sat.name.toLowerCase();
     document.querySelectorAll("#eventRows tr").forEach(row => {
         row.style.display = row.innerText.toLowerCase().includes(query) ? "" : "none";
     });
+
+    // 2. Render 3D orbits with this satellite pinned first and highlighted
+    const displaySet = [
+        sat,
+        ...(window.defaultCuratedSatellites || []).filter(s => String(s.noradId) !== String(sat.noradId))
+    ];
+    render3DOrbits(displaySet, sat.name);
+}
+
+function clearSearchAndResetView() {
+    if (searchInput) {
+        searchInput.value = "";
+        searchInput.blur();
+    }
+    if (searchClearBtn) searchClearBtn.style.display = "none";
+    if (searchDropdown) searchDropdown.style.display = "none";
+
+    // 1. Reset conjunction table filter
+    document.querySelectorAll("#eventRows tr").forEach(row => {
+        row.style.display = "";
+    });
+
+    // 2. Reset targetPivot to Earth center
+    targetPivot.set(0, 0, 0);
+
+    // 3. Reset 3D Earth satellites and trajectories to default curated set
+    render3DOrbits(window.defaultCuratedSatellites || [], "");
+
+    // 4. Smoothly return camera to default view and distance
+    targetRotX = 0.32;
+    targetRotY = 0.45;
+    setEarthZoom(EARTH_ZOOM_DEFAULT);
+}
+
+if (searchInput) {
+    searchInput.addEventListener("input", (e) => {
+        const query = e.target.value.trim().toLowerCase();
+
+        if (searchClearBtn) {
+            searchClearBtn.style.display = query.length > 0 ? "flex" : "none";
+        }
+
+        // 1. Filter conjunction event table rows
+        document.querySelectorAll("#eventRows tr").forEach(row => {
+            row.style.display = row.innerText.toLowerCase().includes(query) ? "" : "none";
+        });
+
+        // 2. Filter & Highlight / Bold Trajectory on 3D Earth Globe
+        if (query.length > 0) {
+            const matchingSats = (window.allFullParsedSatellites || []).filter(sat => {
+                const name = (sat.name || "").toLowerCase();
+                const norad = (sat.noradId || sat.NORAD_CAT_ID || "").toString();
+                return name.includes(query) || norad.includes(query);
+            });
+
+            // Show live dropdown with top matches
+            renderSearchDropdown(matchingSats.slice(0, 16), query);
+
+            if (matchingSats.length > 0) {
+                // Prepend matched satellites to guarantee they appear and bold their tracks
+                const displaySet = [
+                    ...matchingSats.slice(0, 20),
+                    ...(window.defaultCuratedSatellites || []).filter(s => !matchingSats.some(m => m.noradId === s.noradId))
+                ];
+                render3DOrbits(displaySet, query);
+            } else {
+                render3DOrbits(window.defaultCuratedSatellites || [], query);
+            }
+        } else {
+            if (searchDropdown) searchDropdown.style.display = "none";
+            // Reset to default curated set with standard normal trajectories
+            render3DOrbits(window.defaultCuratedSatellites || [], "");
+        }
+    });
+
+    searchInput.addEventListener("focus", (e) => {
+        const query = e.target.value.trim().toLowerCase();
+        if (query.length > 0) {
+            const matchingSats = (window.allFullParsedSatellites || []).filter(sat => {
+                const name = (sat.name || "").toLowerCase();
+                const norad = (sat.noradId || sat.NORAD_CAT_ID || "").toString();
+                return name.includes(query) || norad.includes(query);
+            });
+            renderSearchDropdown(matchingSats.slice(0, 16), query);
+        }
+    });
+}
+
+// Close dropdown when clicking outside
+document.addEventListener("click", (e) => {
+    const wrapper = document.getElementById("searchWrapper");
+    if (wrapper && !wrapper.contains(e.target)) {
+        if (searchDropdown) searchDropdown.style.display = "none";
+    }
 });
 
 // Sidebar Controls
@@ -2567,6 +3220,96 @@ document.addEventListener("keydown", (e) => {
 
 // Launch on DOM ready
 window.addEventListener("DOMContentLoaded", initDashboard);
+
+// ============================================================
+// SPACE-THEMED FAST PAGE TRANSITION INTERCEPTOR
+// ============================================================
+(function initSpaceTransition() {
+    const loader = document.getElementById("spaceWarpLoader");
+    const bar = document.getElementById("spaceWarpBar");
+    const status = document.getElementById("spaceWarpStatus");
+    const icon = document.getElementById("spaceWarpIcon");
+
+    const telemetryStatusMsgs = [
+        "COMPUTING SGP4 EPHEMERIS...",
+        "ALIGNING SENSOR VECTOR...",
+        "SYNCHRONIZING ORBITAL MESH...",
+        "ACQUIRING TELEMETRY UPLINK...",
+        "CALIBRATING CONJUNCTION MATRIX..."
+    ];
+
+    function dismissEntranceLoader() {
+        if (loader) {
+            if (bar) bar.style.width = "100%";
+            setTimeout(() => {
+                loader.classList.remove("active");
+                setTimeout(() => {
+                    if (bar) bar.style.width = "0%";
+                }, 260);
+            }, 200);
+        }
+    }
+
+    if (document.readyState === "complete" || document.readyState === "interactive") {
+        dismissEntranceLoader();
+    } else {
+        window.addEventListener("DOMContentLoaded", dismissEntranceLoader);
+    }
+
+    document.addEventListener("click", (e) => {
+        const link = e.target.closest("a");
+        if (!link) return;
+
+        const href = link.getAttribute("href");
+        if (!href || href.startsWith("#") || href.startsWith("javascript:") || link.target === "_blank") {
+            return;
+        }
+
+        const validPages = ["earth.html", "orb_obj.html", "grid.html", "analytics.html", "index.html"];
+        const targetPage = href.split("?")[0].split("#")[0];
+
+        if (validPages.some(p => targetPage.endsWith(p))) {
+            e.preventDefault();
+
+            if (loader) {
+                if (status) {
+                    if (targetPage.includes("earth")) status.innerText = "ENGAGING 3D GLOBE RENDERER...";
+                    else if (targetPage.includes("orb_obj")) status.innerText = "QUERYING ORBITAL DATABASE...";
+                    else if (targetPage.includes("grid")) status.innerText = "PROCESSING CONJUNCTION SENSORS...";
+                    else if (targetPage.includes("analytics")) status.innerText = "COMPILING KEPLERIAN ANALYTICS...";
+                    else status.innerText = telemetryStatusMsgs[Math.floor(Math.random() * telemetryStatusMsgs.length)];
+                }
+
+                if (icon) {
+                    if (targetPage.includes("earth")) icon.className = "fa-solid fa-earth-americas";
+                    else if (targetPage.includes("orb_obj")) icon.className = "fa-solid fa-cubes";
+                    else if (targetPage.includes("grid")) icon.className = "fa-solid fa-triangle-exclamation";
+                    else if (targetPage.includes("analytics")) icon.className = "fa-solid fa-chart-line";
+                    else icon.className = "fa-solid fa-satellite";
+                }
+
+                loader.classList.add("active");
+                if (bar) {
+                    bar.style.width = "0%";
+                    setTimeout(() => { bar.style.width = "100%"; }, 20);
+                }
+
+                setTimeout(() => {
+                    window.location.href = href;
+                }, 280);
+            } else {
+                window.location.href = href;
+            }
+        }
+    });
+
+    window.addEventListener("pageshow", (e) => {
+        if (e.persisted && loader) {
+            loader.classList.remove("active");
+            if (bar) bar.style.width = "0%";
+        }
+    });
+})();
 </script>
 
 </body>

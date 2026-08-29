@@ -285,29 +285,17 @@
 
         /* Live Matrix Code Stream */
         .terminal-feed {
-            background: rgba(4, 7, 14, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.06);
+            background: rgba(4, 7, 14, 0.65);
+            border: 1px solid rgba(255, 255, 255, 0.08);
             border-radius: 12px;
-            padding: 16px;
+            padding: 14px 16px;
             font-family: var(--font-mono);
             font-size: 12px;
-            line-height: 1.6;
+            line-height: 1.55;
             color: var(--text-secondary);
-            height: 105px;
-            overflow: hidden;
+            min-height: 120px;
             position: relative;
             margin-bottom: 24px;
-        }
-
-        .terminal-feed::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 30px;
-            background: linear-gradient(to top, rgba(4, 7, 14, 0.9), transparent);
-            pointer-events: none;
         }
 
         .terminal-line {
@@ -741,9 +729,199 @@
                 grid-template-columns: 1fr 1fr;
             }
         }
+
+        /* ============================================================
+           FAST SPACE-THEME WARP TRANSITION OVERLAY
+           ============================================================ */
+        .space-warp-loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 999999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at center, rgba(8, 16, 32, 0.96) 0%, rgba(3, 6, 15, 0.99) 100%);
+            backdrop-filter: blur(22px);
+            -webkit-backdrop-filter: blur(22px);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.24s cubic-bezier(0.16, 1, 0.3, 1), transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+            transform: scale(1.02);
+        }
+
+        .space-warp-loader.active {
+            opacity: 1;
+            pointer-events: all;
+            transform: scale(1);
+        }
+
+        .space-warp-bg {
+            position: absolute;
+            inset: 0;
+            background: 
+                radial-gradient(1px 1px at 20% 30%, rgba(255, 255, 255, 0.8), rgba(0,0,0,0)),
+                radial-gradient(1.5px 1.5px at 40% 70%, rgba(70, 217, 255, 0.9), rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 60% 20%, rgba(255, 209, 102, 0.8), rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 80% 60%, rgba(70, 217, 255, 0.9), rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 90% 90%, rgba(255, 255, 255, 0.7), rgba(0,0,0,0));
+            background-size: 250px 250px;
+            opacity: 0.6;
+            animation: warpStarMotion 12s linear infinite;
+        }
+
+        @keyframes warpStarMotion {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-250px); }
+        }
+
+        .space-warp-hud {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            z-index: 2;
+        }
+
+        .space-gyro-ring {
+            position: relative;
+            width: 76px;
+            height: 76px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .space-gyro-outer {
+            position: absolute;
+            inset: 0;
+            border: 2px dashed rgba(70, 217, 255, 0.7);
+            border-top-color: var(--cyan, #46d9ff);
+            border-bottom-color: #ffd166;
+            border-radius: 50%;
+            animation: gyroSpin 1.4s linear infinite;
+            box-shadow: 0 0 20px rgba(70, 217, 255, 0.35);
+        }
+
+        .space-gyro-inner {
+            position: absolute;
+            inset: 9px;
+            border: 1.5px solid rgba(70, 217, 255, 0.3);
+            border-left-color: #46d9ff;
+            border-right-color: #46d9ff;
+            border-radius: 50%;
+            animation: gyroSpinRev 0.9s linear infinite;
+        }
+
+        .space-gyro-core {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(70, 217, 255, 0.15);
+            border: 1px solid rgba(70, 217, 255, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #46d9ff;
+            font-size: 13px;
+            box-shadow: 0 0 16px rgba(70, 217, 255, 0.5);
+            animation: corePulse 0.8s ease-in-out infinite alternate;
+        }
+
+        @keyframes gyroSpin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes gyroSpinRev {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(-360deg); }
+        }
+
+        @keyframes corePulse {
+            0% { transform: scale(0.92); filter: drop-shadow(0 0 4px #46d9ff); }
+            100% { transform: scale(1.08); filter: drop-shadow(0 0 14px #46d9ff); }
+        }
+
+        .space-warp-title {
+            font-family: var(--font-mono, monospace);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 2.2px;
+            color: #fff;
+            text-transform: uppercase;
+            text-shadow: 0 0 12px rgba(70, 217, 255, 0.6);
+        }
+
+        .space-warp-status {
+            font-family: var(--font-mono, monospace);
+            font-size: 10px;
+            letter-spacing: 1.2px;
+            color: var(--cyan, #46d9ff);
+            height: 14px;
+            font-weight: 600;
+            text-shadow: 0 0 8px rgba(70, 217, 255, 0.5);
+        }
+
+        .space-warp-bar-wrap {
+            width: 190px;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 999px;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid rgba(70, 217, 255, 0.2);
+        }
+
+        .space-warp-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #46d9ff, #ffd166);
+            box-shadow: 0 0 10px #46d9ff;
+            transition: width 0.26s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .space-warp-coords {
+            display: flex;
+            gap: 12px;
+            font-family: var(--font-mono, monospace);
+            font-size: 9px;
+            color: #647690;
+            letter-spacing: 0.8px;
+        }
     </style>
 </head>
 <body>
+
+    <!-- SPACE-THEME FAST WARP TRANSITION OVERLAY -->
+    <div class="space-warp-loader active" id="spaceWarpLoader">
+        <div class="space-warp-bg"></div>
+        <div class="space-warp-hud">
+            <div class="space-gyro-ring">
+                <div class="space-gyro-outer"></div>
+                <div class="space-gyro-inner"></div>
+                <div class="space-gyro-core">
+                    <i class="fa-solid fa-satellite" id="spaceWarpIcon"></i>
+                </div>
+            </div>
+            <div class="space-warp-title">ORBITGUARD TELEMETRY</div>
+            <div class="space-warp-status" id="spaceWarpStatus">INITIALIZING MISSION CONTROL...</div>
+            <div class="space-warp-bar-wrap">
+                <div class="space-warp-bar" id="spaceWarpBar" style="width: 25%;"></div>
+            </div>
+            <div class="space-warp-coords">
+                <span>RA: 18h 36m</span>
+                <span>DEC: +38° 47'</span>
+                <span>EPOCH: J2000</span>
+            </div>
+        </div>
+    </div>
 
     <!-- 3D WebGL Canvas Layer -->
     <canvas id="webgl-canvas"></canvas>
@@ -833,11 +1011,11 @@
         <!-- Stats Overview -->
         <div class="stats-grid">
             <div class="stat-card">
-                <div class="stat-value">27,450<span class="unit">+</span></div>
+                <div class="stat-value">16000<span class="unit">+</span></div>
                 <div class="stat-label">Tracked Objects</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value">14<span class="unit">Active</span></div>
+                <div class="stat-value">25<span class="unit">+ Active</span></div>
                 <div class="stat-label">Conjunction Alerts</div>
             </div>
             <div class="stat-card">
@@ -893,8 +1071,9 @@
                 <div class="module-card-icon">
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
-                <h3 class="module-title">Collision Analytics</h3>
-                <p class="module-desc">Conjunction probability matrix, Miss-distance ellipsoids, Kessler syndrome forecasting, and orbital risk indices.</p>
+                <h3 class="module-title">Analytics and Charts</h3>
+                <p class="module-desc"> Orbital shell congestion analysis, Keplerian dynamics , megaconstellation fleet distributions, launch era acceleration, and        
+                     atmospheric drag lifetime decay vulnerability.</p>
                 <div class="module-cta">
                     <span>View Analytics</span>
                     <i class="fa-solid fa-arrow-right"></i>
@@ -907,8 +1086,9 @@
                 <div class="module-card-icon">
                     <i class="fa-solid fa-network-wired"></i>
                 </div>
-                <h3 class="module-title">Orbital Grid</h3>
-                <p class="module-desc">Real-time radar coverage footprint, optical ground station networks, and space situational awareness telemetry feeds.</p>
+                <h3 class="module-title">Conjunctions Risk Monitor</h3>
+                <p class="module-desc">Conjunction probability matrix (Pc), 3D covariance miss-distance ellipsoids, Time of Closest Approach (TCA) screening, relative encounter velocity vectors, and Collision     
+                  Avoidance Maneuver (CAM) ΔV planning.</p>
                 <div class="module-cta">
                     <span>Open Sensor Grid</span>
                     <i class="fa-solid fa-arrow-right"></i>
@@ -1499,6 +1679,96 @@
                         console.log("Tip: Run ./start.sh or 'python3 server.py' for full auto-sync functionality.");
                     });
             }
+        })();
+
+        // ============================================================
+        // SPACE-THEMED FAST PAGE TRANSITION INTERCEPTOR
+        // ============================================================
+        (function initSpaceTransition() {
+            const loader = document.getElementById("spaceWarpLoader");
+            const bar = document.getElementById("spaceWarpBar");
+            const status = document.getElementById("spaceWarpStatus");
+            const icon = document.getElementById("spaceWarpIcon");
+
+            const telemetryStatusMsgs = [
+                "COMPUTING SGP4 EPHEMERIS...",
+                "ALIGNING SENSOR VECTOR...",
+                "SYNCHRONIZING ORBITAL MESH...",
+                "ACQUIRING TELEMETRY UPLINK...",
+                "CALIBRATING CONJUNCTION MATRIX..."
+            ];
+
+            function dismissEntranceLoader() {
+                if (loader) {
+                    if (bar) bar.style.width = "100%";
+                    setTimeout(() => {
+                        loader.classList.remove("active");
+                        setTimeout(() => {
+                            if (bar) bar.style.width = "0%";
+                        }, 260);
+                    }, 200);
+                }
+            }
+
+            if (document.readyState === "complete" || document.readyState === "interactive") {
+                dismissEntranceLoader();
+            } else {
+                window.addEventListener("DOMContentLoaded", dismissEntranceLoader);
+            }
+
+            document.addEventListener("click", (e) => {
+                const link = e.target.closest("a");
+                if (!link) return;
+
+                const href = link.getAttribute("href");
+                if (!href || href.startsWith("#") || href.startsWith("javascript:") || link.target === "_blank") {
+                    return;
+                }
+
+                const validPages = ["earth.html", "orb_obj.html", "grid.html", "analytics.html", "index.html"];
+                const targetPage = href.split("?")[0].split("#")[0];
+
+                if (validPages.some(p => targetPage.endsWith(p))) {
+                    e.preventDefault();
+
+                    if (loader) {
+                        if (status) {
+                            if (targetPage.includes("earth")) status.innerText = "ENGAGING 3D GLOBE RENDERER...";
+                            else if (targetPage.includes("orb_obj")) status.innerText = "QUERYING ORBITAL DATABASE...";
+                            else if (targetPage.includes("grid")) status.innerText = "PROCESSING CONJUNCTION SENSORS...";
+                            else if (targetPage.includes("analytics")) status.innerText = "COMPILING KEPLERIAN ANALYTICS...";
+                            else status.innerText = telemetryStatusMsgs[Math.floor(Math.random() * telemetryStatusMsgs.length)];
+                        }
+
+                        if (icon) {
+                            if (targetPage.includes("earth")) icon.className = "fa-solid fa-earth-americas";
+                            else if (targetPage.includes("orb_obj")) icon.className = "fa-solid fa-cubes";
+                            else if (targetPage.includes("grid")) icon.className = "fa-solid fa-triangle-exclamation";
+                            else if (targetPage.includes("analytics")) icon.className = "fa-solid fa-chart-line";
+                            else icon.className = "fa-solid fa-satellite";
+                        }
+
+                        loader.classList.add("active");
+                        if (bar) {
+                            bar.style.width = "0%";
+                            setTimeout(() => { bar.style.width = "100%"; }, 20);
+                        }
+
+                        setTimeout(() => {
+                            window.location.href = href;
+                        }, 280);
+                    } else {
+                        window.location.href = href;
+                    }
+                }
+            });
+
+            window.addEventListener("pageshow", (e) => {
+                if (e.persisted && loader) {
+                    loader.classList.remove("active");
+                    if (bar) bar.style.width = "0%";
+                }
+            });
         })();
     </script>
 </body>
