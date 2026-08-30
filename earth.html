@@ -2339,88 +2339,129 @@ function buildPolarAxis() {
 // CONTINENTAL LAND TRACES & COASTLINES (VECTOR MAP)
 // ============================================================
 async function buildEarthLandTraces() {
-    const LAND_GEOJSON_URL = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_land.geojson";
+    const GEOJSON_SOURCES = [
+        "/land.geojson",
+        "https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector@master/geojson/ne_110m_land.geojson",
+        "https://unpkg.com/geojson-world-borders@1.0.0/dist/world-110m.geojson",
+        "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_land.geojson"
+    ];
 
-    // High-Tech Emerald-Cyan / Neon-Mint glowing coastlines
-    const coastMat = new THREE.LineBasicMaterial({
-        color: 0x38e8be, // Emerald Cyan-Mint Glow
-        transparent: true,
-        opacity: 0.85
-    });
-
+    const COAST_RADIUS = EARTH_RADIUS_3D + 0.45;
+    const lineSegments = [];
     const continentPoints = [];
-    const continentColors = [];
 
+    // Helper: converts (lon, lat) to 3D Cartesian strictly hugging the sphere surface
+    function toSphereVec3(lon, lat, r = COAST_RADIUS) {
+        const latRad = (lat * Math.PI) / 180;
+        const lonRad = (lon * Math.PI) / 180;
+        const x = r * Math.cos(latRad) * Math.cos(lonRad);
+        const y = r * Math.sin(latRad);
+        const z = -r * Math.cos(latRad) * Math.sin(lonRad);
+        return [x, y, z];
+    }
+
+    // Subdivides line segment along spherical surface to eliminate chord sagging and antimeridian seams
     function processPolygonRing(ring) {
-        if (!ring || ring.length < 3) return;
-        const pts = [];
-        for (let i = 0; i < ring.length; i++) {
-            const lon = ring[i][0];
-            const lat = ring[i][1];
-            const pt = geoToVector3(lon, lat, EARTH_RADIUS_3D + 0.40);
-            pts.push(pt);
+        if (!ring || ring.length < 2) return;
+        
+        for (let i = 0; i < ring.length - 1; i++) {
+            const lon1 = ring[i][0];
+            const lat1 = ring[i][1];
+            const lon2 = ring[i + 1][0];
+            const lat2 = ring[i + 1][1];
 
-            // Generate glowing boundary points for luminous continent texture
-            if (i % 2 === 0) {
-                continentPoints.push(pt.x, pt.y, pt.z);
-                continentColors.push(0.22, 0.91, 0.74); // #38e8be
+            // Avoid seam jumps across antimeridian (+180 to -180)
+            const dLon = lon2 - lon1;
+            if (Math.abs(dLon) > 175) continue;
+
+            const dLat = lat2 - lat1;
+            const distDeg = Math.sqrt(dLon * dLon + dLat * dLat);
+            // Interpolate at max 1.5 degrees per step so lines never dip below the 54.0 core sphere
+            const steps = Math.max(1, Math.ceil(distDeg / 1.5));
+
+            let prevPt = toSphereVec3(lon1, lat1);
+            for (let s = 1; s <= steps; s++) {
+                const t = s / steps;
+                const curLon = lon1 + dLon * t;
+                const curLat = lat1 + dLat * t;
+                const curPt = toSphereVec3(curLon, curLat);
+
+                lineSegments.push(...prevPt, ...curPt);
+
+                // Add glowing holographic shore points periodically
+                if ((i + s) % 3 === 0) {
+                    continentPoints.push(...curPt);
+                }
+                prevPt = curPt;
             }
-        }
-        if (pts.length > 2) {
-            const geo = new THREE.BufferGeometry().setFromPoints(pts);
-            const line = new THREE.Line(geo, coastMat);
-            landGroup.add(line);
         }
     }
 
-    try {
-        let geojsonData = null;
-        const cached = localStorage.getItem("orbitguard_land_geojson");
-        if (cached) {
-            try { geojsonData = JSON.parse(cached); } catch(e){}
-        }
+    let geojsonData = null;
+    const cached = localStorage.getItem("orbitguard_land_geojson_v2");
+    if (cached) {
+        try { geojsonData = JSON.parse(cached); } catch(e){}
+    }
 
-        if (!geojsonData) {
-            const res = await fetch(LAND_GEOJSON_URL, { cache: "force-cache" });
-            if (res.ok) {
-                geojsonData = await res.json();
-                try { localStorage.setItem("orbitguard_land_geojson", JSON.stringify(geojsonData)); } catch(e){}
+    if (!geojsonData) {
+        for (const url of GEOJSON_SOURCES) {
+            try {
+                const res = await fetch(url, { cache: "force-cache" });
+                if (res.ok) {
+                    geojsonData = await res.json();
+                    try { localStorage.setItem("orbitguard_land_geojson_v2", JSON.stringify(geojsonData)); } catch(e){}
+                    break;
+                }
+            } catch(e) {
+                // Try next source
             }
         }
+    }
 
-        if (geojsonData && geojsonData.features) {
-            geojsonData.features.forEach(feat => {
-                if (!feat.geometry) return;
-                if (feat.geometry.type === "Polygon") {
-                    feat.geometry.coordinates.forEach(ring => processPolygonRing(ring));
-                } else if (feat.geometry.type === "MultiPolygon") {
-                    feat.geometry.coordinates.forEach(poly => {
-                        poly.forEach(ring => processPolygonRing(ring));
-                    });
-                }
-            });
-        } else {
-            // Built-in fallback continent outlines if network is unreachable
-            drawFallbackContinents(processPolygonRing);
-        }
-    } catch(err) {
-        console.warn("Could not load Natural Earth land vector, drawing embedded land traces:", err);
+    if (geojsonData && geojsonData.features) {
+        geojsonData.features.forEach(feat => {
+            if (!feat.geometry) return;
+            if (feat.geometry.type === "Polygon") {
+                feat.geometry.coordinates.forEach(ring => processPolygonRing(ring));
+            } else if (feat.geometry.type === "MultiPolygon") {
+                feat.geometry.coordinates.forEach(poly => {
+                    poly.forEach(ring => processPolygonRing(ring));
+                });
+            }
+        });
+    } else {
         drawFallbackContinents(processPolygonRing);
     }
 
-    // Add glowing land boundary points for rich texture
+    // 1. High-Tech Emerald-Cyan / Neon-Mint Glowing Coastline Vector Mesh
+    if (lineSegments.length > 0) {
+        const lineGeo = new THREE.BufferGeometry();
+        lineGeo.setAttribute('position', new THREE.Float32BufferAttribute(lineSegments, 3));
+        const lineMat = new THREE.LineBasicMaterial({
+            color: 0x38e8be, // Emerald Cyan-Mint Glow
+            transparent: true,
+            opacity: 0.90,
+            depthWrite: false
+        });
+        const lineMesh = new THREE.LineSegments(lineGeo, lineMat);
+        lineMesh.renderOrder = 2;
+        landGroup.add(lineMesh);
+    }
+
+    // 2. Glowing Holographic Land Boundary & Shore Points
     if (continentPoints.length > 0) {
         const dotGeo = new THREE.BufferGeometry();
         dotGeo.setAttribute('position', new THREE.Float32BufferAttribute(continentPoints, 3));
-        dotGeo.setAttribute('color', new THREE.Float32BufferAttribute(continentColors, 3));
         const dotMat = new THREE.PointsMaterial({
-            size: 1.8,
-            vertexColors: true,
+            size: 1.6,
+            color: 0x46d9ff,
             transparent: true,
             opacity: 0.85,
-            blending: THREE.AdditiveBlending
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
         });
         const dotMesh = new THREE.Points(dotGeo, dotMat);
+        dotMesh.renderOrder = 3;
         landGroup.add(dotMesh);
     }
 }
