@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>OrbitGuard — Next-Gen Orbital Intelligence & Debris Defense</title>
     
     <!-- Google Fonts -->
@@ -712,21 +712,90 @@
             color: var(--cyan);
         }
 
-        /* Responsive Breakpoints */
+        /* Responsive Breakpoints (< 1212px & mobile) */
+        @media (max-width: 1212px), (max-height: 840px) {
+            .hero-view-container {
+                padding: clamp(80px, 12vh, 100px) 20px 40px 20px;
+                min-height: auto;
+            }
+            .hero-title {
+                font-size: clamp(30px, 6vw, 54px);
+                margin-bottom: 14px;
+            }
+            .hero-description {
+                font-size: 14px;
+                margin-bottom: 24px;
+                max-width: 600px;
+            }
+            .stats-grid {
+                grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+                gap: 12px;
+                margin-bottom: 28px;
+            }
+            .stat-card {
+                padding: 12px 14px;
+                border-radius: 14px;
+            }
+            .stat-value {
+                font-size: 20px;
+            }
+            .module-cards-grid {
+                grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+                gap: 14px;
+            }
+            .module-card {
+                padding: 20px 18px;
+                border-radius: 16px;
+            }
+        }
+
         @media (max-width: 768px) {
             .hud-top-bar {
-                left: 16px;
-                right: 16px;
-                top: 16px;
+                left: 12px;
+                right: 12px;
+                top: 12px;
+            }
+            .brand-badge {
+                padding: 6px 12px;
+                gap: 8px;
+            }
+            .brand-name {
+                font-size: 12px;
             }
             .loader-card {
-                padding: 24px 20px;
+                padding: 20px 16px;
+                width: 94%;
+                border-radius: 18px;
             }
-            .hero-view-container {
-                padding: 90px 16px 40px 16px;
+            .loader-title {
+                font-size: 20px;
+            }
+            .terminal-feed {
+                min-height: 80px;
+                font-size: 11px;
+                padding: 10px 12px;
+                margin-bottom: 16px;
+            }
+            .progress-wrapper {
+                margin-bottom: 18px;
+            }
+            .module-cards-grid {
+                grid-template-columns: 1fr;
+            }
+            .orbit-control-hint {
+                display: none;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .brand-name {
+                display: none;
             }
             .stats-grid {
                 grid-template-columns: 1fr 1fr;
+            }
+            .hero-title {
+                font-size: clamp(26px, 8vw, 36px);
             }
         }
 
