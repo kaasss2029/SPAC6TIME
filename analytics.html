@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OrbitGuard — Orbital Analytics & Space Environment</title>
+    <title>SPAC6TIME — Orbital Analytics & Space Environment</title>
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <!-- satellite.js -->
@@ -1159,7 +1159,7 @@
                 <i class="fa-solid fa-chart-line" id="spaceWarpIcon"></i>
             </div>
         </div>
-        <div class="space-warp-title">ORBITGUARD TELEMETRY</div>
+        <div class="space-warp-title">SPAC6TIME TELEMETRY</div>
         <div class="space-warp-status" id="spaceWarpStatus">COMPILING KEPLERIAN ANALYTICS...</div>
         <div class="space-warp-bar-wrap">
             <div class="space-warp-bar" id="spaceWarpBar" style="width: 25%;"></div>
@@ -1182,7 +1182,7 @@
         <div class="sidebarHeader">
             <a href="index.html" class="logo" style="text-decoration:none; color:inherit; cursor:pointer;">
                 <div class="logoMark">◉</div>
-                <span>OrbitGuard</span>
+                <span>SPAC6TIME</span>
             </a>
             <button class="sidebarCloseBtn" id="sidebarCloseBtn" title="Close Menu">✕</button>
         </div>
@@ -1195,11 +1195,7 @@
             <a class="active" href="analytics.html"><b>◌</b><span>Analytics</span></a>
         </nav>
 
-        <div class="navTitle">System</div>
-        <nav class="nav">
-            <a href="#"><b>⚙</b><span>Settings</span></a>
-            <a href="#"><b>?</b><span>Documentation</span></a>
-        </nav>
+
 
         <div class="system">
             <span class="dot pulse" id="sysDot"></span>
@@ -1324,7 +1320,7 @@
         <!-- LOADING STATE -->
         <div id="loadingState" class="loading">
             <div class="spinner"></div>
-            <div>Fetching CelesTrak active catalog & computing orbital analytics...</div>
+            <div>Fetching Space-Track active catalog & computing orbital analytics...</div>
         </div>
         <!-- INTERACTIVE ORBITAL OBJECTS TABLE -->
         <div class="tablePanel" id="tableContainer" style="display:none;">
@@ -1864,10 +1860,14 @@ async function fetchCelesTrakData() {
 
 async function fetchFromNetwork() {
     const urlsToTry = [
-        // Local MongoDB Backend API
+        // Local MongoDB Backend API (relative + explicit localhost)
         '/api/tle/latest',
+        'http://localhost:8000/api/tle/latest',
+        'http://127.0.0.1:8000/api/tle/latest',
         // Local active.tle static file
         'active.tle',
+        'http://localhost:8000/active.tle',
+        'http://127.0.0.1:8000/active.tle',
         // Fast CORS Proxy with Active CelesTrak (Primary)
         'https://corsproxy.io/?' + encodeURIComponent(CELESTRAK_URL),
         // Direct CelesTrak (works in standard HTTP/server environments)
@@ -1889,7 +1889,7 @@ async function fetchFromNetwork() {
                     localStorage.setItem(CACHE_KEY, text);
                     localStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
                 } catch(e) {}
-                const isLocal = url.startsWith('/') || url === 'active.tle';
+                const isLocal = url.startsWith('/') || url.includes('localhost:8000') || url.includes('127.0.0.1:8000') || url.includes('active.tle');
                 return { satellites: parsed, source: isLocal ? 'MONGODB / LOCAL TLE' : 'LIVE (CELESTRAK TLE)', count: parsed.length };
             }
         } catch(e) {
@@ -2810,7 +2810,7 @@ function exportAnalyticsReport() {
 
     const dlAnchor = document.createElement('a');
     dlAnchor.setAttribute("href", dataStr);
-    dlAnchor.setAttribute("download", `OrbitGuard_Analytics_${Date.now()}.json`);
+    dlAnchor.setAttribute("download", `SPAC6TIME_Analytics_${Date.now()}.json`);
     document.body.appendChild(dlAnchor);
     dlAnchor.click();
     dlAnchor.remove();
@@ -2826,7 +2826,7 @@ function exportCsv() {
     const dataStr = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
     const dlAnchor = document.createElement('a');
     dlAnchor.setAttribute("href", dataStr);
-    dlAnchor.setAttribute("download", `OrbitGuard_Catalog_${Date.now()}.csv`);
+    dlAnchor.setAttribute("download", `SPAC6TIME_Catalog_${Date.now()}.csv`);
     document.body.appendChild(dlAnchor);
     dlAnchor.click();
     dlAnchor.remove();
@@ -2962,7 +2962,7 @@ async function init() {
 
         const now = new Date();
         document.getElementById('footerBar').textContent =
-            `OrbitGuard Analytics · Computed from ${stats.total.toLocaleString()} GP TLE elements · Last updated: ${now.toLocaleTimeString()} · Source: CelesTrak / NORAD Active Catalog`;
+            `SPAC6TIME Analytics · Computed from ${stats.total.toLocaleString()} GP TLE elements · Last updated: ${now.toLocaleTimeString()} · Source: Space-Track / NORAD Active Catalog`;
 
     } catch (err) {
         console.error('Analytics init failure:', err);

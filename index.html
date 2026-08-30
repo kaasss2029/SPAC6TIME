@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>OrbitGuard — Next-Gen Orbital Intelligence & Debris Defense</title>
+    <title>SPAC6TIME — Next-Gen Orbital Intelligence & Debris Defense</title>
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -979,7 +979,7 @@
                     <i class="fa-solid fa-satellite" id="spaceWarpIcon"></i>
                 </div>
             </div>
-            <div class="space-warp-title">ORBITGUARD TELEMETRY</div>
+            <div class="space-warp-title">SPAC6TIME TELEMETRY</div>
             <div class="space-warp-status" id="spaceWarpStatus">INITIALIZING MISSION CONTROL...</div>
             <div class="space-warp-bar-wrap">
                 <div class="space-warp-bar" id="spaceWarpBar" style="width: 25%;"></div>
@@ -1003,7 +1003,7 @@
     <header class="hud-top-bar">
         <div class="brand-badge">
             <div class="brand-icon"><i class="fa-solid fa-satellite"></i></div>
-            <span class="brand-name">OrbitGuard</span>
+            <span class="brand-name">SPAC6TIME</span>
             <div class="status-pill">
                 <span class="status-dot"></span>
                 <span>LEO LIVE</span>
@@ -1027,7 +1027,7 @@
         <div class="loader-card">
             <div class="loader-header">
                 <div>
-                    <h1 class="loader-title">OrbitGuard Core</h1>
+                    <h1 class="loader-title">SPAC6TIME Core</h1>
                     <p class="loader-subtitle">Next-Gen Space Debris Tracking & Collision Avoidance</p>
                 </div>
                 <div class="loader-telemetry-tag">v2.4 TELEMETRY</div>
@@ -1052,7 +1052,7 @@
             <!-- Action Controls -->
             <div class="launch-btn-container">
                 <button class="btn-launch" id="btn-launch">
-                    <span>ENTER ORBITGUARD</span>
+                    <span>ENTER SPAC6TIME</span>
                     <i class="fa-solid fa-arrow-right"></i>
                 </button>
                 <button class="btn-quick-skip" id="btn-quick-skip">Quick Launch</button>
@@ -1080,7 +1080,7 @@
         <!-- Stats Overview -->
         <div class="stats-grid">
             <div class="stat-card">
-                <div class="stat-value">16000<span class="unit">+</span></div>
+                <div class="stat-value">30000<span class="unit">+</span></div>
                 <div class="stat-label">Tracked Objects</div>
             </div>
             <div class="stat-card">
@@ -1591,11 +1591,11 @@
         const orbitHint = document.getElementById('orbit-hint');
 
         const bootSequenceSteps = [
-            { pct: 15, text: "INITIALIZING QUANTUM VORTEX...", log: "Calibrating 6,500 Particle Velocity Vectors... [OK]" },
-            { pct: 35, text: "SYNCING SGP4/SDP4 PROPAGATOR...", log: "Loaded NORAD Ephemeris & TLE Catalog. [SYNCED]" },
-            { pct: 58, text: "CALCULATING LEO CONJUNCTION MATRIX...", log: "Processing 27,450+ Space Debris Orbits. [OPTIMIZED]" },
+           
+            { pct: 35, text: "SYNCING SGP4 PROPAGATOR...", log: "Loaded NORAD Ephemeris & TLE Catalog. [SYNCED]" },
+            { pct: 58, text: "CALCULATING LEO CONJUNCTION MATRIX...", log: "Processing 30000+ Space Debris Orbits. [OPTIMIZED]" },
             { pct: 82, text: "ESTABLISHING SENSOR GROUND NETWORK...", log: "14 Optical & Radar Tracking Nodes Online. [ACTIVE]" },
-            { pct: 100, text: "ORBITGUARD TELEMETRY READY", log: "<span class='accent'>✓</span> System Ready. All Celestial Telemetry Online." }
+            { pct: 100, text: "SPAC6TIME TELEMETRY READY", log: "<span class='accent'>✓</span> System Ready. All Celestial Telemetry Online." }
         ];
 
         let currentProgress = 0;
