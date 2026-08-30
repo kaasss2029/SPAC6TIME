@@ -8,7 +8,7 @@ const fs = require("fs");
 const PORT = process.env.PORT || 8000;
 const MONGODB_URI = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/orbitguard";
 const FILE_NAME = path.join(__dirname, "active.tle");
-const SYNC_INTERVAL_MS = (parseInt(process.env.SYNC_INTERVAL_HOURS, 10) || 2) * 60 * 60 * 1000; // 2 hours
+const SYNC_INTERVAL_MS = (parseInt(process.env.SYNC_INTERVAL_HOURS, 10) || 4) * 60 * 60 * 1000; // 4 hours
 
 // Comprehensive CelesTrak Satellite & Tracked Objects Sources (~16,000+ objects)
 const CELESTRAK_SOURCES = [
@@ -110,6 +110,11 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Space-Track API & Feed Configuration
+const SPACETRACK_DEFAULT_URL = process.env.SPACETRACK_QUERY_URL || "https://www.space-track.org/basicspacedata/query/class/gp/decay_date/null-val/epoch/%3Enow-10/orderby/norad_cat_id/format/tle";
+const SPACETRACK_LOGIN_URL = "https://www.space-track.org/ajaxauth/login";
+let currentCatalogSource = "Space-Track.org / CelesTrak";
+
 // ----------------------------------------------------
 // 3. TLE Parser & Validator Helpers
 // ----------------------------------------------------
@@ -120,24 +125,44 @@ function isValidTle(text) {
   return tleLines.length >= 10;
 }
 
-function parseTleText(text, groupName = "active") {
+function inferGroup(name, line1, line2) {
+  const u = (name || "").toUpperCase();
+  if (u.includes("DEB") || u.includes("DEBRIS") || u.includes("FRAGMENT") || u.includes("COOLANT")) return "debris";
+  if (u.includes("R/B") || u.includes("ROCKET") || u.includes("STAGE") || u.includes("CENTAUR") || u.includes("FALCON 9 R/B") || u.includes("DELTA") || u.includes("ARIANE") || u.includes("ATLAS") || u.includes("CZ-") || u.includes("PSLV") || u.includes("H-2A") || u.includes("TITAN")) return "debris";
+  if (u.startsWith("STARLINK")) return "starlink";
+  if (u.startsWith("ONEWEB")) return "oneweb";
+  if (u.startsWith("FLOCK") || u.startsWith("SKYSAT") || u.startsWith("PLANET") || u.startsWith("DOVE")) return "planet";
+  if (u.includes("ISS") || u.includes("TIANGONG") || u.includes("CSS") || u.includes("ZARYA") || u.includes("TIANHE") || u.includes("KIBO") || u.includes("COLUMBUS") || u.includes("NAUKA")) return "stations";
+  if (u.startsWith("NAVSTAR") || u.startsWith("GPS") || u.startsWith("GLONASS") || u.startsWith("GALILEO") || u.startsWith("BEIDOU") || u.startsWith("QZS") || u.startsWith("IRNSS") || u.startsWith("NAVIC")) return "gnss";
+  if (u.startsWith("LEMUR") || u.startsWith("SPIRE")) return "spire";
+  if (u.startsWith("IRIDIUM")) return "iridium-NEXT";
+  if (u.startsWith("GLOBALSTAR")) return "globalstar";
+  if (u.startsWith("ORBCOMM")) return "orbcomm";
+  if (u.startsWith("SES-") || u.startsWith("ASTRA") || u.startsWith("INTELSAT") || u.startsWith("EUTELSAT") || u.includes("INMARSAT")) return "geo";
+  if (u.includes("WEATHER") || u.startsWith("NOAA") || u.startsWith("GOES") || u.startsWith("METEOR") || u.startsWith("METOP") || u.includes("FENGYUN")) return "weather";
+  return "active";
+}
+
+function parseTleText(text, defaultGroup = "active") {
   const lines = text.split("\n").map(l => l.trimEnd()).filter(Boolean);
   const satellites = [];
   let i = 0;
 
   while (i < lines.length) {
     if (i + 2 < lines.length && lines[i + 1].startsWith("1 ") && lines[i + 2].startsWith("2 ")) {
-      const name = lines[i].trim();
+      let name = lines[i].trim();
+      if (name.startsWith("0 ")) name = name.substring(2).trim();
       const line1 = lines[i + 1].trim();
       const line2 = lines[i + 2].trim();
       const noradId = line1.substring(2, 7).trim();
+      const group = (defaultGroup === "space-track" || defaultGroup === "active") ? inferGroup(name, line1, line2) : defaultGroup;
 
       satellites.push({
         noradId,
         name,
         line1,
         line2,
-        group: groupName,
+        group,
         updatedAt: new Date()
       });
       i += 3;
@@ -145,13 +170,15 @@ function parseTleText(text, groupName = "active") {
       const line1 = lines[i].trim();
       const line2 = lines[i + 1].trim();
       const noradId = line1.substring(2, 7).trim();
+      const name = `NORAD ${noradId}`;
+      const group = (defaultGroup === "space-track" || defaultGroup === "active") ? inferGroup(name, line1, line2) : defaultGroup;
 
       satellites.push({
         noradId,
-        name: `NORAD ${noradId}`,
+        name,
         line1,
         line2,
-        group: groupName,
+        group,
         updatedAt: new Date()
       });
       i += 2;
@@ -168,7 +195,88 @@ function parseTleText(text, groupName = "active") {
 let isSyncing = false;
 let lastSyncTime = null;
 
-async function fetchSourceWithTimeout(source, timeoutMs = 25000) {
+async function fetchSpaceTrackData(customUser, customPass, customQueryUrl) {
+  const identity = customUser || process.env.SPACETRACK_USER || process.env.SPACETRACK_IDENTITY;
+  const password = customPass || process.env.SPACETRACK_PASSWORD || process.env.SPACETRACK_PASS;
+  let queryUrl = customQueryUrl || process.env.SPACETRACK_QUERY_URL || SPACETRACK_DEFAULT_URL;
+
+  // Ensure rich 3LE format so full object names (e.g. 'STARLINK-1008', 'VANGUARD 1') are retrieved
+  if (queryUrl.includes("/format/tle")) {
+    queryUrl = queryUrl.replace("/format/tle", "/format/3le");
+  }
+
+  if (!identity || !password) {
+    return { success: false, reason: "no_credentials" };
+  }
+
+  console.log(`[${new Date().toLocaleTimeString()}] 🔐 Space-Track: Authenticating with identity '${identity}'...`);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 120000); // 120s timeout for full Space-Track catalog
+
+  try {
+    // Step 1: Login POST to obtain authenticated cookie session
+    const loginParams = new URLSearchParams();
+    loginParams.append("identity", identity);
+    loginParams.append("password", password);
+
+    const loginRes = await fetch(SPACETRACK_LOGIN_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": "SPAC6TIME-SpaceTrack/1.0"
+      },
+      body: loginParams.toString(),
+      signal: controller.signal
+    });
+
+    if (!loginRes.ok) {
+      throw new Error(`Space-Track Login HTTP ${loginRes.status}: ${loginRes.statusText}`);
+    }
+
+    const cookie = loginRes.headers.get("set-cookie");
+    if (!cookie) {
+      const loginBody = await loginRes.text();
+      throw new Error(`Space-Track login failed: ${loginBody || "No session cookie received"}`);
+    }
+
+    // Step 2: Query the General Perturbations (GP) TLE endpoint
+    console.log(`[${new Date().toLocaleTimeString()}] 📡 Space-Track: Querying ${queryUrl}...`);
+    const dataRes = await fetch(queryUrl, {
+      method: "GET",
+      headers: {
+        "Cookie": cookie,
+        "User-Agent": "SPAC6TIME-SpaceTrack/1.0"
+      },
+      signal: controller.signal
+    });
+
+    clearTimeout(timeout);
+
+    if (!dataRes.ok) {
+      throw new Error(`Space-Track Query HTTP ${dataRes.status}: ${dataRes.statusText}`);
+    }
+
+    const text = await dataRes.text();
+    if (!text || text.length < 500) {
+      throw new Error("Space-Track returned empty or invalid response.");
+    }
+
+    if (!isValidTle(text)) {
+      throw new Error("Space-Track response does not contain valid TLE data.");
+    }
+
+    const satellites = parseTleText(text, "space-track");
+    console.log(`[${new Date().toLocaleTimeString()}] 🚀 Space-Track: Successfully fetched ${satellites.length} active objects!`);
+    return { success: true, count: satellites.length, satellites, rawText: text, source: "space-track" };
+  } catch (err) {
+    console.warn(`[${new Date().toLocaleTimeString()}] ⚠️ Space-Track fetch warning: ${err.message}`);
+    return { success: false, error: err.message };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function fetchSourceWithTimeout(source, timeoutMs = 10000) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -193,7 +301,7 @@ async function fetchSourceWithTimeout(source, timeoutMs = 25000) {
   }
 }
 
-async function syncTleCatalog() {
+async function syncTleCatalog(options = {}) {
   if (isSyncing) {
     console.log(`[${new Date().toLocaleTimeString()}] ⏳ Sync already in progress, skipping duplicate call.`);
     return { status: "already_running" };
@@ -201,26 +309,42 @@ async function syncTleCatalog() {
 
   isSyncing = true;
   const startTime = Date.now();
-  console.log(`[${new Date().toLocaleTimeString()}] 🛰️ Starting full TLE catalog fetch (~16,000+ objects) from CelesTrak...`);
+  let allSatellites = [];
+  let rawTleText = "";
 
-  const satelliteMap = new Map();
+  // 1. Try Space-Track.org first using user-specified query URL and credentials
+  const spaceTrackRes = await fetchSpaceTrackData(options.identity, options.password, options.queryUrl);
+  if (spaceTrackRes.success && spaceTrackRes.satellites && spaceTrackRes.satellites.length > 500) {
+    allSatellites = spaceTrackRes.satellites;
+    rawTleText = spaceTrackRes.rawText;
+    currentCatalogSource = "Space-Track.org (18th SDS)";
+  } else {
+    if (spaceTrackRes.reason === "no_credentials") {
+      console.log(`[${new Date().toLocaleTimeString()}] ℹ️ Space-Track credentials not set in .env (add SPACETRACK_USER & SPACETRACK_PASSWORD to enable direct 18th SDS feed).`);
+    } else if (spaceTrackRes.error) {
+      console.warn(`[${new Date().toLocaleTimeString()}] ⚠️ Space-Track attempt failed: ${spaceTrackRes.error}. Falling back to CelesTrak active catalog...`);
+    }
+    console.log(`[${new Date().toLocaleTimeString()}] 🛰️ Fetching CelesTrak active catalog sources (~16,000+ objects)...`);
+    currentCatalogSource = "CelesTrak Active Catalog";
 
-  // Fetch in concurrent batches of 4 for speed and resilience
-  const batchSize = 4;
-  for (let i = 0; i < CELESTRAK_SOURCES.length; i += batchSize) {
-    const chunk = CELESTRAK_SOURCES.slice(i, i + batchSize);
-    const results = await Promise.all(chunk.map(src => fetchSourceWithTimeout(src)));
-    for (const satList of results) {
-      for (const sat of satList) {
-        if (!satelliteMap.has(sat.noradId)) {
-          satelliteMap.set(sat.noradId, sat);
+    const satelliteMap = new Map();
+    const batchSize = 4;
+    for (let i = 0; i < CELESTRAK_SOURCES.length; i += batchSize) {
+      const chunk = CELESTRAK_SOURCES.slice(i, i + batchSize);
+      const results = await Promise.all(chunk.map(src => fetchSourceWithTimeout(src)));
+      for (const satList of results) {
+        for (const sat of satList) {
+          if (!satelliteMap.has(sat.noradId)) {
+            satelliteMap.set(sat.noradId, sat);
+          }
         }
       }
     }
+    allSatellites = Array.from(satelliteMap.values());
+    rawTleText = allSatellites.map(s => `${s.name}\n${s.line1}\n${s.line2}`).join("\n") + "\n";
   }
 
-  const allSatellites = Array.from(satelliteMap.values());
-  console.log(`[${new Date().toLocaleTimeString()}] 📦 Fetched ${allSatellites.length} total unique tracked objects.`);
+  console.log(`[${new Date().toLocaleTimeString()}] 📦 Loaded ${allSatellites.length} total unique tracked objects from ${currentCatalogSource}.`);
 
   if (allSatellites.length > 500) {
     try {
@@ -251,7 +375,6 @@ async function syncTleCatalog() {
       }
 
       // Write complete catalog to active.tle in pure TLE format
-      const rawTleText = allSatellites.map(s => `${s.name}\n${s.line1}\n${s.line2}`).join("\n") + "\n";
       fs.writeFileSync(FILE_NAME, rawTleText, "utf8");
       console.log(`[${new Date().toLocaleTimeString()}] 📁 Updated local ${path.basename(FILE_NAME)} with ${allSatellites.length} tracked objects in pure TLE format.`);
 
@@ -259,6 +382,7 @@ async function syncTleCatalog() {
       isSyncing = false;
       return {
         status: "success",
+        source: currentCatalogSource,
         satellitesCount: allSatellites.length,
         durationMs: Date.now() - startTime,
         timestamp: lastSyncTime
@@ -280,6 +404,7 @@ async function syncTleCatalog() {
 // ----------------------------------------------------
 let isComputingConjunctions = false;
 let lastConjunctionComputeTime = null;
+let lastConjunctionPairsScreened = 5460;
 const CONJUNCTION_HORIZON_HOURS = 24;
 const CONJUNCTION_STEP_MINUTES = 2;
 const CONJUNCTION_SYNC_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
@@ -399,8 +524,32 @@ function refineTca(satrecA, satrecB, leftMs, rightMs) {
   };
 }
 
+// NASA / ESA Operational Risk Priority Index (ORPI)
+// Blends Physical Severity (Miss Distance + Rel Velocity) with TCA Decision-Horizon Urgency Decay
+function calculateConjunctionRisk(missDistKm, relVelKmS, tcaMinutes) {
+  const distFactor = Math.max(0, Math.min(1, (25 - missDistKm) / 25));
+  const velFactor = Math.max(0, Math.min(1, relVelKmS / 12));
+  const physicalSeverity = 0.65 * distFactor + 0.35 * velFactor;
+
+  const tcaHours = Math.max(0, tcaMinutes / 60);
+  const urgencyFactor = 0.40 + 0.60 * Math.exp(-tcaHours / 8.0);
+  const compositeScore = parseFloat((physicalSeverity * urgencyFactor).toFixed(3));
+
+  let riskTier = "nominal";
+  if ((missDistKm < 2.0 && tcaHours < 6) || compositeScore > 0.60) {
+    riskTier = "critical";
+  } else if ((missDistKm < 10.0 && tcaHours < 16) || compositeScore > 0.30) {
+    riskTier = "warning";
+  }
+
+  return {
+    riskScore: compositeScore,
+    riskTier
+  };
+}
+
 // Select curated representative subset of high-priority assets, active sats, and debris
-function pickScreeningSubset(satellites, limit = 90) {
+function pickScreeningSubset(satellites, limit = 110) {
   const priorityIds = [
     25544, // ISS
     48274, // Tiangong CSS
@@ -414,7 +563,11 @@ function pickScreeningSubset(satellites, limit = 90) {
     34001, // Cosmos 2251 Debris
     29712, // Fengyun 1C Debris
     33749, // Iridium 33 Debris
-    22803  // SL-16 Rocket Body
+    22803, // SL-16 Rocket Body
+    39999, // CZ-4C Debris
+    35002, // Thor Ablestar Debris
+    36005, // Delta 1 Debris
+    37010  // Ariane 4 Debris
   ];
 
   const selectedMap = new Map();
@@ -427,16 +580,34 @@ function pickScreeningSubset(satellites, limit = 90) {
     }
   }
 
-  // 2. Add debris and rocket bodies
-  for (const s of satellites) {
-    if (selectedMap.size >= limit) break;
-    const type = getObjectType(s.name, s.noradId);
-    if (type === "Debris" && !selectedMap.has(s.noradId)) {
-      selectedMap.set(s.noradId, s);
+  // 2. Add diverse debris across historical breakup clouds & spent boosters
+  const debrisTypes = ["COSMOS", "FENGYUN", "IRIDIUM", "THOR", "DELTA", "ARIANE", "TITAN", "CZ-", "SL-", "FALCON", "CENTAUR", "DEB", "R/B"];
+  for (const prefix of debrisTypes) {
+    for (const s of satellites) {
+      if (selectedMap.size >= Math.floor(limit * 0.55)) break;
+      const u = (s.name || "").toUpperCase();
+      if (u.includes(prefix) && !selectedMap.has(s.noradId)) {
+        selectedMap.set(s.noradId, s);
+      }
     }
   }
 
-  // 3. Add space stations & other payloads
+  // 3. Add major operational constellations (Starlink, OneWeb, Planet, Spire, Iridium NEXT, GNSS)
+  const constPrefixes = ["STARLINK", "ONEWEB", "FLOCK", "SKYSAT", "LEMUR", "SPIRE", "IRIDIUM", "NAVSTAR", "GPS", "GALILEO", "BEIDOU"];
+  for (const cp of constPrefixes) {
+    let addedForGroup = 0;
+    for (const s of satellites) {
+      if (selectedMap.size >= Math.floor(limit * 0.85)) break;
+      if (addedForGroup >= 5) break;
+      const u = (s.name || "").toUpperCase();
+      if (u.startsWith(cp) && !selectedMap.has(s.noradId)) {
+        selectedMap.set(s.noradId, s);
+        addedForGroup++;
+      }
+    }
+  }
+
+  // 4. Fill remaining slots with other payloads
   for (const s of satellites) {
     if (selectedMap.size >= limit) break;
     if (!selectedMap.has(s.noradId)) {
@@ -492,7 +663,7 @@ async function computeConjunctionsService() {
       } catch (e) {}
     }
 
-    const screeningSubset = pickScreeningSubset(parsedSatellites, 85);
+    const screeningSubset = pickScreeningSubset(parsedSatellites, 105);
     const N = screeningSubset.length;
     const totalPairs = (N * (N - 1)) / 2;
 
@@ -575,30 +746,6 @@ async function computeConjunctionsService() {
           const radialKm = parseFloat((dx * ur.x + dy * ur.y + dz * ur.z).toFixed(3));
           const inTrackKm = parseFloat((dx * ui.x + dy * ui.y + dz * ui.z).toFixed(3));
           const crossTrackKm = parseFloat((dx * uc.x + dy * uc.y + dz * uc.z).toFixed(3));
-
-// NASA / ESA Operational Risk Priority Index (ORPI)
-// Blends Physical Severity (Miss Distance + Rel Velocity) with TCA Decision-Horizon Urgency Decay
-function calculateConjunctionRisk(missDistKm, relVelKmS, tcaMinutes) {
-  const distFactor = Math.max(0, Math.min(1, (25 - missDistKm) / 25));
-  const velFactor = Math.max(0, Math.min(1, relVelKmS / 12));
-  const physicalSeverity = 0.65 * distFactor + 0.35 * velFactor;
-
-  const tcaHours = Math.max(0, tcaMinutes / 60);
-  const urgencyFactor = 0.40 + 0.60 * Math.exp(-tcaHours / 8.0);
-  const compositeScore = parseFloat((physicalSeverity * urgencyFactor).toFixed(3));
-
-  let riskTier = "nominal";
-  if ((missDistKm < 2.0 && tcaHours < 6) || compositeScore > 0.60) {
-    riskTier = "critical";
-  } else if ((missDistKm < 10.0 && tcaHours < 16) || compositeScore > 0.30) {
-    riskTier = "warning";
-  }
-
-  return {
-    riskScore: compositeScore,
-    riskTier
-  };
-}
 
           // Foster Gaussian Collision Probability (sigma = 500m, hardBodyRadius = 10m)
           const sigma = 0.5;
@@ -848,6 +995,7 @@ function calculateConjunctionRisk(missDistKm, relVelKmS, tcaMinutes) {
     }
 
     lastConjunctionComputeTime = epochNow;
+    lastConjunctionPairsScreened = totalPairs;
     isComputingConjunctions = false;
     return {
       status: "success",
@@ -896,7 +1044,7 @@ app.get("/api/conjunctions", async (req, res) => {
       count: conjunctions.length,
       computedAt: lastConjunctionComputeTime || (conjunctions[0] ? conjunctions[0].computedAt : new Date()),
       summary: {
-        totalScreened: 3570,
+        totalScreened: lastConjunctionPairsScreened || 5460,
         totalEvents: conjunctions.length,
         highRiskCount,
         warningCount,
@@ -982,6 +1130,9 @@ app.get("/api/tle/stats", async (req, res) => {
 
     res.json({
       dbStatus: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+      catalogSource: currentCatalogSource,
+      spaceTrackConfigured: Boolean((process.env.SPACETRACK_USER || process.env.SPACETRACK_IDENTITY) && (process.env.SPACETRACK_PASSWORD || process.env.SPACETRACK_PASS)),
+      spaceTrackQueryUrl: SPACETRACK_DEFAULT_URL,
       totalTrackedObjects: totalCount,
       lastUpdated: latest ? latest.updatedAt : null,
       lastSyncTime,
@@ -993,9 +1144,40 @@ app.get("/api/tle/stats", async (req, res) => {
   }
 });
 
+// POST & GET /api/spacetrack/sync - Trigger sync specifically from Space-Track.org
+app.all("/api/spacetrack/sync", async (req, res) => {
+  const identity = req.body?.identity || req.query?.identity || req.body?.user || req.query?.user;
+  const password = req.body?.password || req.query?.password || req.body?.pass || req.query?.pass;
+  const queryUrl = req.body?.queryUrl || req.query?.queryUrl || SPACETRACK_DEFAULT_URL;
+
+  console.log(`[${new Date().toLocaleTimeString()}] 🚀 Space-Track sync requested via API...`);
+  syncTleCatalog({ identity, password, queryUrl })
+    .then(result => {
+      console.log(`[${new Date().toLocaleTimeString()}] 🏁 Space-Track sync complete:`, result);
+      computeConjunctionsService().catch(e => console.error("Conjunction compute error:", e));
+    })
+    .catch(err => console.error("Manual Space-Track sync error:", err));
+
+  res.json({
+    status: "sync_initiated",
+    feed: "Space-Track.org (18th SDS)",
+    queryUrl: queryUrl,
+    account: identity ? (identity.substring(0, 3) + "***") : ((process.env.SPACETRACK_USER || process.env.SPACETRACK_IDENTITY) ? ((process.env.SPACETRACK_USER || process.env.SPACETRACK_IDENTITY).substring(0, 3) + "***") : "Not configured in .env"),
+    message: "Space-Track GP TLE sync triggered in background.",
+    timestamp: new Date()
+  });
+});
+
 // GET & POST /api/tle/sync - Trigger sync immediately
 app.all("/api/tle/sync", async (req, res) => {
-  syncTleCatalog().catch(err => console.error("Sync error:", err));
+  const identity = req.body?.identity || req.query?.identity;
+  const password = req.body?.password || req.query?.password;
+  const queryUrl = req.body?.queryUrl || req.query?.queryUrl;
+
+  syncTleCatalog({ identity, password, queryUrl })
+    .then(() => computeConjunctionsService())
+    .catch(err => console.error("Sync error:", err));
+
   res.json({
     status: "sync_initiated",
     message: "Full TLE catalog fetch and MongoDB upsert triggered.",
@@ -1023,30 +1205,49 @@ app.use(express.static(__dirname));
 async function startServer() {
   try {
     console.log("=".repeat(65));
-    console.log("🚀 OrbitGuard Node.js + Mongoose Server Initializing...");
+    console.log("🚀 SPAC6TIME Node.js + Mongoose Server Initializing...");
     console.log(`📡 Connecting to MongoDB at: ${MONGODB_URI}`);
 
     await mongoose.connect(MONGODB_URI);
     console.log("✅ Successfully connected to MongoDB!");
 
-    // Check if initial sync is required (if less than 5000 records or stale)
+    // Start Express listener IMMEDIATELY so all frontend pages and API requests work right away!
+    app.listen(PORT, () => {
+      console.log("=".repeat(65));
+      console.log(`🚀 SPAC6TIME Live Server running at: http://localhost:${PORT}/`);
+      console.log(`🌍 3D Earth Dashboard: http://localhost:${PORT}/earth.html`);
+      console.log(`✨ 3D Intro & Gateway: http://localhost:${PORT}/index.html`);
+      console.log(`📊 Orbital Analytics: http://localhost:${PORT}/analytics.html`);
+      console.log(`🛰️ Satellite Grid: http://localhost:${PORT}/grid.html`);
+      console.log(`📄 Pure TLE API Endpoint: http://localhost:${PORT}/api/tle/latest`);
+      console.log(`🍃 MongoDB JSON API: http://localhost:${PORT}/api/tle/satellites`);
+      console.log(`🚨 Precomputed Conjunctions API: http://localhost:${PORT}/api/conjunctions`);
+      console.log(`🛰️ Space-Track 18th SDS Feed: http://localhost:${PORT}/api/spacetrack/sync`);
+      console.log(`🔄 Conjunction Auto-sync: Every 15 minutes automatically -> MongoDB`);
+      console.log("=".repeat(65));
+    });
+
+    // Check if initial sync or conjunction compute is required (run in background)
     const docCount = await Satellite.countDocuments();
     const newest = await Satellite.findOne().sort({ updatedAt: -1 });
     const isStale = !newest || (Date.now() - new Date(newest.updatedAt).getTime()) > SYNC_INTERVAL_MS;
 
-    if (docCount < 5000 || isStale) {
-      console.log(`[${new Date().toLocaleTimeString()}] 🔄 Loading full TLE catalog into MongoDB (Current: ${docCount})...`);
-      await syncTleCatalog();
+    if (docCount < 5000) {
+      console.log(`[${new Date().toLocaleTimeString()}] 🔄 Initial sync: MongoDB has few records (${docCount}), syncing TLE catalog in background...`);
+      syncTleCatalog().then(() => computeConjunctionsService()).catch(err => console.error("Initial TLE sync error:", err));
+    } else if (isStale) {
+      console.log(`[${new Date().toLocaleTimeString()}] 📂 MongoDB TLE catalog is present (${docCount} tracked objects), refreshing in background...`);
+      syncTleCatalog().then(() => computeConjunctionsService()).catch(err => console.error("Background TLE refresh error:", err));
     } else {
       const ageMins = Math.round((Date.now() - new Date(newest.updatedAt).getTime()) / 60000);
       console.log(`[${new Date().toLocaleTimeString()}] 📂 MongoDB TLE catalog is fresh (${docCount} tracked objects, ${ageMins} mins old).`);
     }
 
-    // Run initial conjunction screening
+    // Run initial conjunction screening if none exists
     const conjCount = await Conjunction.countDocuments();
     if (conjCount === 0) {
       console.log(`[${new Date().toLocaleTimeString()}] 🚀 Running initial SGP4 24h orbital conjunction analysis...`);
-      await computeConjunctionsService();
+      computeConjunctionsService().catch(err => console.error("Initial conjunction compute error:", err));
     } else {
       console.log(`[${new Date().toLocaleTimeString()}] 🛰️ MongoDB has ${conjCount} precomputed conjunction records.`);
     }
@@ -1057,27 +1258,14 @@ async function startServer() {
       await computeConjunctionsService();
     }, CONJUNCTION_SYNC_INTERVAL_MS);
 
-    // Schedule 2-hour recurring TLE sync
+    // Schedule recurring TLE sync
+    const syncHours = Math.round(SYNC_INTERVAL_MS / (60 * 60 * 1000));
     setInterval(async () => {
-      console.log(`[${new Date().toLocaleTimeString()}] ⏰ 2-hour timer triggered: Refreshing full TLE catalog in MongoDB...`);
+      console.log(`[${new Date().toLocaleTimeString()}] ⏰ ${syncHours}-hour timer triggered: Refreshing full TLE catalog in MongoDB...`);
       await syncTleCatalog();
       await computeConjunctionsService();
     }, SYNC_INTERVAL_MS);
 
-    // Start Express listener
-    app.listen(PORT, () => {
-      console.log("=".repeat(65));
-      console.log(`🚀 OrbitGuard Live Server running at: http://localhost:${PORT}/`);
-      console.log(`🌍 3D Earth Dashboard: http://localhost:${PORT}/earth.html`);
-      console.log(`✨ 3D Intro & Gateway: http://localhost:${PORT}/index.html`);
-      console.log(`📊 Orbital Analytics: http://localhost:${PORT}/analytics.html`);
-      console.log(`🛰️ Satellite Grid: http://localhost:${PORT}/grid.html`);
-      console.log(`📄 Pure TLE API Endpoint: http://localhost:${PORT}/api/tle/latest`);
-      console.log(`🍃 MongoDB JSON API: http://localhost:${PORT}/api/tle/satellites`);
-      console.log(`🚨 Precomputed Conjunctions API: http://localhost:${PORT}/api/conjunctions`);
-      console.log(`🔄 Conjunction Auto-sync: Every 15 minutes automatically -> MongoDB`);
-      console.log("=".repeat(65));
-    });
   } catch (err) {
     console.error("❌ Failed to start server:", err);
     process.exit(1);

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OrbitGuard — 3D Orbital Globe & Live Tracking</title>
+    <title>SPAC6TIME — 3D Orbital Globe & Live Tracking</title>
 
     <!-- Three.js & GSAP -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -1508,7 +1508,7 @@
                 <i class="fa-solid fa-earth-americas" id="spaceWarpIcon"></i>
             </div>
         </div>
-        <div class="space-warp-title">ORBITGUARD TELEMETRY</div>
+        <div class="space-warp-title">SPAC6TIME TELEMETRY</div>
         <div class="space-warp-status" id="spaceWarpStatus">ENGAGING 3D GLOBE RENDERER...</div>
         <div class="space-warp-bar-wrap">
             <div class="space-warp-bar" id="spaceWarpBar" style="width: 25%;"></div>
@@ -1532,7 +1532,7 @@
         <div class="sidebarHeader">
             <a href="index.html" class="logo">
                 <div class="logoMark">◉</div>
-                <span>OrbitGuard</span>
+                <span>SPAC6TIME</span>
             </a>
             <button class="sidebarCloseBtn" id="sidebarCloseBtn" title="Close Sidebar">✕</button>
         </div>
@@ -1558,18 +1558,6 @@
             </a>
         </div>
 
-        <div class="navTitle">System</div>
-
-        <div class="nav">
-            <a href="#">
-                <b>⚙</b>
-                <span>Settings</span>
-            </a>
-            <a href="#">
-                <b>?</b>
-                <span>Documentation</span>
-            </a>
-        </div>
 
         <div class="system">
             <span class="dot" id="sysDot"></span>
@@ -1630,7 +1618,7 @@
                             <span class="icon"><i class="fa-solid fa-satellite"></i></span>
                         </div>
                         <div class="value" id="cardTracked">--</div>
-                        <div class="sub"><span class="up">Live</span> from CelesTrak ACTIVE</div>
+                        <div class="sub"><span class="up">Live</span> from Space-Track ACTIVE</div>
                     </div>
 
                     <!-- Conjunctions (24h) -->
@@ -2915,16 +2903,23 @@ async function fetchCelesTrakData() {
     const cached = readCache();
 
     // 1. LOCAL DATASET (MongoDB Backend API / active.tle) + AUTO-SYNC
-    if (window.location.protocol !== "file:") {
+    const backendEndpoints = [
+        BACKEND_TLE_API_URL,
+        "http://localhost:8000/api/tle/latest",
+        "http://127.0.0.1:8000/api/tle/latest",
+        "active.tle",
+        "http://localhost:8000/active.tle",
+        "http://127.0.0.1:8000/active.tle"
+    ];
+
+    try {
+        fetch("/api/tle/sync").catch(() => {});
+        fetch("http://localhost:8000/api/tle/sync").catch(() => {});
+    } catch (e) {}
+
+    for (const ep of backendEndpoints) {
         try {
-            fetch("/api/tle/sync").catch(() => {});
-            // Try backend API first, then local active.tle file
-            let localFileText = null;
-            try {
-                localFileText = await fetchText(BACKEND_TLE_API_URL, 15000);
-            } catch (e) {
-                localFileText = await fetchText("active.tle", 15000);
-            }
+            const localFileText = await fetchText(ep, 15000);
             const parsedLocal = parseTleCatalog(localFileText);
             if (parsedLocal.length > 0) {
                 cacheData(localFileText);
@@ -3176,11 +3171,49 @@ function parseTleCatalog(tleText) {
     return records;
 }
 
-// Structured Categorization:
-// 1. ALL Space Stations (ISS, Tiangong CSS, Tianhe)
-// 2. 8 to 10 Mega-Constellations (Starlink, OneWeb)
-// 3. 30 to 40 Active Satellites (Landsat, Sentinel, NOAA, Terra, Aqua, Cartosat, etc.)
-// 4. 6 to 8 Debris & Rocket Bodies (Cosmos, Fengyun, CZ-4, SL-16, Titan 4B, etc.)
+// Calculate instantaneous altitude (km) above Earth for any satellite
+function getSatelliteAltitudeKm(sat, time = new Date()) {
+    if (!sat) return null;
+    if (typeof sat.altitude === 'number' && !isNaN(sat.altitude)) return sat.altitude;
+    if (!sat.satrec) return null;
+    try {
+        const state = satellite.propagate(
+            sat.satrec,
+            time.getUTCFullYear(),
+            time.getUTCMonth() + 1,
+            time.getUTCDate(),
+            time.getUTCHours(),
+            time.getUTCMinutes(),
+            time.getUTCSeconds()
+        );
+        if (state && state.position) {
+            const gmst = satellite.gstime(time);
+            const geodetic = satellite.eciToGeodetic(state.position, gmst);
+            if (geodetic && typeof geodetic.height === 'number' && !isNaN(geodetic.height)) {
+                return Math.max(0, geodetic.height);
+            }
+        }
+    } catch (e) {}
+
+    // Fallback: Orbital semi-major axis calculation from mean motion
+    try {
+        if (sat.satrec && sat.satrec.no) {
+            const n_rad_s = sat.satrec.no / 60; // rad/s
+            const mu = 398600.4418; // km^3/s^2
+            const semiMajorAxis = Math.cbrt(mu / (n_rad_s * n_rad_s));
+            const meanAlt = semiMajorAxis - 6378.137;
+            return Math.max(0, meanAlt);
+        }
+    } catch (e) {}
+
+    return null;
+}
+
+// Structured Categorization (Filtered strictly to distance from Earth < 2000 km for default globe display):
+// 1. ALL Space Stations (ISS, Tiangong CSS, Tianhe) [< 2000 km]
+// 2. 8 to 10 Mega-Constellations (Starlink, OneWeb) [< 2000 km]
+// 3. 30 to 40 Active Satellites (Landsat, Sentinel, NOAA, Terra, Aqua, Cartosat, etc.) [< 2000 km]
+// 4. 6 to 8 Debris & Rocket Bodies (Cosmos, Fengyun, CZ-4, SL-16, Titan 4B, etc.) [< 2000 km]
 function categorizeAndPickSatelliteSubset(allSatellites) {
     if (!Array.isArray(allSatellites) || allSatellites.length === 0) return [];
 
@@ -3189,14 +3222,19 @@ function categorizeAndPickSatelliteSubset(allSatellites) {
     const activeSatellites = [];
     const debrisAndRockets = [];
     const seenNorad = new Set();
+    const now = new Date();
 
     allSatellites.forEach(sat => {
         const norad = Number(sat.noradId || sat.NORAD_CAT_ID || 0);
         if (seenNorad.has(norad)) return;
 
+        // ONLY satellites with distance from Earth below 2000 km for default globe view
+        const altKm = getSatelliteAltitudeKm(sat, now);
+        if (altKm === null || altKm > 2000) return;
+
         const name = (sat.name || "").toUpperCase();
 
-        // 1. ALL SPACE STATIONS
+        // 1. ALL SPACE STATIONS (< 2000 km)
         if (norad === ISS_NORAD_ID || norad === 48274 ||
             name.includes("ISS") || name.includes("ZARYA") || 
             name.includes("TIANGONG") || name.includes("CSS") || 
@@ -3205,7 +3243,7 @@ function categorizeAndPickSatelliteSubset(allSatellites) {
             spaceStations.push(sat);
             seenNorad.add(norad);
         }
-        // 2. 6 TO 8 DEBRIS & ROCKET BODIES
+        // 2. 6 TO 8 DEBRIS & ROCKET BODIES (< 2000 km)
         else if (name.includes("DEB") || name.includes("DEBRIS") || 
                  name.includes("R/B") || name.includes("ROCKET") || 
                  name.includes("COSMOS 2251") || name.includes("FENGYUN 1C") ||
@@ -3217,7 +3255,7 @@ function categorizeAndPickSatelliteSubset(allSatellites) {
                 seenNorad.add(norad);
             }
         }
-        // 3. 8 TO 10 MEGA-CONSTELLATIONS
+        // 3. 8 TO 10 MEGA-CONSTELLATIONS (< 2000 km)
         else if (name.includes("STARLINK") || name.includes("ONEWEB") || 
                  name.includes("KUIPER") || name.includes("O3B")) {
             if (constellations.length < 10) {
@@ -3225,7 +3263,7 @@ function categorizeAndPickSatelliteSubset(allSatellites) {
                 seenNorad.add(norad);
             }
         }
-        // 4. 30 TO 40 ACTIVE SATELLITES (EO, Weather, Nav, Science, Comms)
+        // 4. 30 TO 40 ACTIVE SATELLITES (< 2000 km)
         else {
             if (activeSatellites.length < 38) {
                 activeSatellites.push(sat);
@@ -3234,23 +3272,41 @@ function categorizeAndPickSatelliteSubset(allSatellites) {
         }
     });
 
-    // If active satellites list has room, fill from remaining verified satellites
+    // If active satellites list has room, fill from remaining verified satellites below 2000 km
     if (activeSatellites.length < 30) {
         for (const sat of allSatellites) {
             const norad = Number(sat.noradId || sat.NORAD_CAT_ID || 0);
             if (!seenNorad.has(norad) && activeSatellites.length < 38) {
-                activeSatellites.push(sat);
-                seenNorad.add(norad);
+                const altKm = getSatelliteAltitudeKm(sat, now);
+                if (altKm !== null && altKm <= 2000) {
+                    activeSatellites.push(sat);
+                    seenNorad.add(norad);
+                }
             }
         }
     }
 
-    return [
+    const candidatePool = [
         ...spaceStations,
         ...constellations,
         ...activeSatellites,
         ...debrisAndRockets
     ];
+
+    if (candidatePool.length <= 40) {
+        return candidatePool;
+    }
+
+    // Keep ISS if present for prominent telemetry, randomly sample the remaining 39
+    const issSat = candidatePool.find(s => Number(s.noradId || s.NORAD_CAT_ID) === ISS_NORAD_ID);
+    const nonIssPool = candidatePool.filter(s => Number(s.noradId || s.NORAD_CAT_ID) !== ISS_NORAD_ID);
+
+    for (let i = nonIssPool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [nonIssPool[i], nonIssPool[j]] = [nonIssPool[j], nonIssPool[i]];
+    }
+
+    return issSat ? [issSat, ...nonIssPool.slice(0, 39)] : nonIssPool.slice(0, 40);
 }
 
 // ============================================================
@@ -3261,16 +3317,25 @@ let liveCountdownInterval = null;
 
 async function fetchLiveConjunctions() {
     // 1. Try local MongoDB / Node.js backend
-    try {
-        const resp = await fetch("/api/conjunctions", { cache: "no-store" });
-        if (resp.ok) {
-            const data = await resp.json();
-            if (data.success && Array.isArray(data.conjunctions) && data.conjunctions.length > 0) {
-                return data.conjunctions;
+    const conjEndpoints = [
+        "/api/conjunctions",
+        "http://localhost:8000/api/conjunctions",
+        "http://127.0.0.1:8000/api/conjunctions"
+    ];
+
+    for (const url of conjEndpoints) {
+        try {
+            const resp = await fetch(url, { cache: "no-store" });
+            if (resp.ok) {
+                const data = await resp.json();
+                if (data.success && Array.isArray(data.conjunctions) && data.conjunctions.length > 0) {
+                    try {
+                        localStorage.setItem("orbitguard_conjunctions_cache", JSON.stringify(data.conjunctions));
+                    } catch (e) {}
+                    return data.conjunctions;
+                }
             }
-        }
-    } catch (e) {
-        console.warn("Backend /api/conjunctions unavailable, checking local storage...");
+        } catch (e) {}
     }
 
     // 2. Offline / local storage fallback
@@ -3526,7 +3591,7 @@ async function initDashboard() {
         const sysStatusEl = document.getElementById("sysStatus");
         if (sysStatusEl) sysStatusEl.innerText = "Tracking system online";
         const sysSubEl = document.getElementById("sysSub");
-        if (sysSubEl) sysSubEl.innerText = isCached ? "Using cached TLE catalog" : "CelesTrak feed synced";
+        if (sysSubEl) sysSubEl.innerText = isCached ? "Using cached TLE catalog" : "Space-Track feed synced";
         const liveStatusEl = document.getElementById("liveStatus");
         if (liveStatusEl) liveStatusEl.innerHTML = `<span class="dot"></span> ${isCached ? "CACHED" : "LIVE"} • ${satData.length} active TLEs`;
         const cardTrackedEl = document.getElementById("cardTracked");
@@ -3534,14 +3599,17 @@ async function initDashboard() {
         const sheetCardTrackedEl = document.getElementById("sheetCardTracked");
         if (sheetCardTrackedEl) sheetCardTrackedEl.innerText = satData.length.toLocaleString();
 
+        const now = new Date();
         const parsedSatellites = satData.map(sat => {
             try {
                 const satrec = satellite.twoline2satrec(sat.line1, sat.line2);
-                return {
+                const satObj = {
                     name: sat.name || `NORAD ${sat.NORAD_CAT_ID}`,
                     noradId: sat.NORAD_CAT_ID,
                     satrec: satrec
                 };
+                satObj.altitude = getSatelliteAltitudeKm(satObj, now);
+                return satObj;
             } catch (err) {
                 return null;
             }
@@ -3559,6 +3627,16 @@ async function initDashboard() {
         // 2. Fetch Precomputed Conjunctions from MongoDB Backend (Consistent across all pages & refreshes)
         const conjunctions = await fetchLiveConjunctions();
         renderConjunctions(conjunctions);
+
+        // Auto-poll every 30s to keep UI synchronized with MongoDB 15-min recalculations
+        setInterval(async () => {
+            try {
+                const updatedConjs = await fetchLiveConjunctions();
+                if (updatedConjs && updatedConjs.length > 0) {
+                    renderConjunctions(updatedConjs);
+                }
+            } catch (e) {}
+        }, 30000);
 
     } catch (error) {
         console.error("Dashboard error:", error);
@@ -3675,6 +3753,11 @@ function clearSearchAndResetView() {
     targetRotX = 0.32;
     targetRotY = 0.45;
     setEarthZoom(EARTH_ZOOM_DEFAULT);
+
+    // 5. Re-enable auto-rotate
+    autoRotate = true;
+    const btnAutoRotate = document.getElementById('btn-auto-rotate');
+    if (btnAutoRotate) btnAutoRotate.classList.add('active');
 }
 
 if (searchInput) {
@@ -3713,8 +3796,28 @@ if (searchInput) {
             }
         } else {
             if (searchDropdown) searchDropdown.style.display = "none";
-            // Reset to default curated set with standard normal trajectories
+
+            // 1. Reset targetPivot to Earth center
+            targetPivot.set(0, 0, 0);
+
+            // 2. Reset to default curated set with standard normal trajectories
             render3DOrbits(window.defaultCuratedSatellites || [], "");
+
+            // 3. Smoothly return camera to default view, orientation, and zoom distance
+            targetRotX = 0.32;
+            targetRotY = 0.45;
+            setEarthZoom(EARTH_ZOOM_DEFAULT);
+
+            // 4. Re-enable auto-rotate if stopped
+            autoRotate = true;
+            const btnAutoRotate = document.getElementById('btn-auto-rotate');
+            if (btnAutoRotate) btnAutoRotate.classList.add('active');
+        }
+    });
+
+    searchInput.addEventListener("search", () => {
+        if (!searchInput.value.trim()) {
+            clearSearchAndResetView();
         }
     });
 

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Orbital Objects — OrbitGuard</title>
+    <title>Orbital Objects — SPAC6TIME</title>
 
     <!-- Plotly for visualizations -->
     <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
@@ -825,7 +825,7 @@
                     <i class="fa-solid fa-cubes" id="spaceWarpIcon"></i>
                 </div>
             </div>
-            <div class="space-warp-title">ORBITGUARD TELEMETRY</div>
+            <div class="space-warp-title">SPAC6TIME TELEMETRY</div>
             <div class="space-warp-status" id="spaceWarpStatus">QUERYING ORBITAL DATABASE...</div>
             <div class="space-warp-bar-wrap">
                 <div class="space-warp-bar" id="spaceWarpBar" style="width: 25%;"></div>
@@ -848,7 +848,7 @@
             <div class="sidebarHeader">
                 <a href="index.html" class="logo" style="text-decoration:none; color:inherit; cursor:pointer;">
                     <div class="logoMark">◉</div>
-                    <span>OrbitGuard</span>
+                    <span>SPAC6TIME</span>
                 </a>
                 <button class="sidebarCloseBtn" id="sidebarCloseBtn" title="Close Menu">✕</button>
             </div>
@@ -873,22 +873,12 @@
                 </a>
             </nav>
 
-            <div class="navTitle">System</div>
-            <nav class="nav">
-                <a href="#">
-                    <b>⚙</b>
-                    <span>Settings</span>
-                </a>
-                <a href="#">
-                    <b>?</b>
-                    <span>Documentation</span>
-                </a>
-            </nav>
+
 
             <div class="system">
                 <span class="dot" id="sysDot"></span>
                 <b style="font-size:11px" id="sysStatus">Connecting...</b>
-                <div style="font-size:10px; color:#647690; margin-top:5px" id="sysSub">Syncing CelesTrak...</div>
+                <div style="font-size:10px; color:#647690; margin-top:5px" id="sysSub">Syncing Space-Track...</div>
             </div>
         </aside>
 
@@ -906,7 +896,7 @@
                         <h1>Orbital Objects</h1>
                         <div class="header-sub">
                             <span class="dot" id="statusIndicator"></span>
-                            <span id="statusText">Fetching CelesTrak active TLE catalog...</span>
+                            <span id="statusText">Fetching Space-Track active TLE catalog...</span>
                         </div>
                     </div>
                 </div>
@@ -972,7 +962,7 @@
             <div id="objectsContainer">
                 <div class="loading">
                     <div class="loading-spinner"></div>
-                    <div>Fetching and propagating orbital TLE records from CelesTrak...</div>
+                    <div>Fetching and propagating orbital TLE records from Space-Track...</div>
                 </div>
             </div>
 
@@ -1164,12 +1154,12 @@
 
             // 3. Direct CelesTrak API
             try {
-                console.log("Connecting directly to CelesTrak API...");
+                console.log("Connecting directly to Space-Track API...");
                 const tleText = await fetchText(CELESTRAK_API_URL, 12000);
                 const parsed = parseTLE(tleText);
                 if (parsed.length > 0) {
                     cacheData(tleText);
-                    setSystemStatus("ONLINE", "Live CelesTrak Active TLE", "green");
+                    setSystemStatus("ONLINE", "Live Space-Track Active TLE", "green");
                     setDataSourceLabel("CELESTRAK LIVE API");
                     return parsed;
                 }
@@ -1203,7 +1193,7 @@
             // 5. Stale cache fallback
             const staleCache = readCache(null);
             if (staleCache) {
-                console.warn("Using stale cached CelesTrak data as network fallback.");
+                console.warn("Using stale cached Space-Track data as network fallback.");
                 const parsed = parseTLE(staleCache);
                 if (parsed.length > 0) {
                     setSystemStatus("DEGRADED", "Offline (Cached Data)", "orange");
@@ -1528,7 +1518,7 @@
             document.getElementById("lastUpdate").textContent = timeStr;
 
             document.getElementById("statusIndicator").className = "dot";
-            document.getElementById("statusText").textContent = `Live tracking ${total.toLocaleString()} objects from CelesTrak`;
+            document.getElementById("statusText").textContent = `Live tracking ${total.toLocaleString()} objects from Space-Track`;
         }
 
         // ================================================================

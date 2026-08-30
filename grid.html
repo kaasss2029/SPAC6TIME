@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Conjunctions & Collision Risk — OrbitGuard</title>
+    <title>Conjunctions & Collision Risk — SPAC6TIME</title>
 
     <!-- Plotly for visualizations -->
     <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
@@ -310,6 +310,16 @@
             background: radial-gradient(circle at 50% 50%, rgba(13, 24, 45, 0.7) 0%, rgba(6, 10, 18, 0.95) 100%);
             border: 1px solid rgba(70, 217, 255, 0.25);
             box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65), 0 0 32px rgba(70, 217, 255, 0.12);
+            transition: border-color 0.4s, box-shadow 0.4s;
+        }
+
+        @keyframes stageGlowPulse {
+            0% { box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65), 0 0 0px rgba(70, 217, 255, 0); border-color: rgba(70, 217, 255, 0.25); }
+            50% { box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65), 0 0 45px rgba(70, 217, 255, 0.75); border-color: rgba(70, 217, 255, 0.95); }
+            100% { box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65), 0 0 32px rgba(70, 217, 255, 0.12); border-color: rgba(70, 217, 255, 0.25); }
+        }
+        .stage-highlight-pulse {
+            animation: stageGlowPulse 1.4s ease-out;
         }
 
         .hero-stage-header {
@@ -1327,7 +1337,7 @@
                     <i class="fa-solid fa-triangle-exclamation" id="spaceWarpIcon"></i>
                 </div>
             </div>
-            <div class="space-warp-title">ORBITGUARD TELEMETRY</div>
+            <div class="space-warp-title">SPAC6TIME TELEMETRY</div>
             <div class="space-warp-status" id="spaceWarpStatus">PROCESSING CONJUNCTION SENSORS...</div>
             <div class="space-warp-bar-wrap">
                 <div class="space-warp-bar" id="spaceWarpBar" style="width: 25%;"></div>
@@ -1350,7 +1360,7 @@
             <div class="sidebarHeader">
                 <a href="index.html" class="logo">
                     <div class="logoMark">◉</div>
-                    <span>OrbitGuard</span>
+                    <span>SPAC6TIME</span>
                 </a>
                 <button class="sidebarCloseBtn" id="sidebarCloseBtn" title="Close Menu">✕</button>
             </div>
@@ -1375,17 +1385,7 @@
                 </a>
             </nav>
 
-            <div class="navTitle">System</div>
-            <nav class="nav">
-                <a href="#">
-                    <b>⚙</b>
-                    <span>Settings</span>
-                </a>
-                <a href="#">
-                    <b>?</b>
-                    <span>Documentation</span>
-                </a>
-            </nav>
+
 
             <div class="system">
                 <span class="dot" id="sysDot"></span>
@@ -1408,7 +1408,7 @@
                         <h1>Conjunction Risk Monitor</h1>
                         <div class="top-sub">
                             <span class="dot" id="statusIndicator"></span>
-                            <span id="statusText">Connecting to CelesTrak active TLE catalog...</span>
+                            <span id="statusText">Connecting to Space-Track active TLE catalog...</span>
                         </div>
                     </div>
                 </div>
@@ -1427,7 +1427,7 @@
                         <span class="live-pulse-ring"></span>
                         <div>
                             <strong style="font-size:14px; font-weight:700; color:#fff;">Encounter Geometry &amp; Keep-Out Zone</strong>
-                            <span id="geometrySubtitle" style="display:block; font-size:11px; color:var(--muted); font-family:var(--font-mono);">3D Crossing Orbital Trajectories (TEME Frame in km)</span>
+                            <span id="geometrySubtitle" style="display:block; font-size:11px; color:var(--muted); font-family:var(--font-mono);">3D Crossing Orbital Trajectories (Encounter Frame in km)</span>
                         </div>
                     </div>
 
@@ -1798,39 +1798,27 @@
 
         async function fetchRealTleCatalog() {
             // 1. Local backend API or active.tle
-            if (window.location.protocol !== "file:") {
+            const endpoints = [
+                BACKEND_TLE_API_URL,
+                "http://localhost:8000/api/tle/latest",
+                "http://127.0.0.1:8000/api/tle/latest",
+                "active.tle",
+                "http://localhost:8000/active.tle",
+                "http://127.0.0.1:8000/active.tle"
+            ];
+
+            for (const ep of endpoints) {
                 try {
-                    const txt = await fetchText(BACKEND_TLE_API_URL, 6000);
+                    const txt = await fetchText(ep, 10000);
                     const parsed = parseTleCatalog(txt);
                     if (parsed.length > 0) {
                         cacheData(txt);
-                        setSystemStatus("ONLINE", `Backend Synced (${parsed.length} sats)`, "green");
-                        setDataSourceLabel("LIVE BACKEND TLE");
+                        const isDb = ep.includes("api/tle/latest") || ep === BACKEND_TLE_API_URL;
+                        setSystemStatus("ONLINE", `${isDb ? 'Backend Synced' : 'Active TLE File'} (${parsed.length} sats)`, "green");
+                        setDataSourceLabel(isDb ? "LIVE BACKEND TLE" : "LOCAL ACTIVE.TLE");
                         return parsed;
                     }
-                } catch(e){
-                    try {
-                        const fileTxt = await fetchText("active.tle", 10000);
-                        const parsed = parseTleCatalog(fileTxt);
-                        if (parsed.length > 0) {
-                            cacheData(fileTxt);
-                            setSystemStatus("ONLINE", `Active TLE File (${parsed.length} sats)`, "green");
-                            setDataSourceLabel("LOCAL ACTIVE.TLE");
-                            return parsed;
-                        }
-                    } catch(fe){}
-                }
-            } else {
-                try {
-                    const fileTxt = await fetchText("active.tle", 10000);
-                    const parsed = parseTleCatalog(fileTxt);
-                    if (parsed.length > 0) {
-                        cacheData(fileTxt);
-                        setSystemStatus("ONLINE", `Active TLE Catalog (${parsed.length} sats)`, "green");
-                        setDataSourceLabel("ACTIVE.TLE CATALOG");
-                        return parsed;
-                    }
-                } catch(fe){}
+                } catch(e){}
             }
 
             // 2. Local Storage Cache
@@ -1983,26 +1971,45 @@ DELTA 1 DEB
 
         async function computeRealConjunctions(satellites) {
             // 1. Check MongoDB Backend first
-            if (window.location.protocol !== "file:") {
+            const conjEndpoints = [
+                "/api/conjunctions",
+                "http://localhost:8000/api/conjunctions",
+                "http://127.0.0.1:8000/api/conjunctions"
+            ];
+
+            for (const url of conjEndpoints) {
                 try {
-                    const resp = await fetch("/api/conjunctions", { cache: "no-store" });
+                    const resp = await fetch(url, { cache: "no-store" });
                     if (resp.ok) {
                         const data = await resp.json();
                         if (data.success && Array.isArray(data.conjunctions) && data.conjunctions.length > 0) {
-                            return data.conjunctions.map((c, idx) => ({
+                            const mapped = data.conjunctions.map((c, idx) => ({
                                 ...c,
                                 id: c.id || c.conjunctionId || c._id || `CDM-2026-${String(idx + 1).padStart(4, '0')}`,
                                 missDistanceKm: Number(c.missDistanceKm || 0),
-                                radialKm: Number(c.radialKm || (c.missDistanceKm * 0.22) || 0),
-                                inTrackKm: Number(c.inTrackKm || (c.missDistanceKm * 0.92) || 0),
-                                crossTrackKm: Number(c.crossTrackKm || (c.missDistanceKm * 0.32) || 0),
+                                radialKm: typeof c.radialKm === "number" ? c.radialKm : (Number(c.missDistanceKm || 0) * 0.22),
+                                inTrackKm: typeof c.inTrackKm === "number" ? c.inTrackKm : (Number(c.missDistanceKm || 0) * 0.92),
+                                crossTrackKm: typeof c.crossTrackKm === "number" ? c.crossTrackKm : (Number(c.missDistanceKm || 0) * 0.32),
                                 relVelKmS: Number(c.relVelKmS || 11.8),
                                 tcaMinutes: Number(c.tcaMinutes || 30),
-                                postMissKm: Number(c.postMissKm || (c.missDistanceKm + 18.25))
+                                postMissKm: typeof c.postMissKm === "number" ? c.postMissKm : (Number(c.missDistanceKm || 0) + 18.25)
                             }));
+                            try {
+                                localStorage.setItem("orbitguard_conjunctions_cache", JSON.stringify(mapped));
+                            } catch (e) {}
+                            return mapped;
                         }
                     }
                 } catch(e){}
+            }
+
+            // 2. Offline / local storage fallback
+            const cached = localStorage.getItem("orbitguard_conjunctions_cache");
+            if (cached) {
+                try {
+                    const parsed = JSON.parse(cached);
+                    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+                } catch (e) {}
             }
 
             // 2. Perform live SGP4 differential screening across active catalog candidates
@@ -2113,6 +2120,23 @@ DELTA 1 DEB
                 start3DRotationLoop();
 
                 setInterval(updateCountdowns, 1000);
+
+                // Auto-poll every 30s to keep UI synchronized with MongoDB 15-min recalculations
+                setInterval(async () => {
+                    try {
+                        const updatedConjs = await computeRealConjunctions(allParsedSatellites);
+                        if (updatedConjs && updatedConjs.length > 0) {
+                            allConjunctions = updatedConjs;
+                            if (!selectedConjunction || !allConjunctions.some(c => (c.id || c.conjunctionId) === (selectedConjunction.id || selectedConjunction.conjunctionId))) {
+                                selectedConjunction = allConjunctions[0];
+                            }
+                            updateKPIs();
+                            renderTable();
+                            renderTimelineChart();
+                            updateCamPanel();
+                        }
+                    } catch (e) {}
+                }, 30000);
             } catch (error) {
                 console.error("Dashboard initialization error:", error);
                 document.getElementById("statusText").textContent = "Tracking active orbital conjunctions";
@@ -2268,7 +2292,7 @@ DELTA 1 DEB
 
             const subtitle = document.getElementById("geometrySubtitle");
             if (mode === '3d') {
-                subtitle.textContent = "3D Crossing Orbital Trajectories (TEME Frame in km)";
+                subtitle.textContent = "3D Crossing Orbital Trajectories (Encounter Frame in km)";
                 render3DTrajectoryChart();
             } else {
                 subtitle.textContent = "Cartesian B-Plane (Encounter Coordinates in km)";
@@ -2334,43 +2358,54 @@ DELTA 1 DEB
             const conj = selectedConjunction || allConjunctions[0];
             if (!conj) return;
 
-            const steps = 110;
-            const rA = 6371 + (conj.altitudeKm || 500);
-            const orbitArcSpan = 0.72; // ~41° orbital trajectory arc for extensive spatial visibility
+            const steps = 100;
+            const inTrackSpanKm = 180; // km span along in-track corridor
+            const burnNodeIdx = -35; // Thruster fires 35% before encounter node
+            const maxDeltaRadial = 60; // km radial deflection
+            const maxDeltaCross = 36; // km cross-track deflection
+            const maxDeltaInTrack = 20; // km in-track phasing
 
-            // 1. Primary Asset Nominal Orbit (Unperturbed Baseline)
+            // Nominal miss parameters relative to encounter center (0,0,0)
+            const missKm = Number(conj.missDistanceKm || 1.8);
+            const missR = -Math.max(18, Math.min(38, missKm * 12));
+            const missC = -Math.max(22, Math.min(45, missKm * 15));
+            const crossingAngle = 0.62; // ~35° orbital track intersection angle
+
+            // 1. Primary Asset Nominal Baseline Orbit
             const xA_nom = [], yA_nom = [], zA_nom = [];
-            for (let i = -steps; i <= steps; i++) {
-                const angle = (i / steps) * orbitArcSpan;
-                xA_nom.push(rA * Math.cos(angle));
-                yA_nom.push(rA * Math.sin(angle));
-                zA_nom.push(rA * Math.sin(angle * 0.55));
-            }
-
             // 2. Primary Asset Active Orbit (Perturbed via Maneuver Progress)
-            // Branching off from the burn execution point (i = -40, ~45m before TCA)
             const xA = [], yA = [], zA = [];
-            const maxDeltaR = 22.5; // km radial/phasing separation
-            for (let i = -steps; i <= steps; i++) {
-                const angle = (i / steps) * orbitArcSpan;
-                const burnWeight = Math.max(0, (i + 40) / (steps + 40)); // Smooth burn curvature
-                const radialDisplacement = maxDeltaR * maneuverProgress * Math.pow(burnWeight, 1.2);
-                const rCurrent = rA + radialDisplacement;
-
-                xA.push(rCurrent * Math.cos(angle));
-                yA.push(rCurrent * Math.sin(angle));
-                zA.push(rCurrent * Math.sin(angle * 0.55));
-            }
-
-            // 3. Threat / Debris Orbit (Ballistic track with inclination cross)
+            // 3. Threat / Debris Orbit Track
             const xB = [], yB = [], zB = [];
-            const missNominal = conj.missDistanceKm * 15;
-            const incB = 0.52;
+
             for (let i = -steps; i <= steps; i++) {
-                const angle = (i / steps) * orbitArcSpan;
-                xB.push(rA * Math.cos(angle + 0.008) + missNominal);
-                yB.push(rA * Math.sin(angle) * Math.cos(incB) - missNominal * 0.4);
-                zB.push(rA * Math.sin(angle) * Math.sin(incB));
+                const inTrackY = (i / steps) * inTrackSpanKm;
+                // Realistic orbital curvature in local encounter frame
+                const nomRadialX = -(inTrackY * inTrackY) / (2 * 450);
+                const nomCrossZ = Math.sin((inTrackY / inTrackSpanKm) * 1.6) * 6;
+
+                xA_nom.push(nomRadialX);
+                yA_nom.push(inTrackY);
+                zA_nom.push(nomCrossZ);
+
+                // Progressive smooth thrust curvature after burn node
+                const postWeight = i < burnNodeIdx ? 0 : Math.pow((i - burnNodeIdx) / (steps - burnNodeIdx), 0.85);
+                const radDisp = maxDeltaRadial * maneuverProgress * postWeight;
+                const crossDisp = maxDeltaCross * maneuverProgress * postWeight;
+                const inTrackDisp = maxDeltaInTrack * maneuverProgress * postWeight;
+
+                xA.push(nomRadialX + radDisp);
+                yA.push(inTrackY + inTrackDisp);
+                zA.push(nomCrossZ + crossDisp);
+
+                // Threat orbital cross-track trajectory
+                const yB_val = inTrackY * Math.cos(crossingAngle);
+                const zB_val = inTrackY * Math.sin(crossingAngle) + missC;
+                const xB_val = -(inTrackY * inTrackY) / (2 * 450) + missR;
+
+                xB.push(xB_val);
+                yB.push(yB_val);
+                zB.push(zB_val);
             }
 
             // Current satellite positions at encounter (center index = steps, i = 0)
@@ -2387,6 +2422,8 @@ DELTA 1 DEB
             const midY = (posAsset.y + posThreat.y) / 2;
             const midZ = (posAsset.z + posThreat.z) / 2;
 
+            const burnIdx = steps + burnNodeIdx;
+
             const traces = [
                 // 1. Ghost Nominal Orbit (Shown as reference when maneuver is applied)
                 {
@@ -2394,7 +2431,7 @@ DELTA 1 DEB
                     mode: 'lines',
                     name: `${conj.objA.name} (Nominal Baseline)`,
                     x: xA_nom, y: yA_nom, z: zA_nom,
-                    line: { color: 'rgba(70, 217, 255, 0.35)', width: 2.5, dash: 'dot' },
+                    line: { color: 'rgba(70, 217, 255, 0.45)', width: 3.5, dash: 'dot' },
                     hoverinfo: 'name',
                     showlegend: maneuverProgress > 0.1
                 },
@@ -2404,7 +2441,7 @@ DELTA 1 DEB
                     mode: 'lines',
                     name: maneuverProgress > 0.1 ? `${conj.objA.name} (Post-Burn Trajectory)` : `${conj.objA.name} Orbit`,
                     x: xA, y: yA, z: zA,
-                    line: { color: isSafe ? '#42e6a4' : '#46d9ff', width: 5.5 },
+                    line: { color: isSafe ? '#42e6a4' : '#46d9ff', width: 6.0 },
                     hoverinfo: 'name'
                 },
                 // 3. Primary Asset Satellite Marker
@@ -2414,9 +2451,9 @@ DELTA 1 DEB
                     name: `${conj.objA.name} (Primary)`,
                     x: [posAsset.x], y: [posAsset.y], z: [posAsset.z],
                     text: [conj.objA.name],
-                    textposition: 'top center',
+                    textposition: 'top left',
                     textfont: { color: isSafe ? '#42e6a4' : '#46d9ff', size: 12, family: 'Plus Jakarta Sans' },
-                    marker: { color: isSafe ? '#42e6a4' : '#46d9ff', size: 9, symbol: 'diamond', line: { color: '#ffffff', width: 2 } },
+                    marker: { color: isSafe ? '#42e6a4' : '#46d9ff', size: 10, symbol: 'diamond', line: { color: '#ffffff', width: 2 } },
                     hoverinfo: 'name+text'
                 },
                 // 4. Thruster Burn Vector Pulse Arrow (Visible during / after burn)
@@ -2424,11 +2461,11 @@ DELTA 1 DEB
                     type: 'scatter3d',
                     mode: 'lines+markers',
                     name: 'Δv Thrust Vector (+0.14 m/s)',
-                    x: [xA_nom[steps - 40], xA[steps - 40] + 35 * maneuverProgress],
-                    y: [yA_nom[steps - 40], yA[steps - 40] + 40 * maneuverProgress],
-                    z: [zA_nom[steps - 40], zA[steps - 40] + 20 * maneuverProgress],
-                    line: { color: '#ffd166', width: 4 },
-                    marker: { size: [0, 7 * maneuverProgress], color: '#ffd166', symbol: 'circle' },
+                    x: [xA_nom[burnIdx], xA[burnIdx] + 28 * maneuverProgress],
+                    y: [yA_nom[burnIdx], yA[burnIdx] + 20 * maneuverProgress],
+                    z: [zA_nom[burnIdx], zA[burnIdx] + 16 * maneuverProgress],
+                    line: { color: '#ffd166', width: 4.5 },
+                    marker: { size: [0, 8 * maneuverProgress], color: '#ffd166', symbol: 'circle' },
                     hoverinfo: 'name',
                     showlegend: maneuverProgress > 0.1
                 },
@@ -2450,7 +2487,7 @@ DELTA 1 DEB
                     text: [conj.objB.name],
                     textposition: 'bottom right',
                     textfont: { color: '#ff526d', size: 12, family: 'Plus Jakarta Sans' },
-                    marker: { color: '#ff526d', size: 8, symbol: 'circle', line: { color: '#ffffff', width: 2 } },
+                    marker: { color: '#ff526d', size: 9, symbol: 'circle', line: { color: '#ffffff', width: 2 } },
                     hoverinfo: 'name+text'
                 },
                 // 7. TCA Keep-out Hazard / Clearance Sphere
@@ -2461,7 +2498,7 @@ DELTA 1 DEB
                     x: [midX], y: [midY], z: [midZ],
                     marker: {
                         color: isSafe ? 'rgba(66, 230, 164, 0.35)' : 'rgba(255, 82, 109, 0.45)',
-                        size: isSafe ? 12 : 22,
+                        size: isSafe ? 14 : 24,
                         symbol: 'circle',
                         line: { color: accentColor, width: 2 }
                     },
@@ -2480,7 +2517,7 @@ DELTA 1 DEB
                 }
             ];
 
-            const eyeR = 2.4;
+            const eyeR = 2.05;
             const eyeX = eyeR * Math.cos(rotAngle3D);
             const eyeY = eyeR * Math.sin(rotAngle3D);
             const eyeZ = 1.25 + 0.35 * Math.sin(rotAngle3D * 0.7);
@@ -2491,12 +2528,13 @@ DELTA 1 DEB
                 autosize: true,
                 margin: { l: 0, r: 0, t: 60, b: 0 },
                 scene: {
-                    xaxis: { title: 'X (km)', color: '#7f91ad', gridcolor: '#16233b', showbackground: false },
-                    yaxis: { title: 'Y (km)', color: '#7f91ad', gridcolor: '#16233b', showbackground: false },
-                    zaxis: { title: 'Z (km)', color: '#7f91ad', gridcolor: '#16233b', showbackground: false },
+                    xaxis: { title: 'Radial (km)', color: '#7f91ad', gridcolor: '#16233b', showbackground: false },
+                    yaxis: { title: 'In-Track (km)', color: '#7f91ad', gridcolor: '#16233b', showbackground: false },
+                    zaxis: { title: 'Cross-Track (km)', color: '#7f91ad', gridcolor: '#16233b', showbackground: false },
                     bgcolor: 'transparent',
                     camera: {
-                        eye: { x: eyeX, y: eyeY, z: eyeZ }
+                        eye: { x: eyeX, y: eyeY, z: eyeZ },
+                        center: { x: 0, y: 0, z: 0 }
                     }
                 },
                 showlegend: true,
@@ -2527,7 +2565,7 @@ DELTA 1 DEB
                 if (chartMode === '3d' && is3DAutoRotating && document.getElementById('bplaneChart')) {
                     rotAngle3D += 0.22 * delta; // Continuous rotation velocity
 
-                    const eyeR = 2.4;
+                    const eyeR = 2.05;
                     const eyeX = eyeR * Math.cos(rotAngle3D);
                     const eyeY = eyeR * Math.sin(rotAngle3D);
                     const eyeZ = 1.25 + 0.35 * Math.sin(rotAngle3D * 0.7);
@@ -2814,7 +2852,13 @@ DELTA 1 DEB
         }
 
         function selectConjunction(id, scrollToVisualizer = false) {
-            const found = allConjunctions.find(c => c.id === id || c.conjunctionId === id || c._id === id);
+            let found = allConjunctions.find(c => String(c.id) === String(id) || String(c.conjunctionId) === String(id) || String(c._id) === String(id));
+            if (!found && !isNaN(Number(id)) && allConjunctions[Number(id)]) {
+                found = allConjunctions[Number(id)];
+            }
+            if (!found && id) {
+                found = allConjunctions.find(c => (c.objA && String(c.objA.name).includes(String(id))) || (c.objB && String(c.objB.name).includes(String(id))));
+            }
             if (found) {
                 selectedConjunction = found;
             } else if (allConjunctions.length > 0) {
@@ -2829,18 +2873,52 @@ DELTA 1 DEB
             const btn = document.getElementById("simManeuverBtn");
             if (btn) {
                 btn.className = "cam-btn";
-                btn.innerHTML = `<span>⚡</span> Simulate Avoidance Maneuver`;
+                btn.innerHTML = `<span>🚀</span> Simulate Avoidance Burn`;
+            }
+            const sheetBtn = document.getElementById("sheetSimManeuverBtn");
+            if (sheetBtn) {
+                sheetBtn.className = "cam-btn";
+                sheetBtn.innerHTML = `<span>🚀</span> Simulate Avoidance Burn`;
             }
 
+            // 1. Update CAM Advisory Panel & bottom sheet
             updateCamPanel();
-            if (chartMode === '3d') render3DTrajectoryChart();
-            else renderBPlaneChart();
+
+            // 2. Update 3D Trajectory / B-Plane Visualizer
+            if (chartMode === '3d') {
+                render3DTrajectoryChart();
+            } else {
+                renderBPlaneChart();
+            }
+
+            // 3. Highlight selected row in CDM table
             renderTable();
 
+            // 4. Smoothly scroll up to the 3D Encounter Stage
             if (scrollToVisualizer) {
-                const stage = document.querySelector('.encounter-hero-stage');
+                // If bottom sheet was open on mobile, automatically close it
+                const backdrop = document.getElementById("conjunctionBackdrop");
+                if (backdrop && backdrop.classList.contains("active")) {
+                    toggleConjunctionSheet(false);
+                }
+
+                const stage = document.querySelector('.encounter-hero-stage') || document.getElementById('bplaneChart');
                 if (stage) {
-                    stage.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    const yOffset = -20;
+                    const y = stage.getBoundingClientRect().top + window.pageYOffset + yOffset;
+                    window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+
+                    // Visual pulse glow effect on the 3D stage and CAM panel
+                    stage.classList.remove('stage-highlight-pulse');
+                    void stage.offsetWidth; // force DOM reflow
+                    stage.classList.add('stage-highlight-pulse');
+
+                    const camPanel = document.querySelector('.panel');
+                    if (camPanel) {
+                        camPanel.classList.remove('stage-highlight-pulse');
+                        void camPanel.offsetWidth;
+                        camPanel.classList.add('stage-highlight-pulse');
+                    }
                 }
             }
         }
@@ -2983,11 +3061,25 @@ DELTA 1 DEB
             const probEls = [document.getElementById("camProbVal"), document.getElementById("sheetCamProbVal")].filter(Boolean);
             const fuelEls = [document.getElementById("camFuelCost"), document.getElementById("sheetCamFuelCost")].filter(Boolean);
 
-            // 1. Smoothly scroll up to the 3D Encounter Geometry Stage on non-mobile or if sheet is not modal
+            // Check if mobile / tablet conjunction bottom sheet is active
+            const backdrop = document.getElementById("conjunctionBackdrop");
+            const isSheetOpen = backdrop && backdrop.classList.contains("active");
+
+            if (isSheetOpen) {
+                // Automatically close the bottom sheet drawer
+                toggleConjunctionSheet(false);
+            }
+
+            // Smoothly scroll up to the 3D Encounter Geometry Stage
             const stage = document.querySelector('.encounter-hero-stage') || document.getElementById('bplaneChart');
             if (stage) {
-                stage.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                const yOffset = -20;
+                const y = stage.getBoundingClientRect().top + window.pageYOffset + yOffset;
+                window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
             }
+
+            // Dynamic delay so animations start smoothly right as the sheet finishes sliding down
+            const animDelay = isSheetOpen ? 380 : 100;
 
             if (isManeuverSimulated) {
                 const btnHtml = `<span>✓</span> Maneuver Executed (+${(cam.postMissKm - c.missDistanceKm).toFixed(1)} km) &mdash; Reset`;
@@ -3006,10 +3098,10 @@ DELTA 1 DEB
                     fuelEls.forEach(el => {
                         el.textContent = `${cam.fuelCostStr} [Expended]`;
                     });
-                }, 400);
+                }, animDelay);
 
-                // 2. Trigger smooth 3D/2D trajectory transition with a 450ms delay for screen arrival
-                triggerManeuverAnimation(1.0, 450);
+                // Trigger smooth 3D/2D trajectory transition
+                triggerManeuverAnimation(1.0, animDelay);
             } else {
                 const btnHtml = `<span>🚀</span> Simulate Avoidance Burn`;
                 if (btn) { btn.className = "cam-btn"; btn.innerHTML = btnHtml; }
@@ -3027,9 +3119,9 @@ DELTA 1 DEB
                     fuelEls.forEach(el => {
                         el.textContent = cam.fuelCostStr;
                     });
-                }, 300);
+                }, animDelay);
 
-                triggerManeuverAnimation(0.0, 350);
+                triggerManeuverAnimation(0.0, animDelay);
             }
         }
 
