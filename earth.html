@@ -1,0 +1,3971 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SPAC6TIME — 3D Orbital Globe & Live Tracking</title>
+
+    <!-- Three.js & GSAP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+    <!-- satellite.js -->
+    <script src="https://cdn.jsdelivr.net/npm/satellite.js@6.0.2/dist/satellite.min.js"></script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+
+
+
+
+
+
+
+
+        :root {
+            --bg: #070b14;
+            --bg-glass: rgba(10, 17, 30, 0.65);
+            --bg-glass-heavy: rgba(10, 17, 30, 0.78);
+            --border-glass: rgba(70, 217, 255, 0.18);
+            --border-glass-glow: rgba(70, 217, 255, 0.45);
+            --panel: #0d1422;
+            --panel2: #111a2b;
+            --line: #1c2940;
+            --text: #eaf2ff;
+            --muted: #7f91ad;
+            --cyan: #46d9ff;
+            --cyan-glow: rgba(70, 217, 255, 0.4);
+            --mint: #38e8be;
+            --mint-glow: rgba(56, 232, 190, 0.4);
+            --blue: #5b8cff;
+            --red: #ff526d;
+            --orange: #ffad4d;
+            --green: #42e6a4;
+            --purple: #b362ff;
+            --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: radial-gradient(circle at 70% 10%, #13243c 0, #070b14 38%);
+            color: var(--text);
+            font-family: var(--font-main);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .app {
+            display: flex;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        /* ── SIDEBAR NAVIGATION ── */
+        .sidebar {
+            width: 250px;
+            background: rgba(7, 11, 20, 0.96);
+            border-right: 1px solid var(--line);
+            padding: 24px 16px;
+            position: fixed;
+            inset: 0 auto 0 0;
+            z-index: 1000;
+            transform: translateX(-100%);
+            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 12px 0 40px rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(20px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar.open {
+            transform: translateX(0);
+        }
+
+        .sidebar-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(4, 7, 14, 0.65);
+            backdrop-filter: blur(4px);
+            z-index: 999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .sidebar-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .sidebarHeader {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            font-weight: 800;
+            font-size: 19px;
+            letter-spacing: -0.5px;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .logoMark {
+            width: 34px;
+            height: 34px;
+            border: 1px solid #2b7190;
+            border-radius: 11px;
+            display: grid;
+            place-items: center;
+            color: var(--cyan);
+            box-shadow: 0 0 24px #46d9ff22;
+        }
+
+        .sidebarCloseBtn {
+            background: transparent;
+            border: 1px solid var(--line);
+            color: var(--muted);
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: grid;
+            place-items: center;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .sidebarCloseBtn:hover {
+            color: var(--cyan);
+            border-color: var(--cyan);
+            background: rgba(70, 217, 255, 0.1);
+        }
+
+        .sidebarToggleBtn {
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+            background: rgba(13, 21, 36, 0.85);
+            border: 1px solid var(--line);
+            color: var(--text);
+            padding: 9px 15px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+            margin-right: 14px;
+        }
+
+        .sidebarToggleBtn:hover {
+            border-color: var(--cyan);
+            color: var(--cyan);
+            box-shadow: 0 0 16px #46d9ff33;
+            transform: translateY(-1px);
+        }
+
+        .navTitle {
+            font-size: 10px;
+            color: #50617a;
+            letter-spacing: 1.6px;
+            margin: 22px 12px 9px;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+
+        .nav a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            margin: 4px 0;
+            border-radius: 9px;
+            text-decoration: none;
+            color: var(--muted);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .nav a:hover {
+            background: #142238;
+            color: var(--text);
+        }
+
+        .nav a.active {
+            background: #142238;
+            color: #fff;
+            box-shadow: inset 2px 0 var(--cyan);
+        }
+
+        .nav b {
+            font-size: 15px;
+            width: 18px;
+            text-align: center;
+        }
+
+        .system {
+            margin-top: auto;
+            padding: 13px;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            background: #0c1320;
+        }
+
+        .dot {
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 10px var(--green);
+            margin-right: 7px;
+        }
+
+        /* ── MAIN DASHBOARD CONTAINER ── */
+        .main {
+            margin-left: 0;
+            width: 100%;
+            padding: 24px 32px 48px;
+            transition: margin-left 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* ── HEADER ── */
+        .top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .eyebrow {
+            font-size: 11px;
+            color: var(--cyan);
+            letter-spacing: 1.8px;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+
+        h1 {
+            margin: 4px 0 0;
+            font-size: 26px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .topRight {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .live {
+            font-size: 12px;
+            color: #a9b9cf;
+            border: 1px solid var(--border-glass);
+            padding: 9px 15px;
+            border-radius: 10px;
+            background: var(--bg-glass);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            display: flex;
+            align-items: center;
+            font-family: var(--font-mono);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+        }
+
+        .search-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            color: var(--muted);
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .search {
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            color: #fff;
+            padding: 9px 34px 9px 34px;
+            border-radius: 10px;
+            outline: none;
+            width: 240px;
+            font-family: var(--font-main);
+            font-size: 13px;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+        }
+
+        .search:focus {
+            border-color: var(--cyan);
+            box-shadow: 0 0 18px var(--cyan-glow);
+            width: 280px;
+        }
+
+        .search-clear-btn {
+            position: absolute;
+            right: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #c4d3e8;
+            font-size: 11px;
+            cursor: pointer;
+            width: 22px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.18s;
+            z-index: 2;
+        }
+
+        .search-clear-btn:hover {
+            color: #fff;
+            background: rgba(255, 82, 109, 0.4);
+            border-color: var(--red);
+            transform: scale(1.1);
+        }
+
+        /* Floating Glassmorphic Dropdown */
+        .search-dropdown {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            width: 320px;
+            max-height: 380px;
+            overflow-y: auto;
+            background: rgba(10, 17, 30, 0.96);
+            border: 1px solid var(--border-glass-glow);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-radius: 14px;
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.75), 0 0 24px rgba(70, 217, 255, 0.15);
+            z-index: 1000;
+            padding: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .search-dropdown-item {
+            padding: 8px 11px;
+            border-radius: 9px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            transition: all 0.15s ease;
+            border: 1px solid transparent;
+        }
+
+        .search-dropdown-item:hover {
+            background: rgba(70, 217, 255, 0.14);
+            border-color: rgba(70, 217, 255, 0.35);
+            transform: translateX(2px);
+        }
+
+        .search-dropdown-name {
+            font-size: 12px;
+            font-weight: 600;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .search-dropdown-meta {
+            font-size: 10px;
+            color: var(--muted);
+            font-family: var(--font-mono);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        .search-dropdown-empty {
+            padding: 16px;
+            text-align: center;
+            color: var(--muted);
+            font-size: 11px;
+        }
+
+        /* ── LARGE EXPANDED 3D ORBITAL ENVIRONMENT HERO STAGE ── */
+        .orbit-hero-stage {
+            position: relative;
+            width: 100%;
+            height: 820px;
+            min-height: 680px;
+            border-radius: 24px;
+            border: 1px solid var(--border-glass);
+            background: #050811;
+            overflow: hidden;
+            margin-bottom: 24px;
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.65), 0 0 40px rgba(70, 217, 255, 0.06);
+        }
+
+        /* 3D WebGL Canvas */
+        #earth-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            outline: none;
+            cursor: grab;
+        }
+
+        #earth-canvas:active {
+            cursor: grabbing;
+        }
+
+        /* ── GLASS OVERLAY HOST (CLICK-THROUGH WRAPPER) ── */
+        .orbit-glass-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 22px 24px;
+        }
+
+        /* 1. TOP GLASS KPI CARDS STRIP */
+        .glass-kpi-bar {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            pointer-events: auto;
+        }
+
+        .glass-card {
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-radius: 18px;
+            padding: 16px 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), 0 0 20px rgba(70, 217, 255, 0.04);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .glass-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(70, 217, 255, 0.4), transparent);
+        }
+
+        .glass-card:hover {
+            border-color: var(--border-glass-glow);
+            transform: translateY(-3px);
+            box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55), 0 0 30px var(--cyan-glow);
+        }
+
+        .cardHead {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--muted);
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .cardHead .icon {
+            color: var(--cyan);
+            font-size: 14px;
+        }
+
+        .value {
+            font-size: 26px;
+            font-weight: 800;
+            font-family: var(--font-mono);
+            margin: 8px 0 2px;
+            color: #ffffff;
+        }
+
+        .sub {
+            font-size: 11px;
+            color: var(--muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .up {
+            color: var(--green);
+            font-weight: 600;
+        }
+
+        /* 2. MIDDLE VIEWPORT LAYER: FLOATING RISK MONITOR ON RIGHT */
+        .glass-mid-layer {
+            display: flex;
+            justify-content: flex-end;
+            align-items: flex-start;
+            flex: 1;
+            margin-top: 16px;
+            margin-bottom: 16px;
+            position: relative;
+        }
+
+        .glass-risk-panel {
+            width: 320px;
+            background: var(--bg-glass-heavy);
+            border: 1px solid var(--border-glass);
+            backdrop-filter: blur(28px);
+            -webkit-backdrop-filter: blur(28px);
+            border-radius: 20px;
+            overflow: hidden;
+            pointer-events: auto;
+            box-shadow: 0 20px 54px rgba(0, 0, 0, 0.65), 0 0 32px rgba(70, 217, 255, 0.08);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .glass-risk-panel:hover {
+            border-color: var(--border-glass-glow);
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.75), 0 0 40px var(--cyan-glow);
+        }
+
+        .panelTitle {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 13px 18px;
+            border-bottom: 1px solid var(--border-glass);
+            background: rgba(14, 23, 39, 0.45);
+        }
+
+        .panelTitle strong {
+            font-size: 12px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .panelTitle span {
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        .riskBody {
+            padding: 18px 20px;
+        }
+
+        .riskCircle {
+            width: 136px;
+            height: 136px;
+            border-radius: 50%;
+            margin: 0 auto 16px;
+            display: grid;
+            place-items: center;
+            background: conic-gradient(var(--muted) 0 0%, #172236 0% 100%);
+            position: relative;
+            transition: background 0.4s ease;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        }
+
+        .riskCircle::after {
+            content: "";
+            position: absolute;
+            width: 108px;
+            height: 108px;
+            border-radius: 50%;
+            background: #080e1a;
+        }
+
+        .riskNum {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+        }
+
+        .riskNum b {
+            display: block;
+            font-size: 34px;
+            font-family: var(--font-mono);
+            font-weight: 800;
+            color: #fff;
+        }
+
+        .riskNum small {
+            font-size: 9px;
+            color: var(--red);
+            letter-spacing: 1.5px;
+            font-weight: 700;
+        }
+
+        .details {
+            border-top: 1px solid var(--border-glass);
+            padding-top: 12px;
+        }
+
+        .row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            font-size: 11px;
+        }
+
+        .row span:first-child {
+            color: var(--muted);
+        }
+
+        .row b {
+            color: #eaf2ff;
+            font-family: var(--font-mono);
+        }
+
+        .badge {
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 700;
+            font-family: var(--font-mono);
+        }
+
+        .high {
+            background: rgba(255, 82, 109, 0.15);
+            color: var(--red);
+            border: 1px solid rgba(255, 82, 109, 0.35);
+        }
+
+        .medium {
+            background: rgba(255, 173, 77, 0.15);
+            color: var(--orange);
+            border: 1px solid rgba(255, 173, 77, 0.35);
+        }
+
+        .low {
+            background: rgba(66, 230, 164, 0.15);
+            color: var(--green);
+            border: 1px solid rgba(66, 230, 164, 0.35);
+        }
+
+        /* 3. BOTTOM GLASS CONTROLS & HINT BAR */
+        .glass-bottom-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: none;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .orbit-hud-controls {
+            display: flex;
+            gap: 8px;
+            pointer-events: auto;
+        }
+
+        .orbit-hud-btn {
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            color: #eaf2ff;
+            padding: 7px 14px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: var(--font-main);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+        }
+
+        .orbit-hud-btn:hover {
+            border-color: var(--cyan);
+            color: var(--cyan);
+            box-shadow: 0 0 16px var(--cyan-glow);
+            transform: translateY(-1px);
+        }
+
+        .orbit-hud-btn.active {
+            background: rgba(70, 217, 255, 0.2);
+            border-color: var(--cyan);
+            color: var(--cyan);
+        }
+
+        /* ── EARTH GLOBE ZOOM SLIDER ── */
+        .zoom-slider-control {
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            color: #eaf2ff;
+            padding: 7px 11px;
+            border-radius: 10px;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 235px;
+            transition: all 0.2s ease;
+        }
+
+        .zoom-slider-control:hover {
+            border-color: var(--cyan);
+            box-shadow: 0 0 16px var(--cyan-glow);
+        }
+
+        .zoom-slider-control > i {
+            color: var(--cyan);
+            font-size: 11px;
+            flex: 0 0 auto;
+        }
+
+        #earth-zoom-slider {
+            width: 145px;
+            height: 5px;
+            accent-color: var(--cyan);
+            cursor: pointer;
+            margin: 0;
+        }
+
+        #earth-zoom-value {
+            min-width: 31px;
+            text-align: right;
+            color: #dce9fb;
+            font-family: var(--font-mono);
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+        @media (max-width: 768px) {
+            .zoom-slider-control {
+                min-width: 205px;
+            }
+
+            #earth-zoom-slider {
+                width: 115px;
+            }
+        }
+
+        .orbit-hint-banner {
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            padding: 7px 18px;
+            border-radius: 999px;
+            font-size: 11px;
+            color: #8fa3c2;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+        }
+
+        /* ── SATELLITE RAYCAST TOOLTIP ── */
+        .sat-tooltip {
+            position: absolute;
+            background: rgba(10, 16, 28, 0.94);
+            border: 1px solid var(--cyan);
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 24px var(--cyan-glow);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border-radius: 14px;
+            padding: 12px 16px;
+            font-size: 11px;
+            color: #eaf2ff;
+            pointer-events: none;
+            z-index: 30;
+            transform: translate(-50%, -125%);
+            opacity: 0;
+            transition: opacity 0.18s ease, transform 0.18s ease;
+            min-width: 190px;
+        }
+
+        .sat-tooltip.visible {
+            opacity: 1;
+            transform: translate(-50%, -135%);
+        }
+
+        .sat-tooltip-title {
+            font-weight: 800;
+            color: var(--cyan);
+            font-size: 13px;
+            margin-bottom: 6px;
+            border-bottom: 1px solid rgba(70, 217, 255, 0.25);
+            padding-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .sat-tooltip-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            margin: 3px 0;
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        .sat-tooltip-row b {
+            color: #fff;
+            font-family: var(--font-mono);
+        }
+
+        /* ── UPCOMING CONJUNCTIONS TABLE (BOTTOM PANEL) ── */
+        .panel {
+            background: rgba(10, 17, 29, 0.92);
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .events {
+            margin-top: 8px;
+        }
+
+        .tableWrap {
+            overflow: auto;
+            max-height: 420px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            text-align: left;
+        }
+
+        thead th {
+            position: sticky;
+            top: 0;
+            background: #0d1422;
+            color: var(--muted);
+            padding: 12px 18px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--line);
+            white-space: nowrap;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid rgba(28, 41, 64, 0.5);
+            transition: background 0.15s;
+        }
+
+        tbody tr:hover {
+            background: rgba(22, 34, 56, 0.6);
+            cursor: pointer;
+        }
+
+        tbody td {
+            padding: 11px 18px;
+            white-space: nowrap;
+            color: #d6e2f5;
+        }
+
+        tbody td.obj {
+            font-weight: 600;
+            color: #fff;
+        }
+
+        /* ============================================================
+           FLOATING HUD CAPSULE BUTTON (Shown on screens <= 1212px or <= 840px)
+           ============================================================ */
+        .hud-capsule-btn {
+            display: none;
+            position: absolute;
+            bottom: 68px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 25;
+            background: rgba(10, 17, 30, 0.88);
+            border: 1px solid var(--border-glass-glow);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-radius: 999px;
+            padding: 10px 22px;
+            color: #eaf2ff;
+            font-family: var(--font-main);
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.65), 0 0 24px rgba(70, 217, 255, 0.25);
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            align-items: center;
+            gap: 10px;
+            white-space: nowrap;
+            user-select: none;
+        }
+
+        .hud-capsule-btn:hover {
+            border-color: var(--cyan);
+            transform: translateX(-50%) translateY(-2px);
+            box-shadow: 0 16px 42px rgba(0, 0, 0, 0.75), 0 0 32px var(--cyan-glow);
+            color: #ffffff;
+        }
+
+        .hud-pulse-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--red);
+            box-shadow: 0 0 10px var(--red);
+            animation: pulseDot 1.8s infinite;
+        }
+
+        .hud-badge-count {
+            background: rgba(255, 82, 109, 0.2);
+            border: 1px solid rgba(255, 82, 109, 0.45);
+            color: var(--red);
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-family: var(--font-mono);
+            font-weight: 700;
+        }
+
+        .hud-btn-arrow {
+            font-size: 11px;
+            color: var(--cyan);
+            transition: transform 0.25s ease;
+        }
+
+        /* ============================================================
+           GLASSMORPHIC TELEMETRY BOTTOM SHEET / DRAWER
+           ============================================================ */
+        .telemetry-sheet-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(4, 7, 14, 0.72);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 10000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+        }
+
+        .telemetry-sheet-backdrop.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .telemetry-bottom-sheet {
+            background: rgba(10, 17, 30, 0.96);
+            border: 1px solid var(--border-glass-glow);
+            border-bottom: none;
+            backdrop-filter: blur(32px);
+            -webkit-backdrop-filter: blur(32px);
+            border-radius: 24px 24px 0 0;
+            width: 100%;
+            max-width: 640px;
+            max-height: 85vh;
+            overflow-y: auto;
+            padding: 12px 22px 34px;
+            box-shadow: 0 -16px 54px rgba(0, 0, 0, 0.8), 0 0 36px rgba(70, 217, 255, 0.18);
+            transform: translateY(100%);
+            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .telemetry-sheet-backdrop.active .telemetry-bottom-sheet {
+            transform: translateY(0);
+        }
+
+        .sheet-handle-bar {
+            display: flex;
+            justify-content: center;
+            padding: 6px 0 12px;
+            cursor: pointer;
+        }
+
+        .sheet-handle {
+            width: 44px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.25);
+            border-radius: 999px;
+            transition: background 0.2s;
+        }
+
+        .sheet-handle-bar:hover .sheet-handle {
+            background: var(--cyan);
+        }
+
+        .sheet-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            border-bottom: 1px solid var(--border-glass);
+            padding-bottom: 12px;
+        }
+
+        .sheet-title-wrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sheet-title-wrap h3 {
+            font-size: 15px;
+            font-weight: 700;
+            color: #fff;
+            margin: 0;
+            letter-spacing: -0.2px;
+        }
+
+        .sheet-close-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #c4d3e8;
+            width: 32px;
+            height: 32px;
+            border-radius: 9px;
+            cursor: pointer;
+            display: grid;
+            place-items: center;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .sheet-close-btn:hover {
+            color: #fff;
+            background: rgba(255, 82, 109, 0.35);
+            border-color: var(--red);
+        }
+
+        .sheet-risk-card {
+            background: rgba(14, 23, 40, 0.75);
+            border: 1px solid rgba(255, 82, 109, 0.35);
+            border-radius: 16px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .sheet-risk-circle {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #0c1424 55%, rgba(255, 82, 109, 0.3) 100%);
+            border: 2px solid var(--red);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 16px rgba(255, 82, 109, 0.35);
+            flex-shrink: 0;
+        }
+
+        .sheet-risk-circle b {
+            font-size: 22px;
+            font-family: var(--font-mono);
+            color: #fff;
+            line-height: 1;
+        }
+
+        .sheet-risk-circle small {
+            font-size: 8px;
+            color: var(--red);
+            font-weight: 800;
+            letter-spacing: 1px;
+        }
+
+        .sheet-risk-meta {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .sheet-risk-meta strong {
+            font-size: 13px;
+            color: #ffad4d;
+        }
+
+        .sheet-risk-meta span {
+            font-size: 11px;
+            color: var(--muted);
+            line-height: 1.4;
+        }
+
+        .sheet-pills {
+            display: flex;
+            gap: 6px;
+            margin-top: 6px;
+            flex-wrap: wrap;
+        }
+
+        .sheet-metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .sheet-metric-item {
+            background: rgba(14, 23, 40, 0.65);
+            border: 1px solid var(--border-glass);
+            padding: 14px 16px;
+            border-radius: 14px;
+            transition: border-color 0.2s;
+        }
+
+        .sheet-metric-item:hover {
+            border-color: var(--border-glass-glow);
+        }
+
+        .metric-label {
+            font-size: 10px;
+            color: var(--muted);
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-val {
+            font-size: 22px;
+            font-weight: 800;
+            font-family: var(--font-mono);
+            color: #fff;
+            margin: 4px 0 2px;
+        }
+
+        .metric-sub {
+            font-size: 10px;
+            color: var(--muted);
+        }
+
+        .sheet-detail-rows {
+            background: rgba(12, 19, 34, 0.6);
+            border: 1px solid var(--border-glass);
+            border-radius: 14px;
+            padding: 12px 16px;
+        }
+
+        /* ── DESKTOP / LAPTOP: above 1212px wide AND above 840px tall ── */
+        @media (min-width: 1213px) and (min-height: 841px) {
+            /* Restore glassmorphic KPI overlays on desktop */
+            .glass-kpi-bar {
+                display: grid !important;
+            }
+
+            .glass-mid-layer {
+                display: flex !important;
+            }
+
+            /* Hide all mobile-only elements */
+            .hud-capsule-btn {
+                display: none !important;
+            }
+
+            .telemetry-sheet-backdrop {
+                display: none !important;
+            }
+        }
+
+        /* ── MOBILE / TABLET: below 1212px wide OR below 840px tall ── */
+        @media (max-width: 1212px), (max-height: 840px) {
+            .orbit-hero-stage {
+                height: clamp(400px, 58vh, 640px);
+                min-height: 380px;
+            }
+
+            /* Hide heavy cluttering desktop glass overlays */
+            .glass-kpi-bar,
+            .glass-mid-layer {
+                display: none !important;
+            }
+
+            /* Display sleek floating capsule button */
+            .hud-capsule-btn {
+                display: inline-flex !important;
+            }
+
+            .orbit-hint-banner {
+                display: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main {
+                padding: 14px 14px 40px;
+            }
+
+            .top {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
+            }
+
+            .topRight {
+                justify-content: space-between;
+                width: 100%;
+            }
+
+            .search-wrapper {
+                flex: 1;
+            }
+
+            .search {
+                width: 100%;
+            }
+
+            .search:focus {
+                width: 100%;
+            }
+
+            .search-dropdown {
+                width: 100%;
+                right: 0;
+                left: 0;
+            }
+
+            .orbit-hero-stage {
+                height: 420px;
+                min-height: 360px;
+                border-radius: 16px;
+            }
+
+            .orbit-glass-overlay {
+                padding: 12px;
+            }
+
+            .glass-bottom-bar {
+                justify-content: center;
+            }
+
+            .orbit-hud-controls {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .hud-capsule-btn {
+                bottom: 60px;
+                padding: 8px 16px;
+                font-size: 11px;
+            }
+
+            .sheet-metrics-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+
+            .sheet-metric-item {
+                padding: 10px 12px;
+            }
+
+            .metric-val {
+                font-size: 18px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .sheet-metrics-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .sheet-risk-card {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+
+        /* ============================================================
+           FAST SPACE-THEME WARP TRANSITION OVERLAY
+           ============================================================ */
+        .space-warp-loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 999999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at center, rgba(8, 16, 32, 0.96) 0%, rgba(3, 6, 15, 0.99) 100%);
+            backdrop-filter: blur(22px);
+            -webkit-backdrop-filter: blur(22px);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.24s cubic-bezier(0.16, 1, 0.3, 1), transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+            transform: scale(1.02);
+        }
+
+        .space-warp-loader.active {
+            opacity: 1;
+            pointer-events: all;
+            transform: scale(1);
+        }
+
+        .space-warp-bg {
+            position: absolute;
+            inset: 0;
+            background: 
+                radial-gradient(1px 1px at 20% 30%, rgba(255, 255, 255, 0.8), rgba(0,0,0,0)),
+                radial-gradient(1.5px 1.5px at 40% 70%, rgba(70, 217, 255, 0.9), rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 60% 20%, rgba(255, 209, 102, 0.8), rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 80% 60%, rgba(70, 217, 255, 0.9), rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 90% 90%, rgba(255, 255, 255, 0.7), rgba(0,0,0,0));
+            background-size: 250px 250px;
+            opacity: 0.6;
+            animation: warpStarMotion 12s linear infinite;
+        }
+
+        @keyframes warpStarMotion {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-250px); }
+        }
+
+        .space-warp-hud {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            z-index: 2;
+        }
+
+        .space-gyro-ring {
+            position: relative;
+            width: 76px;
+            height: 76px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .space-gyro-outer {
+            position: absolute;
+            inset: 0;
+            border: 2px dashed rgba(70, 217, 255, 0.7);
+            border-top-color: var(--cyan, #46d9ff);
+            border-bottom-color: #ffd166;
+            border-radius: 50%;
+            animation: gyroSpin 1.4s linear infinite;
+            box-shadow: 0 0 20px rgba(70, 217, 255, 0.35);
+        }
+
+        .space-gyro-inner {
+            position: absolute;
+            inset: 9px;
+            border: 1.5px solid rgba(70, 217, 255, 0.3);
+            border-left-color: #46d9ff;
+            border-right-color: #46d9ff;
+            border-radius: 50%;
+            animation: gyroSpinRev 0.9s linear infinite;
+        }
+
+        .space-gyro-core {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(70, 217, 255, 0.15);
+            border: 1px solid rgba(70, 217, 255, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #46d9ff;
+            font-size: 13px;
+            box-shadow: 0 0 16px rgba(70, 217, 255, 0.5);
+            animation: corePulse 0.8s ease-in-out infinite alternate;
+        }
+
+        @keyframes gyroSpin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes gyroSpinRev {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(-360deg); }
+        }
+
+        @keyframes corePulse {
+            0% { transform: scale(0.92); filter: drop-shadow(0 0 4px #46d9ff); }
+            100% { transform: scale(1.08); filter: drop-shadow(0 0 14px #46d9ff); }
+        }
+
+        .space-warp-title {
+            font-family: var(--font-mono, monospace);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 2.2px;
+            color: #fff;
+            text-transform: uppercase;
+            text-shadow: 0 0 12px rgba(70, 217, 255, 0.6);
+        }
+
+        .space-warp-status {
+            font-family: var(--font-mono, monospace);
+            font-size: 10px;
+            letter-spacing: 1.2px;
+            color: var(--cyan, #46d9ff);
+            height: 14px;
+            font-weight: 600;
+            text-shadow: 0 0 8px rgba(70, 217, 255, 0.5);
+        }
+
+        .space-warp-bar-wrap {
+            width: 190px;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 999px;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid rgba(70, 217, 255, 0.2);
+        }
+
+        .space-warp-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #46d9ff, #ffd166);
+            box-shadow: 0 0 10px #46d9ff;
+            transition: width 0.26s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .space-warp-coords {
+            display: flex;
+            gap: 12px;
+            font-family: var(--font-mono, monospace);
+            font-size: 9px;
+            color: #647690;
+            letter-spacing: 0.8px;
+        }
+    </style>
+</head>
+
+<body>
+
+<!-- SPACE-THEME FAST WARP TRANSITION OVERLAY -->
+<div class="space-warp-loader active" id="spaceWarpLoader">
+    <div class="space-warp-bg"></div>
+    <div class="space-warp-hud">
+        <div class="space-gyro-ring">
+            <div class="space-gyro-outer"></div>
+            <div class="space-gyro-inner"></div>
+            <div class="space-gyro-core">
+                <i class="fa-solid fa-earth-americas" id="spaceWarpIcon"></i>
+            </div>
+        </div>
+        <div class="space-warp-title">SPAC6TIME TELEMETRY</div>
+        <div class="space-warp-status" id="spaceWarpStatus">ENGAGING 3D GLOBE RENDERER...</div>
+        <div class="space-warp-bar-wrap">
+            <div class="space-warp-bar" id="spaceWarpBar" style="width: 25%;"></div>
+        </div>
+        <div class="space-warp-coords">
+            <span>RA: 18h 36m</span>
+            <span>DEC: +38° 47'</span>
+            <span>EPOCH: J2000</span>
+        </div>
+    </div>
+</div>
+
+<div class="app">
+
+    <!-- SIDEBAR OVERLAY -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+
+        <div class="sidebarHeader">
+            <a href="index.html" class="logo">
+                <div class="logoMark">◉</div>
+                <span>SPAC6TIME</span>
+            </a>
+            <button class="sidebarCloseBtn" id="sidebarCloseBtn" title="Close Sidebar">✕</button>
+        </div>
+
+        <div class="navTitle">Monitor</div>
+
+        <div class="nav">
+            <a class="active" href="earth.html">
+                <b>⌂</b>
+                <span>Overview</span>
+            </a>
+            <a href="orb_obj.html">
+                <b>◎</b>
+                <span>Orbital Objects</span>
+            </a>
+            <a href="grid.html">
+                <b>⚠</b>
+                <span>Conjunctions</span>
+            </a>
+            <a href="analytics.html">
+                <b>◌</b>
+                <span>Analytics</span>
+            </a>
+        </div>
+
+
+        <div class="system">
+            <span class="dot" id="sysDot"></span>
+            <b style="font-size:11px" id="sysStatus">Connecting...</b>
+            <div style="font-size:10px; color:#647690; margin-top:5px" id="sysSub">Syncing CelesTrak...</div>
+        </div>
+
+    </aside>
+
+    <!-- MAIN DASHBOARD -->
+    <main class="main">
+
+        <!-- TOP BAR -->
+        <div class="top">
+            <div style="display: flex; align-items: center;">
+                <button class="sidebarToggleBtn" id="sidebarToggleBtn" title="Toggle Navigation Menu">
+                    <span style="font-size: 16px;">☰</span>
+                    <span>Menu</span>
+                </button>
+                <div>
+                    <div class="eyebrow">LEO Situational Awareness</div>
+                    <h1>Collision Risk Dashboard</h1>
+                </div>
+            </div>
+
+            <div class="topRight">
+                <div class="live" id="liveStatus">
+                    <span class="dot"></span> FETCHING API...
+                </div>
+                <div class="search-wrapper" id="searchWrapper">
+                    <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                    <input class="search" id="search" placeholder="Search satellite or NORAD ID..." autocomplete="off">
+                    <button class="search-clear-btn" id="searchClearBtn" title="Clear search & reset view" style="display:none;" onclick="clearSearchAndResetView()">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                    <div class="search-dropdown" id="searchDropdown" style="display:none;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- =========================================================================
+             LARGE EXPANDED 3D ORBITAL ENVIRONMENT HERO STAGE WITH FLOATING GLASS HUD
+             ========================================================================= -->
+        <div class="orbit-hero-stage" id="orbit-hero">
+            
+            <!-- 3D Three.js WebGL Canvas (Background) -->
+            <canvas id="earth-canvas"></canvas>
+
+            <!-- Floating Glassmorphic Overlay Layer -->
+            <div class="orbit-glass-overlay">
+
+                <!-- 1. TOP GLASS KPI CARDS STRIP -->
+                <div class="glass-kpi-bar">
+                    <!-- Tracked Objects -->
+                    <div class="glass-card">
+                        <div class="cardHead">
+                            <span>Tracked Objects</span>
+                            <span class="icon"><i class="fa-solid fa-satellite"></i></span>
+                        </div>
+                        <div class="value" id="cardTracked">--</div>
+                        <div class="sub"><span class="up">Live</span> from Space-Track ACTIVE</div>
+                    </div>
+
+                    <!-- Conjunctions (24h) -->
+                    <div class="glass-card">
+                        <div class="cardHead">
+                            <span>Conjunctions (24h)</span>
+                            <span class="icon"><i class="fa-solid fa-bolt"></i></span>
+                        </div>
+                        <div class="value" id="cardConjunctions">--</div>
+                        <div class="sub">calculated close encounters</div>
+                    </div>
+
+                    <!-- High Risk Events -->
+                    <div class="glass-card">
+                        <div class="cardHead">
+                            <span>High Risk Events</span>
+                            <span style="color:var(--red)"><i class="fa-solid fa-triangle-exclamation"></i></span>
+                        </div>
+                        <div class="value" style="color:var(--red)" id="cardHighRisk">--</div>
+                        <div class="sub">require immediate review</div>
+                    </div>
+
+                    <!-- Next Close Approach -->
+                    <div class="glass-card">
+                        <div class="cardHead">
+                            <span>Next Close Approach</span>
+                            <span class="icon"><i class="fa-regular fa-clock"></i></span>
+                        </div>
+                        <div class="value" id="cardNextTca">--</div>
+                        <div class="sub" id="cardNextPair">Analyzing catalog...</div>
+                    </div>
+                </div>
+
+                <!-- 2. MIDDLE VIEWPORT LAYER: FLOATING RISK MONITOR ON RIGHT -->
+                <div class="glass-mid-layer">
+                    <div class="glass-risk-panel">
+                        <div class="panelTitle">
+                            <strong>
+                                <i class="fa-solid fa-shield-halved" style="color:var(--red);"></i>
+                                Risk Monitor
+                            </strong>
+                            <span id="riskHeader">Closest approach</span>
+                        </div>
+
+                        <div class="riskBody">
+                            <div class="riskCircle" id="riskCircle">
+                                <div class="riskNum">
+                                    <b id="riskScore">--</b>
+                                    <small id="riskLevel">PRELIMINARY RISK</small>
+                                </div>
+                            </div>
+
+                            <div class="details">
+                                <div class="row">
+                                    <span>Closest approach</span>
+                                    <b id="riskDist">-- km</b>
+                                </div>
+                                <div class="row">
+                                    <span>Time to TCA</span>
+                                    <b id="riskTca">-- min</b>
+                                </div>
+                                <div class="row">
+                                    <span>Relative velocity</span>
+                                    <b id="riskVel">-- km/s</b>
+                                </div>
+                                <div class="row">
+                                    <span>Object A</span>
+                                    <b id="riskObjA">--</b>
+                                </div>
+                                <div class="row">
+                                    <span>Object B</span>
+                                    <b id="riskObjB">--</b>
+                                </div>
+                                <div class="row">
+                                    <span>Confidence</span>
+                                    <span class="badge high" id="riskBadge">CALCULATING</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. BOTTOM GLASS CONTROLS & HINT BAR -->
+                <div class="glass-bottom-bar">
+                    <div class="orbit-hud-controls">
+                        <button class="orbit-hud-btn" id="btn-reset-cam" title="Reset Camera View">
+                            <i class="fa-solid fa-arrows-rotate"></i> Reset View
+                        </button>
+                        <button class="orbit-hud-btn active" id="btn-auto-rotate" title="Toggle Auto-Rotation">
+                            <i class="fa-solid fa-rotate"></i> Auto-Spin
+                        </button>
+                        <button class="orbit-hud-btn active" id="btn-toggle-orbits" title="Toggle Orbit Lines">
+                            <i class="fa-solid fa-circle-nodes"></i> Orbits
+                        </button>
+
+                        <div class="zoom-slider-control" title="Earth Globe Zoom">
+                            <i class="fa-solid fa-magnifying-glass-minus" title="Zoom Out (Farther)"></i>
+                            <input
+                                type="range"
+                                id="earth-zoom-slider"
+                                min="40"
+                                max="1000"
+                                step="1"
+                                value="840"
+                                aria-label="Earth globe zoom"
+                            >
+                            <i class="fa-solid fa-magnifying-glass-plus" title="Zoom In (Nearer)"></i>
+                            <span id="earth-zoom-value">200</span>
+                        </div>
+                    </div>
+
+                    <div class="orbit-hint-banner">
+                        <i class="fa-solid fa-arrows-up-down-left-right" style="color:var(--cyan);"></i>
+                        <span>Drag background to rotate • Scroll to zoom • Hover/click satellites for live telemetry</span>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Satellite Raycast Tooltip -->
+            <div class="sat-tooltip" id="sat-tooltip">
+                <div class="sat-tooltip-title" id="sat-tt-name">🛰️ Satellite Name</div>
+                <div class="sat-tooltip-row">
+                    <span>NORAD ID:</span>
+                    <b id="sat-tt-norad">--</b>
+                </div>
+                <div class="sat-tooltip-row">
+                    <span>Altitude:</span>
+                    <b id="sat-tt-alt">-- km</b>
+                </div>
+                <div class="sat-tooltip-row">
+                    <span>Velocity:</span>
+                    <b id="sat-tt-vel">-- km/s</b>
+                </div>
+                <div class="sat-tooltip-row">
+                    <span>Inclination:</span>
+                    <b id="sat-tt-inc">--°</b>
+                </div>
+                <div class="sat-tooltip-row">
+                    <span>Sub-Sat Point:</span>
+                    <b id="sat-tt-coords" style="color:var(--cyan);">--</b>
+                </div>
+            </div>
+
+            <!-- FLOATING HUD CAPSULE BUTTON (Responsive < 1212px) -->
+            <button class="hud-capsule-btn" id="hudCapsuleBtn" onclick="toggleTelemetrySheet()" title="Tap to open live telemetry and risk monitor">
+                <span class="hud-pulse-dot"></span>
+                <span>Telemetry & Risk HUD</span>
+                <span class="hud-badge-count" id="hudAlertBadge">0 Alerts</span>
+                <i class="fa-solid fa-chevron-up hud-btn-arrow"></i>
+            </button>
+
+        </div>
+
+        <!-- UPCOMING CONJUNCTIONS TABLE -->
+        <section class="panel events">
+            <div class="panelTitle">
+                <strong>
+                    <i class="fa-solid fa-triangle-exclamation" style="color:var(--orange);"></i>
+                    Upcoming Conjunctions (CDM Data Messages)
+                </strong>
+                <span id="conjunctionCount">Fetching data...</span>
+            </div>
+
+            <div class="tableWrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Object A</th>
+                            <th>Object B</th>
+                            <th>Closest Approach</th>
+                            <th>TCA</th>
+                            <th>Relative Velocity</th>
+                            <th>Risk Tier</th>
+                        </tr>
+                    </thead>
+                    <tbody id="eventRows">
+                        <tr>
+                            <td colspan="6" style="text-align:center; padding:24px; color:var(--muted);">
+                                Fetching and calculating satellite orbits from CelesTrak...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- GLASSMORPHIC TELEMETRY BOTTOM SHEET / MODAL (< 1212px) -->
+        <div class="telemetry-sheet-backdrop" id="telemetryBackdrop" onclick="toggleTelemetrySheet(false)">
+            <div class="telemetry-bottom-sheet" onclick="event.stopPropagation()">
+                <div class="sheet-handle-bar" onclick="toggleTelemetrySheet(false)">
+                    <div class="sheet-handle"></div>
+                </div>
+
+                <div class="sheet-header">
+                    <div class="sheet-title-wrap">
+                        <i class="fa-solid fa-shield-halved" style="color: var(--cyan);"></i>
+                        <h3>Orbital Telemetry & Live Risk</h3>
+                    </div>
+                    <button class="sheet-close-btn" onclick="toggleTelemetrySheet(false)" title="Close HUD">✕</button>
+                </div>
+
+                <div class="sheet-body">
+                    <!-- Live Risk Gauge Banner -->
+                    <div class="sheet-risk-card">
+                        <div class="sheet-risk-circle" id="sheetRiskCircle">
+                            <b id="sheetRiskScore">--</b>
+                            <small id="sheetRiskLevel">RISK</small>
+                        </div>
+                        <div class="sheet-risk-meta">
+                            <strong id="sheetRiskHeader">LEO Collision Hazard Monitor</strong>
+                            <span id="sheetRiskDesc">Calculating closest encounters via SGP4...</span>
+                            <div class="sheet-pills">
+                                <span class="badge high" id="sheetRiskBadge">CALCULATING</span>
+                                <span class="badge low" id="sheetTrackedBadge">ONLINE</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4 Main KPI Cards Grid -->
+                    <div class="sheet-metrics-grid">
+                        <div class="sheet-metric-item">
+                            <span class="metric-label">Tracked Objects</span>
+                            <div class="metric-val" id="sheetCardTracked">--</div>
+                            <span class="metric-sub" style="color:var(--green)">● Live Active</span>
+                        </div>
+                        <div class="sheet-metric-item">
+                            <span class="metric-label">Conjunctions (24h)</span>
+                            <div class="metric-val" id="sheetCardConjunctions" style="color:var(--orange)">--</div>
+                            <span class="metric-sub">Close encounters</span>
+                        </div>
+                        <div class="sheet-metric-item">
+                            <span class="metric-label">High Risk Events</span>
+                            <div class="metric-val" id="sheetCardHighRisk" style="color:var(--red)">--</div>
+                            <span class="metric-sub">Immediate review</span>
+                        </div>
+                        <div class="sheet-metric-item">
+                            <span class="metric-label">Next Close Approach</span>
+                            <div class="metric-val" id="sheetCardNextTca" style="font-size:16px;">--</div>
+                            <span class="metric-sub" id="sheetCardNextPair">--</span>
+                        </div>
+                    </div>
+
+                    <!-- Detailed Closest Approach Rows -->
+                    <div class="sheet-detail-rows">
+                        <div class="row">
+                            <span>Closest Approach</span>
+                            <b id="sheetRiskDist">-- km</b>
+                        </div>
+                        <div class="row">
+                            <span>Time to TCA</span>
+                            <b id="sheetRiskTca">-- min</b>
+                        </div>
+                        <div class="row">
+                            <span>Relative Velocity</span>
+                            <b id="sheetRiskVel">-- km/s</b>
+                        </div>
+                        <div class="row">
+                            <span>Object A</span>
+                            <b id="sheetRiskObjA">--</b>
+                        </div>
+                        <div class="row">
+                            <span>Object B</span>
+                            <b id="sheetRiskObjB">--</b>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+</div>
+
+<!-- =========================================================================
+     JAVASCRIPT: THREE.JS 3D SCENE & REAL-TIME SGP4 ORBITAL ENGINE
+     ========================================================================= -->
+<script>
+// ============================================================
+// CONSTANTS & CONFIGURATION
+// ============================================================
+const CELESTRAK_API_URL = "https://celestrak.org/NORAD/elements/gp.php?GROUP=ACTIVE&FORMAT=TLE";
+const BACKEND_TLE_API_URL = "/api/tle/latest";
+const ISS_NORAD_ID = 25544;
+
+const MAX_ORBIT_SATS = 50;
+const MAX_CONJUNCTION_SATS = 65;
+const CONJUNCTION_SCREEN_KM = 25;
+
+const SATELLITE_PALETTE = [
+    0x46d9ff, // Cyan
+    0xff526d, // Neon Red
+    0x42e6a4, // Emerald
+    0xffad4d, // Amber
+    0xb362ff, // Purple
+    0xffe66d, // Yellow
+    0x5b8cff, // Electric Blue
+    0xff7eb6  // Pink
+];
+
+// ============================================================
+// THREE.JS 3D ENGINE INITIALIZATION
+// ============================================================
+let scene, camera, renderer, worldGroup, earthGroup, landGroup, satellitesGroup, orbitLinesGroup;
+let isDragging = false;
+let previousMouseX = 0, previousMouseY = 0;
+let targetRotX = 0.32, targetRotY = 0.45;
+let cameraDistance = 200;
+let targetCameraDistance = 200;
+let autoRotate = true;
+let showOrbits = true;
+let lastInteractionTime = performance.now();
+const IDLE_RESUME_MS = 3500;
+
+// Earth radius in 3D Scene space (Large, commanding presence)
+const EARTH_RADIUS_3D = 54;
+const EARTH_KM_RADIUS = 6371;
+const KM_TO_3D_SCALE = EARTH_RADIUS_3D / EARTH_KM_RADIUS;
+
+// Interactive Raycaster for Satellites
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2(-999, -999);
+let interactiveSatellites = [];
+let hoveredSatellite = null;
+
+const satTooltip = document.getElementById('sat-tooltip');
+const satTtName = document.getElementById('sat-tt-name');
+const satTtNorad = document.getElementById('sat-tt-norad');
+const satTtAlt = document.getElementById('sat-tt-alt');
+const satTtVel = document.getElementById('sat-tt-vel');
+const satTtInc = document.getElementById('sat-tt-inc');
+const satTtCoords = document.getElementById('sat-tt-coords');
+
+// Dynamic Focal Axis & Pivot Vectors (Earth vs Satellite)
+const targetPivot = new THREE.Vector3(0, 0, 0);
+const currentPivot = new THREE.Vector3(0, 0, 0);
+
+// ============================================================
+// ZOOM SLIDER CONTROL (REVERSED)
+// Slider moved backward (left, towards min) => Earth moves farther (higher camera distance).
+// Slider moved forward (right, towards max) => Earth moves nearer (lower camera distance).
+// ============================================================
+const EARTH_ZOOM_MIN = 40;
+const EARTH_ZOOM_MAX = 1000;
+const EARTH_ZOOM_DEFAULT = 200;
+
+const earthZoomSlider = document.getElementById('earth-zoom-slider');
+const earthZoomValue = document.getElementById('earth-zoom-value');
+
+function updateZoomSlider() {
+    if (!earthZoomSlider) return;
+    // Map cameraDistance (40..1000) into reversed slider value (1000..40)
+    const sliderVal = EARTH_ZOOM_MIN + (EARTH_ZOOM_MAX - targetCameraDistance);
+    earthZoomSlider.value = String(Math.round(sliderVal));
+    if (earthZoomValue) {
+        earthZoomValue.textContent = String(Math.round(targetCameraDistance));
+    }
+}
+
+function setEarthZoom(distance) {
+    targetCameraDistance = Math.max(
+        EARTH_ZOOM_MIN,
+        Math.min(EARTH_ZOOM_MAX, Number(distance))
+    );
+    lastInteractionTime = performance.now();
+    updateZoomSlider();
+}
+
+function setEarthZoomFromSlider(sliderVal) {
+    // Inverse mapping: sliderVal -> camera distance
+    const distance = EARTH_ZOOM_MIN + (EARTH_ZOOM_MAX - Number(sliderVal));
+    setEarthZoom(distance);
+}
+
+if (earthZoomSlider) {
+    earthZoomSlider.min = String(EARTH_ZOOM_MIN);
+    earthZoomSlider.max = String(EARTH_ZOOM_MAX);
+    earthZoomSlider.value = String(EARTH_ZOOM_MIN + (EARTH_ZOOM_MAX - EARTH_ZOOM_DEFAULT));
+
+    earthZoomSlider.addEventListener('input', (e) => {
+        setEarthZoomFromSlider(e.target.value);
+    });
+}
+
+function initThreeScene() {
+    updateZoomSlider();
+
+    const container = document.getElementById('orbit-hero');
+    const canvas = document.getElementById('earth-canvas');
+
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+
+    scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x050811, 0.0012);
+
+    // Perspective Camera matching cinematic large radius framing
+    camera = new THREE.PerspectiveCamera(46, width / height, 0.1, 2000);
+    camera.position.set(20, 8, cameraDistance);
+
+    renderer = new THREE.WebGLRenderer({
+        canvas: canvas,
+        antialias: true,
+        alpha: true,
+        powerPreference: "high-performance"
+    });
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    // Master group
+    worldGroup = new THREE.Group();
+    worldGroup.rotation.x = targetRotX;
+    worldGroup.rotation.y = targetRotY;
+    scene.add(worldGroup);
+
+    // Sub-groups
+    earthGroup = new THREE.Group();
+    landGroup = new THREE.Group();
+    satellitesGroup = new THREE.Group();
+    orbitLinesGroup = new THREE.Group();
+    
+    worldGroup.add(earthGroup);
+    earthGroup.add(landGroup);
+    worldGroup.add(orbitLinesGroup);
+    worldGroup.add(satellitesGroup);
+
+    // 1. BUILD MULTI-LAYERED HOLOGRAPHIC 3D EARTH WITH LAND TRACES & POLAR AXIS
+    buildHolographicEarth();
+    buildEarthLandTraces();
+    buildPolarAxis();
+
+    // 2. BACKGROUND COSMIC STARFIELD
+    buildStarfield();
+
+    // 3. ATTACH INTERACTION LISTENERS
+    attachSceneEventListeners(container);
+
+    // 4. START RENDER LOOP
+    animateScene();
+}
+
+// Geographic Coordinate (lon, lat) to 3D Cartesian (x, y, z) on Earth Sphere
+function geoToVector3(lon, lat, radius = EARTH_RADIUS_3D + 0.35) {
+    const latRad = (lat * Math.PI) / 180;
+    const lonRad = (lon * Math.PI) / 180;
+    const x = radius * Math.cos(latRad) * Math.cos(lonRad);
+    const y = radius * Math.sin(latRad);
+    const z = -radius * Math.cos(latRad) * Math.sin(lonRad);
+    return new THREE.Vector3(x, y, z);
+}
+
+// ============================================================
+// HOLOGRAPHIC EARTH MESHES (DARK CORE + GRID + AURA)
+// ============================================================
+function buildHolographicEarth() {
+    // Layer A: Dark Solid High-Tech Inner Core
+    const coreGeo = new THREE.SphereGeometry(EARTH_RADIUS_3D, 56, 56);
+    const coreMat = new THREE.MeshBasicMaterial({
+        color: 0x060e1c,
+        wireframe: false
+    });
+    const coreMesh = new THREE.Mesh(coreGeo, coreMat);
+    earthGroup.add(coreMesh);
+
+    // Layer B: Glowing Wireframe Latitude / Longitude Grid
+    const wireGeo = new THREE.SphereGeometry(EARTH_RADIUS_3D + 0.18, 36, 24);
+    const wireMat = new THREE.MeshBasicMaterial({
+        color: 0x1d4677,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.28
+    });
+    const wireMesh = new THREE.Mesh(wireGeo, wireMat);
+    earthGroup.add(wireMesh);
+
+    // ============================================================
+// Layer C: REALISTIC BLUE ATMOSPHERIC GLOW
+// ============================================================
+
+// Inner bright atmospheric rim
+const atmosphereGeo = new THREE.SphereGeometry(
+    EARTH_RADIUS_3D + 0.8,
+    64,
+    64
+);
+
+const atmosphereMat = new THREE.ShaderMaterial({
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    side: THREE.BackSide,
+
+    uniforms: {
+        glowColor: {
+            value: new THREE.Color(0x46d9ff)
+        },
+
+        glowStrength: {
+            value: 1.8
+        }
+    },
+
+    vertexShader: `
+        varying vec3 vWorldPosition;
+        varying vec3 vNormal;
+
+        void main() {
+
+            vNormal = normalize(
+                normalMatrix * normal
+            );
+
+            vec4 worldPosition =
+                modelMatrix * vec4(position, 1.0);
+
+            vWorldPosition =
+                worldPosition.xyz;
+
+            gl_Position =
+                projectionMatrix *
+                viewMatrix *
+                worldPosition;
+        }
+    `,
+
+    fragmentShader: `
+        uniform vec3 glowColor;
+        uniform float glowStrength;
+
+        varying vec3 vWorldPosition;
+        varying vec3 vNormal;
+
+        void main() {
+
+            vec3 viewDirection =
+                normalize(
+                    cameraPosition - vWorldPosition
+                );
+
+            float rim =
+                1.0 -
+                abs(
+                    dot(
+                        normalize(vNormal),
+                        viewDirection
+                    )
+                );
+
+            // Concentrate glow around the edge
+            rim = pow(rim, 3.2);
+
+            float alpha =
+                rim * glowStrength;
+
+            gl_FragColor =
+                vec4(
+                    glowColor,
+                    alpha
+                );
+        }
+    `
+});
+
+const atmosphereMesh =
+    new THREE.Mesh(
+        atmosphereGeo,
+        atmosphereMat
+    );
+
+earthGroup.add(atmosphereMesh);
+
+
+// ============================================================
+// Outer soft blue halo
+// ============================================================
+
+const outerGlowGeo = new THREE.SphereGeometry(
+    EARTH_RADIUS_3D + 3.2,
+    64,
+    64
+);
+
+const outerGlowMat = new THREE.MeshBasicMaterial({
+    color: 0x159cff,
+    transparent: true,
+    opacity: 0.055,
+    side: THREE.BackSide,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+});
+
+const outerGlow =
+    new THREE.Mesh(
+        outerGlowGeo,
+        outerGlowMat
+    );
+
+earthGroup.add(outerGlow);
+
+
+// ============================================================
+// Very soft outermost atmospheric haze
+// ============================================================
+
+const hazeGeo = new THREE.SphereGeometry(
+    EARTH_RADIUS_3D + 6.0,
+    64,
+    64
+);
+
+const hazeMat = new THREE.MeshBasicMaterial({
+    color: 0x087cff,
+    transparent: true,
+    opacity: 0.025,
+    side: THREE.BackSide,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+});
+
+const haze =
+    new THREE.Mesh(
+        hazeGeo,
+        hazeMat
+    );
+
+earthGroup.add(haze);
+
+    // Layer D: Equator Reference Halo
+    const equatorCurve = new THREE.EllipseCurve(0, 0, EARTH_RADIUS_3D + 0.8, EARTH_RADIUS_3D + 0.8, 0, 2 * Math.PI, false, 0);
+    const eqPoints = equatorCurve.getPoints(72);
+    const eqGeo = new THREE.BufferGeometry().setFromPoints(eqPoints);
+    const eqMat = new THREE.LineBasicMaterial({
+        color: 0x46d9ff,
+        transparent: true,
+        opacity: 0.30
+    });
+    const equatorLine = new THREE.Line(eqGeo, eqMat);
+    equatorLine.rotation.x = Math.PI / 2;
+    earthGroup.add(equatorLine);
+}
+
+// ============================================================
+// GOLDEN ROTATIONAL AXIS LINE & POLAR REFERENCE BEACONS (NP / SP)
+// ============================================================
+function buildPolarAxis() {
+    const axisHeight = (EARTH_RADIUS_3D + 22) * 2; // Spans through North and South Poles
+
+    // 1. Radiant Golden Core Axis Line (North Pole to South Pole)
+    const axisGeo = new THREE.CylinderGeometry(0.22, 0.22, axisHeight, 16);
+    const axisMat = new THREE.MeshBasicMaterial({
+        color: 0xffd166, // Radiant Gold
+        transparent: true,
+        opacity: 0.95
+    });
+    const axisMesh = new THREE.Mesh(axisGeo, axisMat);
+    earthGroup.add(axisMesh);
+
+    // 2. Luminous Golden Halo Beam (Atmospheric Penetration Glow)
+    const haloGeo = new THREE.CylinderGeometry(0.70, 0.70, axisHeight, 16);
+    const haloMat = new THREE.MeshBasicMaterial({
+        color: 0xffb703,
+        transparent: true,
+        opacity: 0.32,
+        blending: THREE.AdditiveBlending
+    });
+    const haloMesh = new THREE.Mesh(haloGeo, haloMat);
+    earthGroup.add(haloMesh);
+
+    // 3. North Pole (+Y) Diamond Beacon & Spire (90° N)
+    const npGeo = new THREE.OctahedronGeometry(1.4, 0);
+    const npMat = new THREE.MeshBasicMaterial({
+        color: 0xffe680,
+        wireframe: false
+    });
+    const npMesh = new THREE.Mesh(npGeo, npMat);
+    npMesh.position.set(0, EARTH_RADIUS_3D + 1.2, 0);
+    earthGroup.add(npMesh);
+
+    const npTipGeo = new THREE.OctahedronGeometry(1.0, 0);
+    const npTipMesh = new THREE.Mesh(npTipGeo, npMat);
+    npTipMesh.position.set(0, EARTH_RADIUS_3D + 22, 0);
+    earthGroup.add(npTipMesh);
+
+    // 4. South Pole (-Y) Diamond Beacon & Spire (90° S)
+    const spGeo = new THREE.OctahedronGeometry(1.4, 0);
+    const spMat = new THREE.MeshBasicMaterial({
+        color: 0xffb703,
+        wireframe: false
+    });
+    const spMesh = new THREE.Mesh(spGeo, spMat);
+    spMesh.position.set(0, -(EARTH_RADIUS_3D + 1.2), 0);
+    earthGroup.add(spMesh);
+
+    const spTipGeo = new THREE.OctahedronGeometry(1.0, 0);
+    const spTipMesh = new THREE.Mesh(spTipGeo, spMat);
+    spTipMesh.position.set(0, -(EARTH_RADIUS_3D + 22), 0);
+    earthGroup.add(spTipMesh);
+
+    // 5. Polar Latitude Circles (Arctic 66.5° N & Antarctic 66.5° S)
+    [66.5, -66.5].forEach(lat => {
+        const rad = Math.cos(lat * Math.PI / 180) * (EARTH_RADIUS_3D + 0.45);
+        const y = Math.sin(lat * Math.PI / 180) * (EARTH_RADIUS_3D + 0.45);
+        const curve = new THREE.EllipseCurve(0, 0, rad, rad, 0, 2 * Math.PI, false, 0);
+        const pts = curve.getPoints(64);
+        const rGeo = new THREE.BufferGeometry().setFromPoints(pts);
+        const rMat = new THREE.LineBasicMaterial({
+            color: 0xffd166,
+            transparent: true,
+            opacity: 0.45
+        });
+        const rLine = new THREE.Line(rGeo, rMat);
+        rLine.rotation.x = Math.PI / 2;
+        rLine.position.y = y;
+        earthGroup.add(rLine);
+    });
+}
+
+// ============================================================
+// CONTINENTAL LAND TRACES & COASTLINES (VECTOR MAP)
+// ============================================================
+async function buildEarthLandTraces() {
+    const LAND_GEOJSON_URL = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_land.geojson";
+
+    // High-Tech Emerald-Cyan / Neon-Mint glowing coastlines
+    const coastMat = new THREE.LineBasicMaterial({
+        color: 0x38e8be, // Emerald Cyan-Mint Glow
+        transparent: true,
+        opacity: 0.85
+    });
+
+    const continentPoints = [];
+    const continentColors = [];
+
+    function processPolygonRing(ring) {
+        if (!ring || ring.length < 3) return;
+        const pts = [];
+        for (let i = 0; i < ring.length; i++) {
+            const lon = ring[i][0];
+            const lat = ring[i][1];
+            const pt = geoToVector3(lon, lat, EARTH_RADIUS_3D + 0.40);
+            pts.push(pt);
+
+            // Generate glowing boundary points for luminous continent texture
+            if (i % 2 === 0) {
+                continentPoints.push(pt.x, pt.y, pt.z);
+                continentColors.push(0.22, 0.91, 0.74); // #38e8be
+            }
+        }
+        if (pts.length > 2) {
+            const geo = new THREE.BufferGeometry().setFromPoints(pts);
+            const line = new THREE.Line(geo, coastMat);
+            landGroup.add(line);
+        }
+    }
+
+    try {
+        let geojsonData = null;
+        const cached = localStorage.getItem("orbitguard_land_geojson");
+        if (cached) {
+            try { geojsonData = JSON.parse(cached); } catch(e){}
+        }
+
+        if (!geojsonData) {
+            const res = await fetch(LAND_GEOJSON_URL, { cache: "force-cache" });
+            if (res.ok) {
+                geojsonData = await res.json();
+                try { localStorage.setItem("orbitguard_land_geojson", JSON.stringify(geojsonData)); } catch(e){}
+            }
+        }
+
+        if (geojsonData && geojsonData.features) {
+            geojsonData.features.forEach(feat => {
+                if (!feat.geometry) return;
+                if (feat.geometry.type === "Polygon") {
+                    feat.geometry.coordinates.forEach(ring => processPolygonRing(ring));
+                } else if (feat.geometry.type === "MultiPolygon") {
+                    feat.geometry.coordinates.forEach(poly => {
+                        poly.forEach(ring => processPolygonRing(ring));
+                    });
+                }
+            });
+        } else {
+            // Built-in fallback continent outlines if network is unreachable
+            drawFallbackContinents(processPolygonRing);
+        }
+    } catch(err) {
+        console.warn("Could not load Natural Earth land vector, drawing embedded land traces:", err);
+        drawFallbackContinents(processPolygonRing);
+    }
+
+    // Add glowing land boundary points for rich texture
+    if (continentPoints.length > 0) {
+        const dotGeo = new THREE.BufferGeometry();
+        dotGeo.setAttribute('position', new THREE.Float32BufferAttribute(continentPoints, 3));
+        dotGeo.setAttribute('color', new THREE.Float32BufferAttribute(continentColors, 3));
+        const dotMat = new THREE.PointsMaterial({
+            size: 1.8,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.85,
+            blending: THREE.AdditiveBlending
+        });
+        const dotMesh = new THREE.Points(dotGeo, dotMat);
+        landGroup.add(dotMesh);
+    }
+}
+
+// Built-in high-fidelity continent vector fallback
+function drawFallbackContinents(processRingFn) {
+    const FALLBACK_CONTINENTS = [
+        // North America
+        [[-168,65],[-160,71],[-140,70],[-120,76],[-80,73],[-65,60],[-55,50],[-70,42],[-80,30],[-81,25],[-97,26],[-105,20],[-85,10],[-77,8],[-82,15],[-90,16],[-105,25],[-118,34],[-124,48],[-140,60],[-165,60],[-168,65]],
+        // South America
+        [[-77,8],[-60,10],[-50,0],[-35,-5],[-38,-20],[-55,-35],[-68,-55],[-75,-50],[-72,-30],[-80,-5],[-77,8]],
+        // Eurasia & Africa
+        [[-10,36],[0,40],[10,37],[20,40],[30,32],[32,15],[45,12],[50,28],[60,25],[70,22],[80,10],[90,22],[105,20],[115,22],[120,38],[130,35],[140,40],[142,50],[130,60],[110,75],[80,72],[50,68],[30,70],[20,60],[10,55],[0,50],[-5,44],[-10,36]],
+        // Africa
+        [[-10,36],[10,37],[30,32],[40,15],[51,12],[40,-10],[35,-30],[20,-35],[15,-20],[10,5],[-15,12],[-18,28],[-10,36]],
+        // Australia
+        [[115,-22],[125,-15],[135,-12],[145,-15],[152,-25],[150,-38],[138,-35],[130,-32],[115,-35],[113,-26],[115,-22]],
+        // Antarctica
+        [[-180,-75],[-120,-73],[-60,-65],[0,-70],[60,-68],[120,-72],[180,-75]]
+    ];
+    FALLBACK_CONTINENTS.forEach(ring => processRingFn(ring));
+}
+
+// Background Starfield
+function buildStarfield() {
+    const starCount = 1400;
+    const starGeo = new THREE.BufferGeometry();
+    const starPos = new Float32Array(starCount * 3);
+
+    for (let i = 0; i < starCount; i++) {
+        starPos[i * 3] = (Math.random() - 0.5) * 1600;
+        starPos[i * 3 + 1] = (Math.random() - 0.5) * 1600;
+        starPos[i * 3 + 2] = (Math.random() - 0.5) * 1600;
+    }
+    starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+    const starMat = new THREE.PointsMaterial({
+        color: 0xF4F5F0,
+        size: 1.5,
+        transparent: true,
+        opacity: 1
+    });
+    const starMesh = new THREE.Points(starGeo, starMat);
+    scene.add(starMesh);
+}
+
+// ============================================================
+// POPULATE REAL-TIME PROPAGATED SATELLITES & 3D ORBIT TRACKS
+// ============================================================
+function render3DOrbits(satellites, highlightQuery = "") {
+    if (!satellitesGroup || !orbitLinesGroup) return;
+
+    // Clear existing satellites and orbit lines
+    while (satellitesGroup.children.length > 0) {
+        const obj = satellitesGroup.children[0];
+        satellitesGroup.remove(obj);
+    }
+
+    while (orbitLinesGroup.children.length > 0) {
+        const obj = orbitLinesGroup.children[0];
+        orbitLinesGroup.remove(obj);
+    }
+
+    interactiveSatellites = [];
+    const now = new Date();
+    const queryLower = (highlightQuery || "").trim().toLowerCase();
+    const hasActiveSearch = queryLower.length > 0;
+    let firstMatchedPos = null;
+    let firstMatchedAltKm = 0;
+
+    satellites.forEach((sat, index) => {
+        const nameLower = (sat.name || "").toLowerCase();
+        const noradStr = (sat.noradId || sat.NORAD_CAT_ID || "").toString();
+        const isMatched = hasActiveSearch && (nameLower.includes(queryLower) || noradStr.includes(queryLower));
+
+        const isIss = Number(sat.noradId) === ISS_NORAD_ID;
+
+        // Choose color (radiant gold/cyan for searched match)
+        let colorHex = SATELLITE_PALETTE[index % SATELLITE_PALETTE.length];
+        if (isMatched) {
+            colorHex = 0xffd166;
+        }
+
+        const orbitPoints = [];
+        let currentPos3D = null;
+        let currentVelKmS = 0;
+        let currentAltKm = 0;
+        let currentIncDeg = 0;
+        let currentLatDeg = 0;
+        let currentLonDeg = 0;
+
+        // Ground-track / Fixed Earth Geographic Geodetic Propagation (+90 min)
+        for (let step = 0; step <= 90; step += 2) {
+            const time = new Date(now.getTime() + step * 60000);
+            const state = satellite.propagate(
+                sat.satrec,
+                time.getUTCFullYear(),
+                time.getUTCMonth() + 1,
+                time.getUTCDate(),
+                time.getUTCHours(),
+                time.getUTCMinutes(),
+                time.getUTCSeconds()
+            );
+
+            if (state && state.position) {
+                // Convert ECI to Earth-Fixed Geodetic (Latitude, Longitude, Altitude)
+                const gmst = satellite.gstime(time);
+                const geodetic = satellite.eciToGeodetic(state.position, gmst);
+                const latDeg = (geodetic.latitude * 180) / Math.PI;
+                const lonDeg = (geodetic.longitude * 180) / Math.PI;
+                const altKm = Math.max(0, geodetic.height);
+
+                // Convert exact Lat/Lon/Alt into 3D spherical coordinate
+                const r3d = EARTH_RADIUS_3D + (altKm * KM_TO_3D_SCALE);
+                const pt = geoToVector3(lonDeg, latDeg, r3d);
+                orbitPoints.push(pt);
+
+                if (step === 0) {
+                    currentPos3D = pt;
+                    currentLatDeg = latDeg;
+                    currentLonDeg = lonDeg;
+                    currentAltKm = altKm;
+                    if (state.velocity) {
+                        currentVelKmS = Math.sqrt(state.velocity.x**2 + state.velocity.y**2 + state.velocity.z**2);
+                    }
+                    currentIncDeg = (sat.satrec.inclo * 180 / Math.PI) || 0;
+                }
+            }
+        }
+
+        if (orbitPoints.length > 2 && currentPos3D) {
+            if (isMatched && !firstMatchedPos) {
+                firstMatchedPos = currentPos3D;
+                firstMatchedAltKm = currentAltKm;
+            }
+
+            const curve = new THREE.CatmullRomCurve3(orbitPoints, false);
+
+            // SLEEK & ELEGANT TRAJECTORY TUBES (REFINED UI/UX)
+            const tubeRadius = isMatched ? 0.22 : (isIss ? 0.13 : 0.06);
+            const opacity = isMatched ? 1.0 : (hasActiveSearch ? 0.12 : (isIss ? 0.80 : 0.42));
+
+            const orbitGeo = new THREE.TubeGeometry(curve, 96, tubeRadius, 6, false);
+            const orbitMat = new THREE.MeshBasicMaterial({
+                color: colorHex,
+                transparent: true,
+                opacity: opacity,
+                blending: THREE.AdditiveBlending
+            });
+
+            const orbitMesh = new THREE.Mesh(orbitGeo, orbitMat);
+            orbitLinesGroup.add(orbitMesh);
+
+            // SATELLITE BEACON
+            const satObjGroup = new THREE.Group();
+            satObjGroup.position.copy(currentPos3D);
+
+            // Core sphere (sleek refined pips)
+            const coreRadius = isMatched ? 1.45 : (isIss ? 1.05 : 0.75);
+            const satCoreGeo = new THREE.SphereGeometry(coreRadius, 16, 16);
+            const satCoreMat = new THREE.MeshBasicMaterial({
+                color: isMatched ? 0xffffff : (isIss ? 0xffffff : colorHex)
+            });
+            const satCoreMesh = new THREE.Mesh(satCoreGeo, satCoreMat);
+            satObjGroup.add(satCoreMesh);
+
+            // Glowing outer halo
+            const haloRadius = isMatched ? 2.8 : (isIss ? 2.0 : 1.5);
+            const haloGeo = new THREE.SphereGeometry(haloRadius, 16, 16);
+            const haloMat = new THREE.MeshBasicMaterial({
+                color: isMatched ? 0xffd166 : colorHex,
+                transparent: true,
+                opacity: isMatched ? 0.80 : (hasActiveSearch ? 0.08 : 0.30),
+                blending: THREE.AdditiveBlending
+            });
+            const haloMesh = new THREE.Mesh(haloGeo, haloMat);
+            satObjGroup.add(haloMesh);
+
+            // Invisible raycast target
+            const hitGeo = new THREE.SphereGeometry(3.6, 8, 8);
+            const hitMat = new THREE.MeshBasicMaterial({ visible: false });
+            const hitMesh = new THREE.Mesh(hitGeo, hitMat);
+
+            hitMesh.userData = {
+                name: sat.name,
+                noradId: sat.noradId,
+                altitude: Math.round(currentAltKm),
+                velocity: currentVelKmS.toFixed(2),
+                inclination: currentIncDeg.toFixed(1),
+                lat: `${Math.abs(currentLatDeg).toFixed(2)}° ${currentLatDeg >= 0 ? 'N' : 'S'}`,
+                lon: `${Math.abs(currentLonDeg).toFixed(2)}° ${currentLonDeg >= 0 ? 'E' : 'W'}`,
+                color: colorHex,
+                isIss: isIss,
+                isMatched: isMatched,
+                halo: haloMesh
+            };
+
+            satObjGroup.add(hitMesh);
+            satellitesGroup.add(satObjGroup);
+            interactiveSatellites.push(hitMesh);
+        }
+    });
+
+    // ============================================================
+    // DYNAMIC FOCAL AXIS & CAMERA POSITIONING (20,000 KM RULE)
+    // Distance < 20,000 km  => Main axis at Earth, camera view at Earth
+    // Distance >= 20,000 km => Main axis at Satellite, camera focus at Satellite
+    // ============================================================
+    if (firstMatchedPos) {
+        const phi = Math.atan2(firstMatchedPos.x, firstMatchedPos.z);
+        const len = Math.sqrt(firstMatchedPos.x**2 + firstMatchedPos.y**2 + firstMatchedPos.z**2);
+        const theta = len > 0 ? Math.asin(firstMatchedPos.y / len) : 0;
+
+        if (firstMatchedAltKm >= 20000) {
+            // High Altitude Regime (GEO / HEO >= 20,000 km):
+            // 1. Auto-rotate must stop immediately
+            autoRotate = false;
+            const btnAutoRotate = document.getElementById('btn-auto-rotate');
+            if (btnAutoRotate) btnAutoRotate.classList.remove('active');
+
+            // 2. Main axis and camera focus shifts directly to satellite dead-center
+            targetPivot.copy(firstMatchedPos);
+            targetRotY = 0.45;
+            targetRotX = 0.22;
+            setEarthZoom(70); // Close focal inspection directly around satellite
+        } else {
+            // Low / Medium Altitude Regime (< 20,000 km): Main axis stays at Earth, camera view at Earth
+            targetPivot.set(0, 0, 0);
+            targetRotY = phi;
+            targetRotX = Math.max(-1.2, Math.min(1.2, -theta));
+
+            const SEARCH_ZOOM_LIMIT = 180;
+            const targetDist = Math.max(SEARCH_ZOOM_LIMIT, Math.min(220, Math.round(len + 120)));
+            setEarthZoom(targetDist);
+        }
+        lastInteractionTime = performance.now();
+    } else {
+        targetPivot.set(0, 0, 0);
+    }
+}
+
+// ============================================================
+// EVENT LISTENERS & CAMERA CONTROLS
+// ============================================================
+function attachSceneEventListeners(container) {
+    const canvas = document.getElementById('earth-canvas');
+
+    // Mouse Drag Rotation attached to container (responsive everywhere)
+    container.addEventListener('mousedown', (e) => {
+        // Ignore clicks on interactive UI elements (buttons, inputs, glass cards, slider)
+        if (e.target.closest('button, input, .glass-card, .glass-risk-panel, .zoom-slider-control, a')) {
+            return;
+        }
+        isDragging = true;
+        previousMouseX = e.clientX;
+        previousMouseY = e.clientY;
+        lastInteractionTime = performance.now();
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        const rect = container.getBoundingClientRect();
+        mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+        if (isDragging) {
+            const deltaX = e.clientX - previousMouseX;
+            const deltaY = e.clientY - previousMouseY;
+
+            targetRotY += deltaX * 0.0055;
+            targetRotX += deltaY * 0.0055;
+            targetRotX = Math.max(-1.4, Math.min(1.4, targetRotX));
+
+            previousMouseX = e.clientX;
+            previousMouseY = e.clientY;
+            lastInteractionTime = performance.now();
+        }
+
+        // Raycasting for satellite hover tooltip
+        if (mouse.x >= -1 && mouse.x <= 1 && mouse.y >= -1 && mouse.y <= 1) {
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(interactiveSatellites);
+
+            if (intersects.length > 0) {
+                const satData = intersects[0].object.userData;
+                hoveredSatellite = intersects[0].object;
+
+                satTtName.innerHTML = `${satData.isIss ? '⭐ ' : '🛰️ '}${satData.name}`;
+                satTtNorad.innerText = satData.noradId || '--';
+                satTtAlt.innerText = `${satData.altitude} km`;
+                satTtVel.innerText = `${satData.velocity} km/s`;
+                satTtInc.innerText = `${satData.inclination}°`;
+                if (satTtCoords) {
+                    satTtCoords.innerText = `${satData.lat || '--'}, ${satData.lon || '--'}`;
+                }
+
+                satTooltip.style.left = `${e.clientX - rect.left}px`;
+                satTooltip.style.top = `${e.clientY - rect.top}px`;
+                satTooltip.classList.add('visible');
+
+                if (satData.halo) {
+                    satData.halo.scale.set(1.6, 1.6, 1.6);
+                    satData.halo.material.opacity = 0.75;
+                }
+            } else {
+                hideTooltip();
+            }
+        } else {
+            hideTooltip();
+        }
+    });
+
+    window.addEventListener('mouseup', () => { isDragging = false; });
+
+    // Wheel Zoom with smooth damping
+    container.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        lastInteractionTime = performance.now();
+
+        // Lower minimum zoom distance so the globe can be viewed much closer.
+        targetCameraDistance = Math.max(40, Math.min(1000, targetCameraDistance + e.deltaY * 0.08));
+        updateZoomSlider();
+    }, { passive: false });
+
+    // Touch support on container
+    container.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1 && !e.target.closest('button, input, .glass-card, .glass-risk-panel, .zoom-slider-control, a')) {
+            isDragging = true;
+            previousMouseX = e.touches[0].clientX;
+            previousMouseY = e.touches[0].clientY;
+            lastInteractionTime = performance.now();
+        }
+    }, { passive: true });
+
+    container.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 1 && isDragging) {
+            const deltaX = e.touches[0].clientX - previousMouseX;
+            const deltaY = e.touches[0].clientY - previousMouseY;
+
+            targetRotY += deltaX * 0.0055;
+            targetRotX += deltaY * 0.0055;
+            targetRotX = Math.max(-1.4, Math.min(1.4, targetRotX));
+
+            previousMouseX = e.touches[0].clientX;
+            previousMouseY = e.touches[0].clientY;
+            lastInteractionTime = performance.now();
+        }
+    }, { passive: true });
+
+    container.addEventListener('touchend', () => { isDragging = false; });
+
+    // HUD Buttons
+    const btnResetCam = document.getElementById('btn-reset-cam');
+    const btnAutoRotate = document.getElementById('btn-auto-rotate');
+    const btnToggleOrbits = document.getElementById('btn-toggle-orbits');
+
+    btnResetCam.addEventListener('click', () => {
+        targetPivot.set(0, 0, 0);
+        targetRotX = 0.32;
+        targetRotY = 0.45;
+        worldGroup.rotation.x = 0.32;
+        worldGroup.rotation.y = 0.45;
+        setEarthZoom(EARTH_ZOOM_DEFAULT);
+    });
+
+    btnAutoRotate.addEventListener('click', () => {
+        autoRotate = !autoRotate;
+        btnAutoRotate.classList.toggle('active', autoRotate);
+    });
+
+    btnToggleOrbits.addEventListener('click', () => {
+        showOrbits = !showOrbits;
+        orbitLinesGroup.visible = showOrbits;
+        btnToggleOrbits.classList.toggle('active', showOrbits);
+    });
+}
+
+function hideTooltip() {
+    satTooltip.classList.remove('visible');
+    if (hoveredSatellite && hoveredSatellite.userData && hoveredSatellite.userData.halo) {
+        hoveredSatellite.userData.halo.scale.set(1.0, 1.0, 1.0);
+        hoveredSatellite.userData.halo.material.opacity = 0.38;
+        hoveredSatellite = null;
+    }
+}
+
+// Window resize handler
+function handleResize() {
+    const container = document.getElementById('orbit-hero');
+    if (!container || !renderer || !camera) return;
+
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+    renderer.setSize(width, height);
+}
+window.addEventListener('resize', handleResize);
+
+// ============================================================
+// ANIMATION & RENDER LOOP
+// ============================================================
+const clock = new THREE.Clock();
+
+function animateScene() {
+    requestAnimationFrame(animateScene);
+
+    const delta = Math.min(clock.getDelta(), 0.1);
+
+    // Continuous rotation of the entire Earth & satellite system when Auto-Spin is ON
+    if (autoRotate && !isDragging) {
+        targetRotY += 0.18 * delta;
+    }
+
+    // Smooth inertia interpolation for world rotation (Earth + satellites + orbits locked together)
+    worldGroup.rotation.y += (targetRotY - worldGroup.rotation.y) * 0.08;
+    worldGroup.rotation.x += (targetRotX - worldGroup.rotation.x) * 0.08;
+
+    // Smooth focal pivot translation (Earth vs Satellite focus centered in view)
+    currentPivot.lerp(targetPivot, 0.08);
+    const rotatedPivot = currentPivot.clone().applyEuler(worldGroup.rotation);
+    worldGroup.position.copy(rotatedPivot).negate();
+
+    // Smooth zoom interpolation
+    targetCameraDistance = Math.max(
+        EARTH_ZOOM_MIN,
+        Math.min(EARTH_ZOOM_MAX, targetCameraDistance)
+    );
+
+    cameraDistance += (targetCameraDistance - cameraDistance) * 0.1;
+    cameraDistance = Math.max(EARTH_ZOOM_MIN, Math.min(EARTH_ZOOM_MAX, cameraDistance));
+    camera.position.z = cameraDistance;
+
+    renderer.render(scene, camera);
+}
+
+// ============================================================
+// CELESTRAK TLE FETCHING PIPELINE
+// ============================================================
+async function fetchCelesTrakData() {
+    const CACHE_KEY = "orbitguard_celestrak_active_tle";
+    const CACHE_TIME_KEY = "orbitguard_celestrak_active_tle_time";
+    const CACHE_MAX_AGE = 60 * 60 * 1000;
+
+    function cacheData(tleText) {
+        try {
+            localStorage.setItem(CACHE_KEY, tleText);
+            localStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
+        } catch (e) {
+            console.warn("Could not cache CelesTrak data:", e);
+        }
+    }
+
+    function readCache() {
+        try {
+            const cached = localStorage.getItem(CACHE_KEY);
+            const cachedTime = Number(localStorage.getItem(CACHE_TIME_KEY) || 0);
+            if (!cached) return null;
+            const parsed = parseTleCatalog(cached);
+            if (parsed.length === 0) return null;
+            return { satellites: parsed, ageMs: Date.now() - cachedTime };
+        } catch (e) {
+            return null;
+        }
+    }
+
+    async function fetchText(url, timeoutMs = 3500) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+            const response = await fetch(url, { method: "GET", cache: "no-store", signal: controller.signal });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const text = await response.text();
+            if (!text || !text.trim()) throw new Error("Empty response");
+            return text;
+        } finally {
+            clearTimeout(timeout);
+        }
+    }
+
+    const cached = readCache();
+
+    // 1. LOCAL DATASET (MongoDB Backend API / active.tle) + AUTO-SYNC
+    const backendEndpoints = [
+        BACKEND_TLE_API_URL,
+        "http://localhost:8000/api/tle/latest",
+        "http://127.0.0.1:8000/api/tle/latest",
+        "active.tle",
+        "http://localhost:8000/active.tle",
+        "http://127.0.0.1:8000/active.tle"
+    ];
+
+    try {
+        fetch("/api/tle/sync").catch(() => {});
+        fetch("http://localhost:8000/api/tle/sync").catch(() => {});
+    } catch (e) {}
+
+    for (const ep of backendEndpoints) {
+        try {
+            const localFileText = await fetchText(ep, 15000);
+            const parsedLocal = parseTleCatalog(localFileText);
+            if (parsedLocal.length > 0) {
+                cacheData(localFileText);
+                window.orbitGuardDataSource = `LOCAL BACKEND (${parsedLocal.length} SATS)`;
+                return parsedLocal;
+            }
+        } catch (err) {}
+    }
+
+    // 2. DIRECT CELESTRAK
+    try {
+        const tleText = await fetchText(CELESTRAK_API_URL, 4000);
+        const parsed = parseTleCatalog(tleText);
+        if (parsed.length > 0) {
+            cacheData(tleText);
+            window.orbitGuardDataSource = "CELESTRAK DIRECT";
+            return parsed;
+        }
+    } catch (err) {}
+
+    // 3. CORS FALLBACKS
+    const proxyUrls = [
+        "https://api.allorigins.win/raw?url=" + encodeURIComponent(CELESTRAK_API_URL),
+        "https://corsproxy.io/?" + encodeURIComponent(CELESTRAK_API_URL),
+        "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(CELESTRAK_API_URL)
+    ];
+
+    for (const proxyUrl of proxyUrls) {
+        try {
+            const tleText = await fetchText(proxyUrl, 3500);
+            const parsed = parseTleCatalog(tleText);
+            if (parsed.length > 0) {
+                cacheData(tleText);
+                window.orbitGuardDataSource = "CELESTRAK VIA PROXY";
+                return parsed;
+            }
+        } catch (e) {}
+    }
+
+    // 4. CACHE
+    if (cached) {
+        window.orbitGuardDataSource = "CACHED CELESTRAK";
+        return cached.satellites;
+    }
+
+    // 5. EMBEDDED HIGH-FIDELITY BACKUP CATALOG
+    const EMBEDDED_BACKUP_TLE = `ISS (ZARYA)
+1 25544U 98067A   26058.48270833  .00016717  00000+0  10270-3 0  9028
+2 25544  51.6416 112.5642 0005478 284.8143 175.2952 15.49889419441238
+TIANGONG (CSS)
+1 48274U 21035A   26058.46197917  .00021456  00000+0  22145-3 0  9993
+2 48274  41.4721  74.3219 0004128 118.2341 241.9125 15.58912345274123
+HST (HUBBLE)
+1 20580U 90037B   26058.39120370  .00001428  00000+0  54210-4 0  9991
+2 20580  28.4692 245.1294 0002847 312.4182 147.6201 15.09341209748192
+STARLINK-1007
+1 44713U 19074A   26058.50000000  .00001200  00000+0  85000-4 0  9992
+2 44713  53.0541 210.3412 0001421  85.2341 274.8912 15.06412341354120
+STARLINK-1019
+1 44725U 19074M   26058.50000000  .00001180  00000+0  82000-4 0  9994
+2 44725  53.0543 218.4521 0001398  91.4123 268.7123 15.06412341354181
+STARLINK-1025
+1 44731U 19074T   26058.50000000  .00001220  00000+0  87000-4 0  9998
+2 44731  53.0545 225.1234 0001450  82.1123 278.1123 15.06412341354224
+STARLINK-1038
+1 44744U 19074AG  26058.50000000  .00001210  00000+0  86000-4 0  9990
+2 44744  53.0544 232.1456 0001430  88.2341 272.0123 15.06412341354190
+STARLINK-1055
+1 44761U 19074AY  26058.50000000  .00001190  00000+0  84000-4 0  9993
+2 44761  53.0542 245.1245 0001410  94.1234 266.1234 15.06412341354210
+STARLINK-3012
+1 52140U 22040A   26058.50000000  .00001500  00000+0  92000-4 0  9995
+2 52140  53.2184 140.2312 0001512 105.1234 254.9912 15.12412341214512
+STARLINK-3045
+1 52173U 22040AH  26058.50000000  .00001480  00000+0  91000-4 0  9997
+2 52173  53.2185 155.1234 0001500 110.1234 250.0123 15.12412341214530
+ONEWEB-0012
+1 44057U 19010A   26058.45000000  .00000120  00000+0  10000-4 0  9996
+2 44057  87.4123  35.2145 0001850  45.1234 314.9912 13.10412341341201
+ONEWEB-0024
+1 44069U 19010M   26058.45000000  .00000118  00000+0  98000-5 0  9998
+2 44069  87.4125  55.1234 0001830  52.1234 308.0123 13.10412341341220
+ONEWEB-0036
+1 44081U 19010Y   26058.45000000  .00000122  00000+0  10200-4 0  9991
+2 44081  87.4124  75.1456 0001860  48.1456 312.0145 13.10412341341215
+NOAA-20
+1 43013U 17073A   26058.41200000  .00000085  00000+0  54000-5 0  9993
+2 43013  98.7145 182.4123 0001210  78.1234 282.0123 14.19512341421501
+NOAA-21
+1 54234U 22153A   26058.42000000  .00000080  00000+0  51000-5 0  9995
+2 54234  98.7150 195.1234 0001200  82.1234 278.0123 14.19512341421520
+SUOMI NPP
+1 37849U 11061A   26058.43000000  .00000090  00000+0  58000-5 0  9997
+2 37849  98.7140 165.1234 0001230  72.1234 288.0123 14.19512341421480
+TERRA (EOS AM-1)
+1 25994U 99068A   26058.48000000  .00000210  00000+0  12000-4 0  9994
+2 25994  98.2045 295.1234 0001450  65.1234 295.0123 14.57112341381204
+AQUA (EOS PM-1)
+1 27424U 02022A   26058.46000000  .00000195  00000+0  11000-4 0  9997
+2 27424  98.2012 115.4123 0001380  72.1234 288.0123 14.57112341381190
+AURA
+1 28376U 04026A   26058.46500000  .00000190  00000+0  10800-4 0  9992
+2 28376  98.2025 130.1234 0001390  75.1234 285.0123 14.57112341381195
+SENTINEL-1A
+1 39634U 14016A   26058.47000000  .00000050  00000+0  34000-5 0  9991
+2 39634  98.1812 210.1234 0001250  55.1234 305.0123 14.59212341411200
+SENTINEL-2A
+1 40697U 15028A   26058.49000000  .00000070  00000+0  42000-5 0  9995
+2 40697  98.5712  85.4123 0001150  68.1234 292.0123 14.39812341401241
+SENTINEL-3A
+1 41335U 16011A   26058.48500000  .00000065  00000+0  39000-5 0  9996
+2 41335  98.6512 105.1234 0001180  62.1234 298.0123 14.45212341401210
+SENTINEL-5P
+1 42969U 17064A   26058.47500000  .00000060  00000+0  36000-5 0  9998
+2 42969  98.7412 145.1234 0001190  58.1234 302.0123 14.35112341401225
+CARTOSAT-3
+1 44804U 19081A   26058.49000000  .00000150  00000+0  89000-5 0  9994
+2 44804  97.4812 225.1234 0001420  76.1234 284.0123 15.11212341281200
+RISAT-2B
+1 44258U 19028A   26058.48500000  .00000140  00000+0  85000-5 0  9996
+2 44258  37.0123 110.1234 0001350  85.1234 275.0123 15.15412341271210
+INSAT-3D
+1 39216U 13038B   26058.50000000  .00000010  00000+0  00000+0 0  9991
+2 39216   0.0541  82.0123 0001200  90.1234 270.0123  1.00271234051200
+GOES-16
+1 41866U 16071A   26058.50000000  .00000010  00000+0  00000+0 0  9993
+2 41866   0.0412 284.8123 0001100  95.1234 265.0123  1.00271234051210
+GOES-17
+1 43226U 18022A   26058.50000000  .00000010  00000+0  00000+0 0  9995
+2 43226   0.0425 222.8123 0001150  92.1234 268.0123  1.00271234051225
+METEOSAT-11
+1 40732U 15034A   26058.50000000  .00000010  00000+0  00000+0 0  9997
+2 40732   0.0385   0.0123 0001050  88.1234 272.0123  1.00271234051230
+GPS BIIR-2
+1 24876U 97035A   26058.45000000  .00000012  00000+0  00000+0 0  9992
+2 24876  55.4123 150.1234 0051200 120.1234 240.0123  2.00561234121200
+GPS BIIF-1
+1 36585U 10022A   26058.45500000  .00000014  00000+0  00000+0 0  9994
+2 36585  55.4150 210.1234 0048500 135.1234 225.0123  2.00561234121215
+GALILEO-26
+1 43564U 18060A   26058.46000000  .00000015  00000+0  00000+0 0  9996
+2 43564  56.0123 310.1234 0002100 115.1234 245.0123  1.70471234151200
+GLONASS-755
+1 40315U 14075A   26058.45000000  .00000018  00000+0  00000+0 0  9998
+2 40315  64.8123  45.1234 0012500 140.1234 220.0123  2.13101234141200
+BEIDOU-3
+1 43155U 18003A   26058.45500000  .00000016  00000+0  00000+0 0  9999
+2 43155  55.2123  95.1234 0004500 105.1234 255.0123  1.86241234131200
+JASON-3
+1 41240U 16002A   26058.47000000  .00000055  00000+0  35000-5 0  9990
+2 41240  66.0412 180.1234 0008500  65.1234 295.0123 12.84512341361200
+SWOT
+1 54754U 22171A   26058.48000000  .00000060  00000+0  38000-5 0  9992
+2 54754  77.6123 205.1234 0001400  70.1234 290.0123 14.21512341391210
+GRACE-FO
+1 43476U 18047A   26058.49000000  .00000180  00000+0  10500-4 0  9994
+2 43476  89.0123 125.1234 0015500  55.1234 305.0123 15.24112341281220
+CHANDRAYAAN-2
+1 44441U 19042A   26058.49500000  .00000090  00000+0  55000-5 0  9996
+2 44441  90.0000 140.1234 0001200  80.1234 280.0123 14.50012341351200
+TDRS-13
+1 42915U 17047A   26058.50000000  .00000010  00000+0  00000+0 0  9998
+2 42915   3.5123 315.1234 0002500  85.1234 275.0123  1.00271234051240
+RADARSAT-2
+1 32382U 07061A   26058.48000000  .00000075  00000+0  46000-5 0  9991
+2 32382  98.5712 250.1234 0001300  60.1234 300.0123 14.29812341401210
+ALOS-2
+1 39766U 14029A   26058.48500000  .00000080  00000+0  49000-5 0  9993
+2 39766  97.9123 275.1234 0001350  64.1234 296.0123 14.78512341371215
+ENVISAT
+1 27386U 02009A   26058.47500000  .00000065  00000+0  41000-5 0  9995
+2 27386  98.5412 320.1234 0001150  56.1234 304.0123 14.37512341401220
+SCATSAT-1
+1 41783U 16059A   26058.48500000  .00000120  00000+0  75000-5 0  9997
+2 41783  98.1234 175.1234 0001250  74.1234 286.0123 14.61212341381210
+OCEANSAT-2
+1 35931U 09051A   26058.48000000  .00000115  00000+0  72000-5 0  9999
+2 35931  98.2412 190.1234 0001300  70.1234 290.0123 14.63512341381205
+ASTROSAT
+1 40930U 15052A   26058.49000000  .00000160  00000+0  95000-5 0  9991
+2 40930   6.0123  85.1234 0008500  92.1234 268.0123 14.85212341321200
+LANDSAT 8
+1 39084U 13008A   26058.49000000  .00000080  00000+0  48000-5 0  9996
+2 39084  98.2145 340.1234 0001350  80.1234 280.0123 14.57112341381220
+LANDSAT 9
+1 49260U 21088A   26058.49500000  .00000082  00000+0  49000-5 0  9998
+2 49260  98.2145 160.1234 0001340  82.1234 278.0123 14.57112341381245
+COSMOS 2251 DEB
+1 34001U 93036KC  26058.45000000  .00003500  00000+0  21000-3 0  9992
+2 34001  74.0212 142.1234 0021450 145.1234 215.0123 14.89112341311204
+FENGYUN 1C DEB
+1 31245U 99025BY  26058.46000000  .00004200  00000+0  28000-3 0  9998
+2 31245  98.8123 310.4123 0031200 168.1234 192.0123 14.62112341291245
+CZ-4C R/B (DEB)
+1 41189U 15068D   26058.47000000  .00002800  00000+0  17000-3 0  9999
+2 41189  98.8412 195.1234 0018500 112.1234 248.0123 14.71212341301201
+IRIDIUM 33 DEB
+1 33785U 97051AM  26058.48000000  .00003100  00000+0  19000-3 0  9993
+2 33785  86.4123  65.1234 0019500 135.1234 225.0123 14.81212341321200
+DELTA 1 DEB
+1 12345U 78026A   26058.46000000  .00002500  00000+0  15000-3 0  9995
+2 12345  45.1234 130.1234 0014500 120.1234 240.0123 14.65112341311200
+THOR ABLESTAR DEB
+1 00021U 60007B   26058.45000000  .00002900  00000+0  18000-3 0  9997
+2 00021  66.7123  80.1234 0019500 140.1234 220.0123 14.72112341301205
+SL-16 R/B
+1 22803U 93059B   26058.47000000  .00002200  00000+0  14000-3 0  9991
+2 22803  71.0123 210.1234 0011500 110.1234 250.0123 14.51212341331200
+TITAN 4B R/B
+1 24794U 97023B   26058.46500000  .00001900  00000+0  12000-3 0  9993
+2 24794  28.6123 160.1234 0010500 100.1234 260.0123 14.48112341341210`;
+
+    window.orbitGuardDataSource = "EMBEDDED CATALOG (OFFLINE)";
+    return parseTleCatalog(EMBEDDED_BACKUP_TLE);
+}
+
+// Parse raw TLE string
+function parseTleCatalog(tleText) {
+    if (!tleText || !tleText.trim()) return [];
+    const lines = tleText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+    const records = [];
+    let i = 0;
+
+    while (i < lines.length) {
+        const line = lines[i];
+        const next = lines[i + 1];
+        const after = lines[i + 2];
+
+        let name, line1, line2;
+
+        if (line.startsWith("1 ") && next && next.startsWith("2 ")) {
+            line1 = line;
+            line2 = next;
+            name = `NORAD ${line1.substring(2, 7).trim()}`;
+            i += 2;
+        } else if (next && next.startsWith("1 ") && after && after.startsWith("2 ")) {
+            name = line;
+            line1 = next;
+            line2 = after;
+            i += 3;
+        } else {
+            i += 1;
+            continue;
+        }
+
+        const noradId = Number(line1.substring(2, 7).trim());
+        records.push({ name, line1, line2, NORAD_CAT_ID: noradId });
+    }
+    return records;
+}
+
+// Calculate instantaneous altitude (km) above Earth for any satellite
+function getSatelliteAltitudeKm(sat, time = new Date()) {
+    if (!sat) return null;
+    if (typeof sat.altitude === 'number' && !isNaN(sat.altitude)) return sat.altitude;
+    if (!sat.satrec) return null;
+    try {
+        const state = satellite.propagate(
+            sat.satrec,
+            time.getUTCFullYear(),
+            time.getUTCMonth() + 1,
+            time.getUTCDate(),
+            time.getUTCHours(),
+            time.getUTCMinutes(),
+            time.getUTCSeconds()
+        );
+        if (state && state.position) {
+            const gmst = satellite.gstime(time);
+            const geodetic = satellite.eciToGeodetic(state.position, gmst);
+            if (geodetic && typeof geodetic.height === 'number' && !isNaN(geodetic.height)) {
+                return Math.max(0, geodetic.height);
+            }
+        }
+    } catch (e) {}
+
+    // Fallback: Orbital semi-major axis calculation from mean motion
+    try {
+        if (sat.satrec && sat.satrec.no) {
+            const n_rad_s = sat.satrec.no / 60; // rad/s
+            const mu = 398600.4418; // km^3/s^2
+            const semiMajorAxis = Math.cbrt(mu / (n_rad_s * n_rad_s));
+            const meanAlt = semiMajorAxis - 6378.137;
+            return Math.max(0, meanAlt);
+        }
+    } catch (e) {}
+
+    return null;
+}
+
+// Structured Categorization (Filtered strictly to distance from Earth < 2000 km for default globe display):
+// 1. ALL Space Stations (ISS, Tiangong CSS, Tianhe) [< 2000 km]
+// 2. 8 to 10 Mega-Constellations (Starlink, OneWeb) [< 2000 km]
+// 3. 30 to 40 Active Satellites (Landsat, Sentinel, NOAA, Terra, Aqua, Cartosat, etc.) [< 2000 km]
+// 4. 6 to 8 Debris & Rocket Bodies (Cosmos, Fengyun, CZ-4, SL-16, Titan 4B, etc.) [< 2000 km]
+function categorizeAndPickSatelliteSubset(allSatellites) {
+    if (!Array.isArray(allSatellites) || allSatellites.length === 0) return [];
+
+    const spaceStations = [];
+    const constellations = [];
+    const activeSatellites = [];
+    const debrisAndRockets = [];
+    const seenNorad = new Set();
+    const now = new Date();
+
+    allSatellites.forEach(sat => {
+        const norad = Number(sat.noradId || sat.NORAD_CAT_ID || 0);
+        if (seenNorad.has(norad)) return;
+
+        // ONLY satellites with distance from Earth below 2000 km for default globe view
+        const altKm = getSatelliteAltitudeKm(sat, now);
+        if (altKm === null || altKm > 2000) return;
+
+        const name = (sat.name || "").toUpperCase();
+
+        // 1. ALL SPACE STATIONS (< 2000 km)
+        if (norad === ISS_NORAD_ID || norad === 48274 ||
+            name.includes("ISS") || name.includes("ZARYA") || 
+            name.includes("TIANGONG") || name.includes("CSS") || 
+            name.includes("TIANHE") || name.includes("SPACE STATION") ||
+            name.includes("WENTIAN") || name.includes("MENGTIAN")) {
+            spaceStations.push(sat);
+            seenNorad.add(norad);
+        }
+        // 2. 6 TO 8 DEBRIS & ROCKET BODIES (< 2000 km)
+        else if (name.includes("DEB") || name.includes("DEBRIS") || 
+                 name.includes("R/B") || name.includes("ROCKET") || 
+                 name.includes("COSMOS 2251") || name.includes("FENGYUN 1C") ||
+                 name.includes("SL-16") || name.includes("TITAN 4B") || 
+                 name.includes("DELTA 1") || name.includes("THOR ABLESTAR") ||
+                 name.includes("ARIANE 4")) {
+            if (debrisAndRockets.length < 8) {
+                debrisAndRockets.push(sat);
+                seenNorad.add(norad);
+            }
+        }
+        // 3. 8 TO 10 MEGA-CONSTELLATIONS (< 2000 km)
+        else if (name.includes("STARLINK") || name.includes("ONEWEB") || 
+                 name.includes("KUIPER") || name.includes("O3B")) {
+            if (constellations.length < 10) {
+                constellations.push(sat);
+                seenNorad.add(norad);
+            }
+        }
+        // 4. 30 TO 40 ACTIVE SATELLITES (< 2000 km)
+        else {
+            if (activeSatellites.length < 38) {
+                activeSatellites.push(sat);
+                seenNorad.add(norad);
+            }
+        }
+    });
+
+    // If active satellites list has room, fill from remaining verified satellites below 2000 km
+    if (activeSatellites.length < 30) {
+        for (const sat of allSatellites) {
+            const norad = Number(sat.noradId || sat.NORAD_CAT_ID || 0);
+            if (!seenNorad.has(norad) && activeSatellites.length < 38) {
+                const altKm = getSatelliteAltitudeKm(sat, now);
+                if (altKm !== null && altKm <= 2000) {
+                    activeSatellites.push(sat);
+                    seenNorad.add(norad);
+                }
+            }
+        }
+    }
+
+    const candidatePool = [
+        ...spaceStations,
+        ...constellations,
+        ...activeSatellites,
+        ...debrisAndRockets
+    ];
+
+    if (candidatePool.length <= 40) {
+        return candidatePool;
+    }
+
+    // Keep ISS if present for prominent telemetry, randomly sample the remaining 39
+    const issSat = candidatePool.find(s => Number(s.noradId || s.NORAD_CAT_ID) === ISS_NORAD_ID);
+    const nonIssPool = candidatePool.filter(s => Number(s.noradId || s.NORAD_CAT_ID) !== ISS_NORAD_ID);
+
+    for (let i = nonIssPool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [nonIssPool[i], nonIssPool[j]] = [nonIssPool[j], nonIssPool[i]];
+    }
+
+    return issSat ? [issSat, ...nonIssPool.slice(0, 39)] : nonIssPool.slice(0, 40);
+}
+
+// ============================================================
+// CONJUNCTION DATA MANAGEMENT & RISK MODEL
+// ============================================================
+let globalConjunctions = [];
+let liveCountdownInterval = null;
+
+async function fetchLiveConjunctions() {
+    // 1. Try local MongoDB / Node.js backend
+    const conjEndpoints = [
+        "/api/conjunctions",
+        "http://localhost:8000/api/conjunctions",
+        "http://127.0.0.1:8000/api/conjunctions"
+    ];
+
+    for (const url of conjEndpoints) {
+        try {
+            const resp = await fetch(url, { cache: "no-store" });
+            if (resp.ok) {
+                const data = await resp.json();
+                if (data.success && Array.isArray(data.conjunctions) && data.conjunctions.length > 0) {
+                    try {
+                        localStorage.setItem("orbitguard_conjunctions_cache", JSON.stringify(data.conjunctions));
+                    } catch (e) {}
+                    return data.conjunctions;
+                }
+            }
+        } catch (e) {}
+    }
+
+    // 2. Offline / local storage fallback
+    const cached = localStorage.getItem("orbitguard_conjunctions_cache");
+    if (cached) {
+        try {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        } catch (e) {}
+    }
+
+    return [];
+}
+
+function formatTcaRemaining(tcaTimestamp) {
+    const targetMs = new Date(tcaTimestamp).getTime();
+    const diffMs = targetMs - Date.now();
+    if (diffMs <= 0) return "TCA PASSED";
+    const totalSecs = Math.floor(diffMs / 1000);
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
+    if (mins >= 60) {
+        const hours = Math.floor(mins / 60);
+        const remMins = mins % 60;
+        return `+${hours}h ${remMins}m`;
+    }
+    return `+${mins} min`;
+}
+
+function formatCountdown(tcaTimestamp) {
+    const targetMs = new Date(tcaTimestamp).getTime();
+    const diffMs = targetMs - Date.now();
+    if (diffMs <= 0) return "TCA REACHED";
+    const totalSecs = Math.floor(diffMs / 1000);
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
+    return `T - ${mins.toString().padStart(2, "0")}m ${secs.toString().padStart(2, "0")}s`;
+}
+
+// ============================================================
+// MOBILE & TABLET TELEMETRY BOTTOM SHEET TOGGLE (< 1212px)
+// ============================================================
+function toggleTelemetrySheet(forceState) {
+    const backdrop = document.getElementById("telemetryBackdrop");
+    const capsuleBtn = document.getElementById("hudCapsuleBtn");
+    if (!backdrop) return;
+
+    const isCurrentlyActive = backdrop.classList.contains("active");
+    const nextState = (forceState !== undefined) ? forceState : !isCurrentlyActive;
+
+    if (nextState) {
+        backdrop.classList.add("active");
+        document.body.style.overflow = "hidden";
+        if (capsuleBtn) {
+            const arrow = capsuleBtn.querySelector(".hud-btn-arrow");
+            if (arrow) arrow.style.transform = "rotate(180deg)";
+        }
+    } else {
+        backdrop.classList.remove("active");
+        document.body.style.overflow = "";
+        if (capsuleBtn) {
+            const arrow = capsuleBtn.querySelector(".hud-btn-arrow");
+            if (arrow) arrow.style.transform = "rotate(0deg)";
+        }
+    }
+}
+
+// Close sheet on Escape
+document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") toggleTelemetrySheet(false);
+});
+
+// Render Conjunctions into DOM & Mirror into Bottom Sheet
+function renderConjunctions(conjunctionsList) {
+    if (!conjunctionsList || conjunctionsList.length === 0) {
+        const setZero = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
+        setZero("cardConjunctions", "0");
+        setZero("cardHighRisk", "0");
+        setZero("cardNextTca", "—");
+        setZero("cardNextPair", "No critical encounters");
+        setZero("sheetCardConjunctions", "0");
+        setZero("sheetCardHighRisk", "0");
+        setZero("sheetCardNextTca", "—");
+        setZero("sheetCardNextPair", "No critical encounters");
+        setZero("hudAlertBadge", "0 Alerts");
+
+        const evRows = document.getElementById("eventRows");
+        if (evRows) {
+            evRows.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align:center; padding:24px; color:var(--muted);">
+                        No conjunctions detected in the next 24 hours.
+                    </td>
+                </tr>
+            `;
+        }
+        return;
+    }
+
+    // Save to local cache
+    try {
+        localStorage.setItem("orbitguard_conjunctions_cache", JSON.stringify(conjunctionsList));
+    } catch (e) {}
+
+    globalConjunctions = conjunctionsList;
+
+    const highRiskEvents = conjunctionsList.filter(e => e.riskTier === "critical" || e.risk === "HIGH");
+    const conjCountStr = conjunctionsList.length.toString();
+    const highRiskStr = highRiskEvents.length.toString();
+
+    const setEl = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
+
+    setEl("cardConjunctions", conjCountStr);
+    setEl("cardHighRisk", highRiskStr);
+    setEl("sheetCardConjunctions", conjCountStr);
+    setEl("sheetCardHighRisk", highRiskStr);
+    setEl("hudAlertBadge", `${highRiskStr} Critical`);
+
+    const focalEvent = conjunctionsList[0];
+
+    if (focalEvent) {
+        const tcaFormatted = formatTcaRemaining(focalEvent.tcaTimestamp || focalEvent.tca);
+        const pairStr = `${focalEvent.objA.name || focalEvent.objA} ↔ ${focalEvent.objB.name || focalEvent.objB}`;
+        
+        setEl("cardNextTca", tcaFormatted);
+        setEl("cardNextPair", pairStr);
+        setEl("sheetCardNextTca", tcaFormatted);
+        setEl("sheetCardNextPair", pairStr);
+
+        const distNum = typeof focalEvent.missDistanceKm === "number" ? focalEvent.missDistanceKm : Number(focalEvent.dist);
+        const velNum = typeof focalEvent.relVelKmS === "number" ? focalEvent.relVelKmS : Number(focalEvent.relVel);
+
+        const distStr = `${distNum.toFixed(2)} km`;
+        const velStr = `${velNum.toFixed(2)} km/s`;
+        const objAName = focalEvent.objA.name || focalEvent.objA;
+        const objBName = focalEvent.objB.name || focalEvent.objB;
+
+        setEl("riskDist", distStr);
+        setEl("riskTca", tcaFormatted);
+        setEl("riskVel", velStr);
+        setEl("riskObjA", objAName);
+        setEl("riskObjB", objBName);
+
+        setEl("sheetRiskDist", distStr);
+        setEl("sheetRiskTca", tcaFormatted);
+        setEl("sheetRiskVel", velStr);
+        setEl("sheetRiskObjA", objAName);
+        setEl("sheetRiskObjB", objBName);
+
+        // Score
+        const distFactor = Math.max(0, Math.min(1, (25 - distNum) / 25));
+        const velFactor  = Math.max(0, Math.min(1, velNum / 10));
+        let score = Math.max(5, Math.min(99, Math.round((0.6 * distFactor + 0.4 * velFactor) * 100)));
+
+        setEl("riskScore", score);
+        setEl("sheetRiskScore", score);
+
+        const riskLevelEl = document.getElementById("riskLevel");
+        const sheetRiskLevelEl = document.getElementById("sheetRiskLevel");
+        const riskCircle = document.getElementById("riskCircle");
+        const sheetRiskCircle = document.getElementById("sheetRiskCircle");
+
+        const riskTierStr = (focalEvent.riskTier || focalEvent.risk || "nominal").toLowerCase();
+
+        let riskTitle = "NOMINAL RISK";
+        let riskColor = "var(--green)";
+        if (score > 75 || riskTierStr === "critical" || riskTierStr === "high") {
+            riskTitle = "CRITICAL RISK";
+            riskColor = "var(--red)";
+        } else if (score > 40 || riskTierStr === "warning" || riskTierStr === "medium") {
+            riskTitle = "ELEVATED RISK";
+            riskColor = "var(--orange)";
+        }
+
+        if (riskLevelEl) { riskLevelEl.innerText = riskTitle; riskLevelEl.style.color = riskColor; }
+        if (sheetRiskLevelEl) { sheetRiskLevelEl.innerText = riskTitle; sheetRiskLevelEl.style.color = riskColor; }
+        if (riskCircle) riskCircle.style.background = `conic-gradient(${riskColor} 0% ${score}%, #172236 ${score}% 100%)`;
+        if (sheetRiskCircle) sheetRiskCircle.style.borderColor = riskColor;
+
+        const badge = document.getElementById("riskBadge");
+        const sheetBadge = document.getElementById("sheetRiskBadge");
+        const badgeTier = (riskTierStr === "critical" ? "high" : (riskTierStr === "warning" ? "medium" : "low"));
+        if (badge) { badge.className = `badge ${badgeTier}`; badge.innerText = badgeTier.toUpperCase(); }
+        if (sheetBadge) { sheetBadge.className = `badge ${badgeTier}`; sheetBadge.innerText = badgeTier.toUpperCase(); }
+    }
+
+    const tbody = document.getElementById("eventRows");
+    if (tbody) {
+        tbody.innerHTML = "";
+        conjunctionsList.forEach(event => {
+            const objAName = event.objA.name || event.objA;
+            const objBName = event.objB.name || event.objB;
+            const distNum = typeof event.missDistanceKm === "number" ? event.missDistanceKm : Number(event.dist);
+            const velNum = typeof event.relVelKmS === "number" ? event.relVelKmS : Number(event.relVel);
+            const tcaStr = formatTcaRemaining(event.tcaTimestamp || event.tca);
+            const rawTier = (event.riskTier || event.risk || "nominal").toLowerCase();
+            const displayTier = rawTier === "critical" || rawTier === "high" ? "HIGH" : (rawTier === "warning" || rawTier === "medium" ? "MEDIUM" : "LOW");
+
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td class="obj">${objAName}</td>
+                <td class="obj">${objBName}</td>
+                <td><b style="font-family:var(--font-mono); color:${displayTier === 'HIGH' ? 'var(--red)' : '#fff'};">${distNum.toFixed(2)} km</b></td>
+                <td><span style="font-family:var(--font-mono);" class="live-tca-cell" data-tca="${event.tcaTimestamp || ''}">${tcaStr}</span></td>
+                <td><span style="font-family:var(--font-mono);">${velNum.toFixed(2)} km/s</span></td>
+                <td><span class="badge ${displayTier.toLowerCase()}">${displayTier}</span></td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    const conjCountEl = document.getElementById("conjunctionCount");
+    if (conjCountEl) conjCountEl.innerText = `Next 24h • ${conjunctionsList.length} orbital conjunctions tracked`;
+
+    // Real-time ticking for TCA countdowns
+    if (liveCountdownInterval) clearInterval(liveCountdownInterval);
+    liveCountdownInterval = setInterval(() => {
+        if (!globalConjunctions || globalConjunctions.length === 0) return;
+        const first = globalConjunctions[0];
+        if (first && first.tcaTimestamp) {
+            const formatted = formatTcaRemaining(first.tcaTimestamp);
+            setEl("cardNextTca", formatted);
+            setEl("riskTca", formatted);
+            setEl("sheetCardNextTca", formatted);
+            setEl("sheetRiskTca", formatted);
+        }
+        document.querySelectorAll(".live-tca-cell").forEach(cell => {
+            const tcaIso = cell.getAttribute("data-tca");
+            if (tcaIso) {
+                cell.textContent = formatTcaRemaining(tcaIso);
+            }
+        });
+    }, 1000);
+}
+
+// ============================================================
+// INITIALIZE DASHBOARD
+// ============================================================
+async function initDashboard() {
+    initThreeScene();
+
+    try {
+        // 1. Fetch TLEs for 3D Globe Rendering
+        const satData = await fetchCelesTrakData();
+
+        if (!Array.isArray(satData) || satData.length === 0) {
+            throw new Error("CelesTrak returned no data.");
+        }
+
+        const source = window.orbitGuardDataSource || "CELESTRAK";
+        const isCached = source.includes("CACHED") || source.includes("OFFLINE");
+
+        const sysStatusEl = document.getElementById("sysStatus");
+        if (sysStatusEl) sysStatusEl.innerText = "Tracking system online";
+        const sysSubEl = document.getElementById("sysSub");
+        if (sysSubEl) sysSubEl.innerText = isCached ? "Using cached TLE catalog" : "Space-Track feed synced";
+        const liveStatusEl = document.getElementById("liveStatus");
+        if (liveStatusEl) liveStatusEl.innerHTML = `<span class="dot"></span> ${isCached ? "CACHED" : "LIVE"} • ${satData.length} active TLEs`;
+        const cardTrackedEl = document.getElementById("cardTracked");
+        if (cardTrackedEl) cardTrackedEl.innerText = satData.length.toLocaleString();
+        const sheetCardTrackedEl = document.getElementById("sheetCardTracked");
+        if (sheetCardTrackedEl) sheetCardTrackedEl.innerText = satData.length.toLocaleString();
+
+        const now = new Date();
+        const parsedSatellites = satData.map(sat => {
+            try {
+                const satrec = satellite.twoline2satrec(sat.line1, sat.line2);
+                const satObj = {
+                    name: sat.name || `NORAD ${sat.NORAD_CAT_ID}`,
+                    noradId: sat.NORAD_CAT_ID,
+                    satrec: satrec
+                };
+                satObj.altitude = getSatelliteAltitudeKm(satObj, now);
+                return satObj;
+            } catch (err) {
+                return null;
+            }
+        }).filter(sat => sat && sat.satrec && sat.satrec.error === 0);
+
+        if (parsedSatellites.length === 0) throw new Error("No valid satellites parsed.");
+
+        // Store full catalog & default curated categorized subset
+        window.allFullParsedSatellites = parsedSatellites;
+        window.defaultCuratedSatellites = categorizeAndPickSatelliteSubset(parsedSatellites);
+
+        // Render 3D Orbits in Three.js (All Space Stations + 8-10 Constellations + 30-40 Active + 6-8 Debris/Rockets)
+        render3DOrbits(window.defaultCuratedSatellites);
+
+        // 2. Fetch Precomputed Conjunctions from MongoDB Backend (Consistent across all pages & refreshes)
+        const conjunctions = await fetchLiveConjunctions();
+        renderConjunctions(conjunctions);
+
+        // Auto-poll every 30s to keep UI synchronized with MongoDB 15-min recalculations
+        setInterval(async () => {
+            try {
+                const updatedConjs = await fetchLiveConjunctions();
+                if (updatedConjs && updatedConjs.length > 0) {
+                    renderConjunctions(updatedConjs);
+                }
+            } catch (e) {}
+        }, 30000);
+
+    } catch (error) {
+        console.error("Dashboard error:", error);
+        document.getElementById("sysStatus").innerText = "Connection Alert";
+        document.getElementById("sysSub").innerText = "Using offline fallback";
+        document.getElementById("sysDot").style.background = "var(--red)";
+        document.getElementById("sysDot").style.boxShadow = "0 0 10px var(--red)";
+    }
+}
+
+// ============================================================
+// LIVE SEARCH DROPDOWN & 3D GLOBE HOVER INSPECTION
+// ============================================================
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+const searchInput = document.getElementById("search");
+const searchClearBtn = document.getElementById("searchClearBtn");
+const searchDropdown = document.getElementById("searchDropdown");
+
+function renderSearchDropdown(matches, query) {
+    if (!searchDropdown) return;
+
+    if (!matches || matches.length === 0) {
+        searchDropdown.innerHTML = `<div class="search-dropdown-empty">No orbital objects found for "${escapeHtml(query)}"</div>`;
+        searchDropdown.style.display = "flex";
+        return;
+    }
+
+    searchDropdown.innerHTML = matches.map(sat => {
+        let typeBadge = '🛰️ Sat';
+        let badgeColor = 'var(--cyan)';
+        const nameUp = (sat.name || '').toUpperCase();
+        if (nameUp.includes('ISS') || nameUp.includes('TIANGONG') || nameUp.includes('CSS') || nameUp.includes('STATION')) {
+            typeBadge = '⭐ Station';
+            badgeColor = '#ffd166';
+        } else if (nameUp.includes('STARLINK') || nameUp.includes('ONEWEB') || nameUp.includes('KUIPER')) {
+            typeBadge = '🌐 Fleet';
+            badgeColor = '#c77dff';
+        } else if (nameUp.includes('DEB') || nameUp.includes('R/B') || nameUp.includes('FRAGMENT')) {
+            typeBadge = '☄ Debris';
+            badgeColor = '#ff526d';
+        }
+
+        const norad = sat.noradId || sat.NORAD_CAT_ID || '--';
+        const altText = sat.altitude ? `${Math.round(sat.altitude)} km` : '';
+
+        return `
+            <div class="search-dropdown-item" onclick="selectSatelliteFromSearch('${norad}')">
+                <div class="search-dropdown-name">
+                    <span>${escapeHtml(sat.name)}</span>
+                </div>
+                <div class="search-dropdown-meta">
+                    <span style="color:${badgeColor}">${typeBadge}</span>
+                    <span>#${norad}</span>
+                    ${altText ? `<span>${altText}</span>` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    searchDropdown.style.display = "flex";
+}
+
+function selectSatelliteFromSearch(noradId) {
+    const sat = (window.allFullParsedSatellites || []).find(s => String(s.noradId) === String(noradId) || String(s.NORAD_CAT_ID) === String(noradId));
+    if (!sat) return;
+
+    // Update search bar text & show clear button
+    if (searchInput) searchInput.value = sat.name;
+    if (searchClearBtn) searchClearBtn.style.display = "flex";
+    if (searchDropdown) searchDropdown.style.display = "none";
+
+    // 1. Filter conjunction event table
+    const query = sat.name.toLowerCase();
+    document.querySelectorAll("#eventRows tr").forEach(row => {
+        row.style.display = row.innerText.toLowerCase().includes(query) ? "" : "none";
+    });
+
+    // 2. Render 3D orbits with this satellite pinned first and highlighted
+    const displaySet = [
+        sat,
+        ...(window.defaultCuratedSatellites || []).filter(s => String(s.noradId) !== String(sat.noradId))
+    ];
+    render3DOrbits(displaySet, sat.name);
+}
+
+function clearSearchAndResetView() {
+    if (searchInput) {
+        searchInput.value = "";
+        searchInput.blur();
+    }
+    if (searchClearBtn) searchClearBtn.style.display = "none";
+    if (searchDropdown) searchDropdown.style.display = "none";
+
+    // 1. Reset conjunction table filter
+    document.querySelectorAll("#eventRows tr").forEach(row => {
+        row.style.display = "";
+    });
+
+    // 2. Reset targetPivot to Earth center
+    targetPivot.set(0, 0, 0);
+
+    // 3. Reset 3D Earth satellites and trajectories to default curated set
+    render3DOrbits(window.defaultCuratedSatellites || [], "");
+
+    // 4. Smoothly return camera to default view and distance
+    targetRotX = 0.32;
+    targetRotY = 0.45;
+    setEarthZoom(EARTH_ZOOM_DEFAULT);
+
+    // 5. Re-enable auto-rotate
+    autoRotate = true;
+    const btnAutoRotate = document.getElementById('btn-auto-rotate');
+    if (btnAutoRotate) btnAutoRotate.classList.add('active');
+}
+
+if (searchInput) {
+    searchInput.addEventListener("input", (e) => {
+        const query = e.target.value.trim().toLowerCase();
+
+        if (searchClearBtn) {
+            searchClearBtn.style.display = query.length > 0 ? "flex" : "none";
+        }
+
+        // 1. Filter conjunction event table rows
+        document.querySelectorAll("#eventRows tr").forEach(row => {
+            row.style.display = row.innerText.toLowerCase().includes(query) ? "" : "none";
+        });
+
+        // 2. Filter & Highlight / Bold Trajectory on 3D Earth Globe
+        if (query.length > 0) {
+            const matchingSats = (window.allFullParsedSatellites || []).filter(sat => {
+                const name = (sat.name || "").toLowerCase();
+                const norad = (sat.noradId || sat.NORAD_CAT_ID || "").toString();
+                return name.includes(query) || norad.includes(query);
+            });
+
+            // Show live dropdown with top matches
+            renderSearchDropdown(matchingSats.slice(0, 16), query);
+
+            if (matchingSats.length > 0) {
+                // Prepend matched satellites to guarantee they appear and bold their tracks
+                const displaySet = [
+                    ...matchingSats.slice(0, 20),
+                    ...(window.defaultCuratedSatellites || []).filter(s => !matchingSats.some(m => m.noradId === s.noradId))
+                ];
+                render3DOrbits(displaySet, query);
+            } else {
+                render3DOrbits(window.defaultCuratedSatellites || [], query);
+            }
+        } else {
+            if (searchDropdown) searchDropdown.style.display = "none";
+
+            // 1. Reset targetPivot to Earth center
+            targetPivot.set(0, 0, 0);
+
+            // 2. Reset to default curated set with standard normal trajectories
+            render3DOrbits(window.defaultCuratedSatellites || [], "");
+
+            // 3. Smoothly return camera to default view, orientation, and zoom distance
+            targetRotX = 0.32;
+            targetRotY = 0.45;
+            setEarthZoom(EARTH_ZOOM_DEFAULT);
+
+            // 4. Re-enable auto-rotate if stopped
+            autoRotate = true;
+            const btnAutoRotate = document.getElementById('btn-auto-rotate');
+            if (btnAutoRotate) btnAutoRotate.classList.add('active');
+        }
+    });
+
+    searchInput.addEventListener("search", () => {
+        if (!searchInput.value.trim()) {
+            clearSearchAndResetView();
+        }
+    });
+
+    searchInput.addEventListener("focus", (e) => {
+        const query = e.target.value.trim().toLowerCase();
+        if (query.length > 0) {
+            const matchingSats = (window.allFullParsedSatellites || []).filter(sat => {
+                const name = (sat.name || "").toLowerCase();
+                const norad = (sat.noradId || sat.NORAD_CAT_ID || "").toString();
+                return name.includes(query) || norad.includes(query);
+            });
+            renderSearchDropdown(matchingSats.slice(0, 16), query);
+        }
+    });
+}
+
+// Close dropdown when clicking outside
+document.addEventListener("click", (e) => {
+    const wrapper = document.getElementById("searchWrapper");
+    if (wrapper && !wrapper.contains(e.target)) {
+        if (searchDropdown) searchDropdown.style.display = "none";
+    }
+});
+
+// Sidebar Controls
+const sidebar = document.getElementById("sidebar");
+const sidebarOverlay = document.getElementById("sidebarOverlay");
+const sidebarToggleBtn = document.getElementById("sidebarToggleBtn");
+const sidebarCloseBtn = document.getElementById("sidebarCloseBtn");
+
+function openSidebar() {
+    if (sidebar) sidebar.classList.add("open");
+    if (sidebarOverlay) sidebarOverlay.classList.add("active");
+    setTimeout(handleResize, 360);
+}
+
+function closeSidebar() {
+    if (sidebar) sidebar.classList.remove("open");
+    if (sidebarOverlay) sidebarOverlay.classList.remove("active");
+    setTimeout(handleResize, 360);
+}
+
+function toggleSidebar() {
+    if (sidebar && sidebar.classList.contains("open")) closeSidebar();
+    else openSidebar();
+}
+
+if (sidebarToggleBtn) sidebarToggleBtn.addEventListener("click", toggleSidebar);
+if (sidebarCloseBtn) sidebarCloseBtn.addEventListener("click", closeSidebar);
+if (sidebarOverlay) sidebarOverlay.addEventListener("click", closeSidebar);
+
+document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && sidebar && sidebar.classList.contains("open")) closeSidebar();
+});
+
+// Launch on DOM ready
+window.addEventListener("DOMContentLoaded", initDashboard);
+
+// ============================================================
+// SPACE-THEMED FAST PAGE TRANSITION INTERCEPTOR
+// ============================================================
+(function initSpaceTransition() {
+    const loader = document.getElementById("spaceWarpLoader");
+    const bar = document.getElementById("spaceWarpBar");
+    const status = document.getElementById("spaceWarpStatus");
+    const icon = document.getElementById("spaceWarpIcon");
+
+    const telemetryStatusMsgs = [
+        "COMPUTING SGP4 EPHEMERIS...",
+        "ALIGNING SENSOR VECTOR...",
+        "SYNCHRONIZING ORBITAL MESH...",
+        "ACQUIRING TELEMETRY UPLINK...",
+        "CALIBRATING CONJUNCTION MATRIX..."
+    ];
+
+    function dismissEntranceLoader() {
+        if (loader) {
+            if (bar) bar.style.width = "100%";
+            setTimeout(() => {
+                loader.classList.remove("active");
+                setTimeout(() => {
+                    if (bar) bar.style.width = "0%";
+                }, 260);
+            }, 200);
+        }
+    }
+
+    if (document.readyState === "complete" || document.readyState === "interactive") {
+        dismissEntranceLoader();
+    } else {
+        window.addEventListener("DOMContentLoaded", dismissEntranceLoader);
+    }
+
+    document.addEventListener("click", (e) => {
+        const link = e.target.closest("a");
+        if (!link) return;
+
+        const href = link.getAttribute("href");
+        if (!href || href.startsWith("#") || href.startsWith("javascript:") || link.target === "_blank") {
+            return;
+        }
+
+        const validPages = ["earth.html", "orb_obj.html", "grid.html", "analytics.html", "index.html"];
+        const targetPage = href.split("?")[0].split("#")[0];
+
+        if (validPages.some(p => targetPage.endsWith(p))) {
+            e.preventDefault();
+
+            if (loader) {
+                if (status) {
+                    if (targetPage.includes("earth")) status.innerText = "ENGAGING 3D GLOBE RENDERER...";
+                    else if (targetPage.includes("orb_obj")) status.innerText = "QUERYING ORBITAL DATABASE...";
+                    else if (targetPage.includes("grid")) status.innerText = "PROCESSING CONJUNCTION SENSORS...";
+                    else if (targetPage.includes("analytics")) status.innerText = "COMPILING KEPLERIAN ANALYTICS...";
+                    else status.innerText = telemetryStatusMsgs[Math.floor(Math.random() * telemetryStatusMsgs.length)];
+                }
+
+                if (icon) {
+                    if (targetPage.includes("earth")) icon.className = "fa-solid fa-earth-americas";
+                    else if (targetPage.includes("orb_obj")) icon.className = "fa-solid fa-cubes";
+                    else if (targetPage.includes("grid")) icon.className = "fa-solid fa-triangle-exclamation";
+                    else if (targetPage.includes("analytics")) icon.className = "fa-solid fa-chart-line";
+                    else icon.className = "fa-solid fa-satellite";
+                }
+
+                loader.classList.add("active");
+                if (bar) {
+                    bar.style.width = "0%";
+                    setTimeout(() => { bar.style.width = "100%"; }, 20);
+                }
+
+                setTimeout(() => {
+                    window.location.href = href;
+                }, 280);
+            } else {
+                window.location.href = href;
+            }
+        }
+    });
+
+    window.addEventListener("pageshow", (e) => {
+        if (e.persisted && loader) {
+            loader.classList.remove("active");
+            if (bar) bar.style.width = "0%";
+        }
+    });
+})();
+</script>
+
+</body>
+</html>

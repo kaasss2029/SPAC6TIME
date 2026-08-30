@@ -1,0 +1,1688 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orbital Objects — SPAC6TIME</title>
+
+    <!-- Plotly for visualizations -->
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+    <!-- satellite.js -->
+    <script src="https://cdn.jsdelivr.net/npm/satellite.js@6.0.2/dist/satellite.min.js"></script>
+
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        :root {
+            --bg: #070b14;
+            --panel: #0d1422;
+            --panel2: #111a2b;
+            --line: #1c2940;
+            --text: #eaf2ff;
+            --muted: #7f91ad;
+            --cyan: #46d9ff;
+            --blue: #5b8cff;
+            --red: #ff526d;
+            --orange: #ffad4d;
+            --green: #42e6a4;
+            --purple: #c77dff;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: radial-gradient(circle at 70% 10%, #13243c 0, #070b14 38%);
+            color: var(--text);
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            min-height: 100vh;
+        }
+
+        .app {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* ── SIDEBAR NAVIGATION (HIDABLE - DEFAULT HIDDEN) ── */
+        .sidebar {
+            width: 250px;
+            background: rgba(7, 11, 20, 0.96);
+            border-right: 1px solid var(--line);
+            padding: 24px 16px;
+            position: fixed;
+            inset: 0 auto 0 0;
+            z-index: 1000;
+            transform: translateX(-100%);
+            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 12px 0 40px rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .sidebar.open {
+            transform: translateX(0);
+        }
+
+        .sidebar-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(4, 7, 14, 0.65);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .sidebar-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .sidebarHeader {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+
+        .sidebarCloseBtn {
+            background: transparent;
+            border: 1px solid var(--line);
+            color: var(--muted);
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: grid;
+            place-items: center;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .sidebarCloseBtn:hover {
+            color: var(--cyan);
+            border-color: var(--cyan);
+            background: rgba(70, 217, 255, 0.1);
+        }
+
+        .sidebarToggleBtn {
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+            background: rgba(13, 21, 36, 0.85);
+            border: 1px solid var(--line);
+            color: var(--text);
+            padding: 9px 15px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+            margin-right: 16px;
+        }
+
+        .sidebarToggleBtn:hover {
+            border-color: var(--cyan);
+            color: var(--cyan);
+            box-shadow: 0 0 16px rgba(70, 217, 255, 0.25);
+            transform: translateY(-1px);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            font-weight: 800;
+            font-size: 19px;
+            margin: 4px 10px 35px;
+        }
+
+        .logoMark {
+            width: 34px;
+            height: 34px;
+            border: 1px solid #2b7190;
+            border-radius: 11px;
+            display: grid;
+            place-items: center;
+            color: var(--cyan);
+            box-shadow: 0 0 24px #46d9ff22;
+        }
+
+        .navTitle {
+            font-size: 10px;
+            color: #50617a;
+            letter-spacing: 1.6px;
+            margin: 22px 12px 9px;
+            text-transform: uppercase;
+        }
+
+        .nav a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            margin: 4px 0;
+            border-radius: 9px;
+            text-decoration: none;
+            color: var(--muted);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .nav a:hover {
+            background: #142238;
+            color: var(--text);
+        }
+
+        .nav a.active {
+            background: #142238;
+            color: #fff;
+            box-shadow: inset 2px 0 var(--cyan);
+        }
+
+        .nav b {
+            font-weight: 600;
+        }
+
+        .system {
+            margin-top: auto;
+            padding: 13px;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            background: #0c1320;
+            margin-bottom: 8px;
+        }
+
+        .dot {
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 10px var(--green);
+            margin-right: 7px;
+        }
+
+        .dot.orange {
+            background: var(--orange);
+            box-shadow: 0 0 10px var(--orange);
+        }
+
+        .dot.red {
+            background: var(--red);
+            box-shadow: 0 0 10px var(--red);
+        }
+
+        main {
+            margin-left: 0;
+            padding: 28px 36px;
+            flex: 1;
+            width: 100%;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 28px;
+        }
+
+        .eyebrow {
+            font-size: 11px;
+            color: var(--cyan);
+            letter-spacing: 1.8px;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin: 0;
+            font-weight: 700;
+        }
+
+        .header-sub {
+            font-size: 12px;
+            color: var(--muted);
+            display: flex;
+            align-items: center;
+            margin-top: 6px;
+        }
+
+        .live-badge {
+            font-size: 12px;
+            color: #a9b9cf;
+            border: 1px solid var(--line);
+            padding: 9px 14px;
+            border-radius: 9px;
+            background: #0c1422;
+            display: flex;
+            align-items: center;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: linear-gradient(145deg, #0e1727, #0a111d);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 18px 20px;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 750;
+            color: var(--text);
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .controls {
+            display: flex;
+            gap: 14px;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 260px;
+            padding: 11px 16px;
+            background: #0d1524;
+            border: 1px solid var(--line);
+            border-radius: 9px;
+            color: var(--text);
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .search-box:focus {
+            border-color: var(--cyan);
+        }
+
+        .search-box::placeholder {
+            color: var(--muted);
+        }
+
+        .filter-btn {
+            padding: 11px 16px;
+            background: #0d1524;
+            border: 1px solid var(--line);
+            border-radius: 9px;
+            color: var(--text);
+            cursor: pointer;
+            font-size: 13px;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .filter-btn:hover {
+            background: #142238;
+        }
+
+        .filter-btn option {
+            background: #0d1524;
+            color: var(--text);
+        }
+
+        .count-summary {
+            font-size: 12px;
+            color: var(--muted);
+            margin-left: auto;
+        }
+
+        .details-panel {
+            background: rgba(10, 17, 29, .95);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 24px;
+            margin-bottom: 28px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .details-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .details-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--cyan);
+        }
+
+        .close-btn {
+            background: transparent;
+            border: 1px solid var(--line);
+            color: var(--muted);
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.2s;
+            display: grid;
+            place-items: center;
+        }
+
+        .close-btn:hover {
+            border-color: var(--red);
+            color: var(--red);
+            background: rgba(255, 82, 109, 0.1);
+        }
+
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 14px;
+        }
+
+        .detail-item {
+            background: rgba(17, 26, 43, 0.7);
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 14px 16px;
+        }
+
+        .detail-label {
+            font-size: 11px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 6px;
+        }
+
+        .detail-value {
+            font-size: 14px;
+            color: var(--text);
+            font-weight: 600;
+            line-height: 1.4;
+        }
+
+        .objects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+
+        .object-card {
+            background: linear-gradient(145deg, #0e1727, #0a111d);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 16px 18px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            position: relative;
+        }
+
+        .object-card:hover {
+            background: #111d32;
+            border-color: var(--blue);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(91, 140, 255, 0.15);
+        }
+
+        .object-card.selected {
+            background: #12213a;
+            border-color: var(--cyan);
+            box-shadow: 0 0 20px rgba(70, 217, 255, 0.2);
+        }
+
+        .object-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .object-name {
+            font-size: 14px;
+            font-weight: 700;
+            color: #fff;
+            max-width: 180px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .object-id {
+            font-size: 11px;
+            color: var(--muted);
+            font-family: monospace;
+            margin-top: 2px;
+        }
+
+        .type-badge {
+            display: inline-block;
+            padding: 3px 7px;
+            border-radius: 5px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .type-satellite {
+            background: rgba(70, 217, 255, 0.15);
+            color: var(--cyan);
+        }
+
+        .type-debris {
+            background: rgba(255, 82, 109, 0.15);
+            color: var(--red);
+        }
+
+        .type-station {
+            background: rgba(255, 173, 77, 0.15);
+            color: var(--orange);
+        }
+
+        .type-constellation {
+            background: rgba(199, 125, 255, 0.15);
+            color: var(--purple);
+        }
+
+        .object-info {
+            font-size: 12px;
+            color: var(--text);
+            border-top: 1px solid rgba(28, 41, 64, 0.6);
+            padding-top: 8px;
+        }
+
+        .object-info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+
+        .object-info-label {
+            color: var(--muted);
+        }
+
+        .object-info-value {
+            color: #cbd7e8;
+            font-weight: 500;
+        }
+
+        .load-more-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            margin: 28px 0 40px;
+        }
+
+        .load-more-btn {
+            padding: 12px 28px;
+            background: linear-gradient(135deg, #13243c, #0d1728);
+            border: 1px solid var(--line);
+            color: var(--text);
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 9px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .load-more-btn:hover {
+            border-color: var(--cyan);
+            color: #fff;
+            box-shadow: 0 0 16px rgba(70, 217, 255, 0.2);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px 24px;
+            color: var(--muted);
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 28px;
+            height: 28px;
+            border: 3px solid rgba(70, 217, 255, 0.2);
+            border-top-color: var(--cyan);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 24px;
+            color: var(--muted);
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+        }
+
+        .empty-state-icon {
+            font-size: 40px;
+            margin-bottom: 12px;
+            color: var(--cyan);
+        }
+
+        @media(max-width: 1212px), (max-height: 840px) {
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+            }
+            .objects-grid {
+                grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            }
+        }
+
+        @media(max-width: 768px) {
+            main {
+                padding: 14px 14px 40px;
+            }
+            .header {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
+                margin-bottom: 20px;
+            }
+            .live-badge {
+                align-self: flex-start;
+            }
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+            }
+            .search-box {
+                min-width: 100%;
+            }
+            .objects-grid {
+                grid-template-columns: 1fr;
+            }
+            .details-panel {
+                padding: 16px;
+            }
+        }
+
+        @media(max-width: 480px) {
+            .stats {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ============================================================
+           FAST SPACE-THEME WARP TRANSITION OVERLAY
+           ============================================================ */
+        .space-warp-loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 999999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at center, rgba(8, 16, 32, 0.96) 0%, rgba(3, 6, 15, 0.99) 100%);
+            backdrop-filter: blur(22px);
+            -webkit-backdrop-filter: blur(22px);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.24s cubic-bezier(0.16, 1, 0.3, 1), transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+            transform: scale(1.02);
+        }
+
+        .space-warp-loader.active {
+            opacity: 1;
+            pointer-events: all;
+            transform: scale(1);
+        }
+
+        .space-warp-bg {
+            position: absolute;
+            inset: 0;
+            background: 
+                radial-gradient(1px 1px at 20% 30%, rgba(255, 255, 255, 0.8), rgba(0,0,0,0)),
+                radial-gradient(1.5px 1.5px at 40% 70%, rgba(70, 217, 255, 0.9), rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 60% 20%, rgba(255, 209, 102, 0.8), rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 80% 60%, rgba(70, 217, 255, 0.9), rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 90% 90%, rgba(255, 255, 255, 0.7), rgba(0,0,0,0));
+            background-size: 250px 250px;
+            opacity: 0.6;
+            animation: warpStarMotion 12s linear infinite;
+        }
+
+        @keyframes warpStarMotion {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-250px); }
+        }
+
+        .space-warp-hud {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            z-index: 2;
+        }
+
+        .space-gyro-ring {
+            position: relative;
+            width: 76px;
+            height: 76px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .space-gyro-outer {
+            position: absolute;
+            inset: 0;
+            border: 2px dashed rgba(70, 217, 255, 0.7);
+            border-top-color: var(--cyan, #46d9ff);
+            border-bottom-color: #ffd166;
+            border-radius: 50%;
+            animation: gyroSpin 1.4s linear infinite;
+            box-shadow: 0 0 20px rgba(70, 217, 255, 0.35);
+        }
+
+        .space-gyro-inner {
+            position: absolute;
+            inset: 9px;
+            border: 1.5px solid rgba(70, 217, 255, 0.3);
+            border-left-color: #46d9ff;
+            border-right-color: #46d9ff;
+            border-radius: 50%;
+            animation: gyroSpinRev 0.9s linear infinite;
+        }
+
+        .space-gyro-core {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(70, 217, 255, 0.15);
+            border: 1px solid rgba(70, 217, 255, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #46d9ff;
+            font-size: 13px;
+            box-shadow: 0 0 16px rgba(70, 217, 255, 0.5);
+            animation: corePulse 0.8s ease-in-out infinite alternate;
+        }
+
+        @keyframes gyroSpin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes gyroSpinRev {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(-360deg); }
+        }
+
+        @keyframes corePulse {
+            0% { transform: scale(0.92); filter: drop-shadow(0 0 4px #46d9ff); }
+            100% { transform: scale(1.08); filter: drop-shadow(0 0 14px #46d9ff); }
+        }
+
+        .space-warp-title {
+            font-family: monospace;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 2.2px;
+            color: #fff;
+            text-transform: uppercase;
+            text-shadow: 0 0 12px rgba(70, 217, 255, 0.6);
+        }
+
+        .space-warp-status {
+            font-family: monospace;
+            font-size: 10px;
+            letter-spacing: 1.2px;
+            color: var(--cyan, #46d9ff);
+            height: 14px;
+            font-weight: 600;
+            text-shadow: 0 0 8px rgba(70, 217, 255, 0.5);
+        }
+
+        .space-warp-bar-wrap {
+            width: 190px;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 999px;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid rgba(70, 217, 255, 0.2);
+        }
+
+        .space-warp-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #46d9ff, #ffd166);
+            box-shadow: 0 0 10px #46d9ff;
+            transition: width 0.26s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .space-warp-coords {
+            display: flex;
+            gap: 12px;
+            font-family: monospace;
+            font-size: 9px;
+            color: #647690;
+            letter-spacing: 0.8px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- SPACE-THEME FAST WARP TRANSITION OVERLAY -->
+    <div class="space-warp-loader active" id="spaceWarpLoader">
+        <div class="space-warp-bg"></div>
+        <div class="space-warp-hud">
+            <div class="space-gyro-ring">
+                <div class="space-gyro-outer"></div>
+                <div class="space-gyro-inner"></div>
+                <div class="space-gyro-core">
+                    <i class="fa-solid fa-cubes" id="spaceWarpIcon"></i>
+                </div>
+            </div>
+            <div class="space-warp-title">SPAC6TIME TELEMETRY</div>
+            <div class="space-warp-status" id="spaceWarpStatus">QUERYING ORBITAL DATABASE...</div>
+            <div class="space-warp-bar-wrap">
+                <div class="space-warp-bar" id="spaceWarpBar" style="width: 25%;"></div>
+            </div>
+            <div class="space-warp-coords">
+                <span>RA: 18h 36m</span>
+                <span>DEC: +38° 47'</span>
+                <span>EPOCH: J2000</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- SIDEBAR OVERLAY -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <div class="app">
+
+        <!-- SIDEBAR -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebarHeader">
+                <a href="index.html" class="logo" style="text-decoration:none; color:inherit; cursor:pointer;">
+                    <div class="logoMark">◉</div>
+                    <span>SPAC6TIME</span>
+                </a>
+                <button class="sidebarCloseBtn" id="sidebarCloseBtn" title="Close Menu">✕</button>
+            </div>
+
+            <div class="navTitle">Monitor</div>
+            <nav class="nav">
+                <a href="earth.html">
+                    <b>⌂</b>
+                    <span>Overview</span>
+                </a>
+                <a class="active" href="orb_obj.html">
+                    <b>◎</b>
+                    <span>Orbital Objects</span>
+                </a>
+                <a href="grid.html">
+                    <b>⚠</b>
+                    <span>Conjunctions</span>
+                </a>
+                <a href="analytics.html">
+                    <b>◌</b>
+                    <span>Analytics</span>
+                </a>
+            </nav>
+
+
+
+            <div class="system">
+                <span class="dot" id="sysDot"></span>
+                <b style="font-size:11px" id="sysStatus">Connecting...</b>
+                <div style="font-size:10px; color:#647690; margin-top:5px" id="sysSub">Syncing Space-Track...</div>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main>
+
+            <!-- HEADER -->
+            <div class="header">
+                <div style="display:flex; align-items:center;">
+                    <button class="sidebarToggleBtn" id="sidebarToggleBtn" title="Toggle Navigation Menu">
+                        <span>☰ Menu</span>
+                    </button>
+                    <div>
+                        <div class="eyebrow">LEO Orbital Catalog</div>
+                        <h1>Orbital Objects</h1>
+                        <div class="header-sub">
+                            <span class="dot" id="statusIndicator"></span>
+                            <span id="statusText">Fetching Space-Track active TLE catalog...</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="live-badge" id="sourceBadge">
+                    <span class="dot" style="margin-right:8px;"></span>
+                    <span id="sourceLabel">INITIALIZING</span>
+                </div>
+            </div>
+
+            <!-- STATISTICS -->
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalObjects">--</div>
+                    <div class="stat-label">Total Tracked Objects</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="activeObjects" style="color:var(--cyan);">--</div>
+                    <div class="stat-label">Active Satellites & Stations</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="debrisObjects" style="color:var(--red);">--</div>
+                    <div class="stat-label">Debris & Rocket Bodies</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="lastUpdate">--</div>
+                    <div class="stat-label">TLE Sync Time (UTC)</div>
+                </div>
+            </div>
+
+            <!-- CONTROLS -->
+            <div class="controls">
+                <input
+                    type="text"
+                    id="searchInput"
+                    class="search-box"
+                    placeholder="Search by satellite name or NORAD catalog ID..."
+                />
+                <select id="filterSelect" class="filter-btn">
+                    <option value="all">All Objects</option>
+                    <option value="active">Active Satellites Only</option>
+                    <option value="stations">Space Stations (ISS / Tiangong)</option>
+                    <option value="debris">Debris & Rocket Bodies Only</option>
+                    <option value="constellation">Mega-Constellations (Starlink / OneWeb)</option>
+                </select>
+                <div class="count-summary" id="countSummary"></div>
+            </div>
+
+            <!-- DETAILS PANEL (Hidden by default) -->
+            <div id="detailsPanel" class="details-panel" style="display: none;">
+                <div class="details-header">
+                    <div>
+                        <span style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px;">Selected Object Profile</span>
+                        <div class="details-title" id="detailsTitle">Object Details</div>
+                    </div>
+                    <button class="close-btn" onclick="closeDetails()" title="Close details">✕</button>
+                </div>
+                <div class="details-grid" id="detailsGrid">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+            <!-- OBJECTS GRID -->
+            <div id="objectsContainer">
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <div>Fetching and propagating orbital TLE records from Space-Track...</div>
+                </div>
+            </div>
+
+            <!-- LOAD MORE WRAPPER -->
+            <div class="load-more-wrap" id="loadMoreWrap" style="display: none;">
+                <button class="load-more-btn" id="loadMoreBtn" onclick="loadMoreObjects()">Load More Objects</button>
+                <span style="font-size: 11px; color: var(--muted);" id="pagingInfo"></span>
+            </div>
+
+        </main>
+
+    </div>
+
+    <script>
+        // ================================================================
+        // CONFIGURATION & CONSTANTS
+        // ================================================================
+
+        const CELESTRAK_API_URL =
+            "https://celestrak.org/NORAD/elements/gp.php?GROUP=ACTIVE&FORMAT=TLE";
+
+        const BACKEND_TLE_API_URL =
+            "/api/tle/latest";
+
+        const ISS_NORAD_ID = 25544;
+
+        const CACHE_KEY = "orbitguard_celestrak_active_tle";
+        const CACHE_TIME_KEY = "orbitguard_celestrak_active_tle_time";
+        const CACHE_MAX_AGE = 60 * 60 * 1000; // 1 hour
+
+        const ITEMS_PER_PAGE = 60;
+        let visibleLimit = ITEMS_PER_PAGE;
+
+        // Fallback sample objects if internet/proxy is completely unreachable
+        const SAMPLE_OBJECTS = [
+            {
+                name: "ISS (ZARYA)",
+                noradId: 25544,
+                inclination: 51.64,
+                eccentricity: 0.0002,
+                period: "90.93",
+                type: "Space Station",
+                line1: "1 25544U 98067A   24001.50000000  .00016717  00000+0  10270-3 0  9999",
+                line2: "2 25544  51.6400 120.0000 0002000 100.0000 260.0000 15.83600000 10000"
+            },
+            {
+                name: "TIANGONG (CSS)",
+                noradId: 48274,
+                inclination: 41.47,
+                eccentricity: 0.0003,
+                period: "92.18",
+                type: "Space Station",
+                line1: "1 48274U 21035A   24001.50000000  .00012000  00000+0  90000-4 0  9999",
+                line2: "2 48274  41.4700 110.0000 0003000 120.0000 240.0000 15.62000000 10000"
+            },
+            {
+                name: "HUBBLE SPACE TELESCOPE",
+                noradId: 20580,
+                inclination: 28.47,
+                eccentricity: 0.0002,
+                period: "95.34",
+                type: "Satellite",
+                line1: "1 20580U 90037B   24001.50000000  .00001000  00000+0  10000-4 0  9999",
+                line2: "2 20580  28.4700 130.0000 0002000 110.0000 250.0000 15.10000000 10000"
+            },
+            {
+                name: "STARLINK-1007",
+                noradId: 44713,
+                inclination: 53.05,
+                eccentricity: 0.0001,
+                period: "95.50",
+                type: "Constellation",
+                line1: "1 44713U 19074A   24001.50000000  .00002000  00000+0  15000-4 0  9999",
+                line2: "2 44713  53.0500 140.0000 0001000 130.0000 230.0000 15.07000000 10000"
+            },
+            {
+                name: "DEBRIS (FENGYUN 1C)",
+                noradId: 39155,
+                inclination: 98.78,
+                eccentricity: 0.0045,
+                period: "98.23",
+                type: "Debris",
+                line1: "1 39155U 99025CPA 24001.50000000  .00000500  00000+0  50000-4 0  9999",
+                line2: "2 39155  98.7800 150.0000 0045000 140.0000 220.0000 14.65000000 10000"
+            },
+            {
+                name: "CZ-4B ROCKET BODY",
+                noradId: 25941,
+                inclination: 98.54,
+                eccentricity: 0.0031,
+                period: "99.10",
+                type: "Debris",
+                line1: "1 25941U 99057B   24001.50000000  .00000600  00000+0  60000-4 0  9999",
+                line2: "2 25941  98.5400 160.0000 0031000 150.0000 210.0000 14.53000000 10000"
+            }
+        ];
+
+        let allObjects = [];
+        let filteredObjects = [];
+        let selectedObject = null;
+
+        // ================================================================
+        // CACHE & NETWORK FETCHING
+        // ================================================================
+
+        function cacheData(tleText) {
+            try {
+                localStorage.setItem(CACHE_KEY, tleText);
+                localStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
+            } catch (err) {
+                console.warn("Could not cache TLE data:", err);
+            }
+        }
+
+        function readCache(maxAge = CACHE_MAX_AGE) {
+            try {
+                const cached = localStorage.getItem(CACHE_KEY);
+                const cachedTime = Number(localStorage.getItem(CACHE_TIME_KEY) || 0);
+                if (!cached) return null;
+                if (maxAge !== null && (Date.now() - cachedTime > maxAge)) return null;
+                return cached;
+            } catch (err) {
+                console.warn("Cache read failed:", err);
+                return null;
+            }
+        }
+
+        async function fetchText(url, timeoutMs = 12000) {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), timeoutMs);
+            try {
+                const response = await fetch(url, {
+                    method: "GET",
+                    cache: "no-store",
+                    signal: controller.signal
+                });
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                const text = await response.text();
+                if (!text || !text.trim()) {
+                    throw new Error("Empty response");
+                }
+                return text;
+            } finally {
+                clearTimeout(timeout);
+            }
+        }
+
+        async function fetchTLEData() {
+            // 1. Local Backend (MongoDB API / active.tle)
+            if (window.location.protocol !== "file:") {
+                try {
+                    const resp = await fetch(BACKEND_TLE_API_URL || "/api/tle/latest", { cache: "no-store" });
+                    if (resp.ok) {
+                        const rawText = await resp.text();
+                        const parsed = parseTLE(rawText);
+                        if (parsed.length > 0) {
+                            cacheData(rawText);
+                            setSystemStatus("ONLINE", `Connected to MongoDB (${parsed.length} objects)`, "green");
+                            setDataSourceLabel("MONGODB API");
+                            return parsed;
+                        }
+                    }
+                } catch (err) {
+                    try {
+                        const fileText = await fetchText("active.tle", 15000);
+                        const parsed = parseTLE(fileText);
+                        if (parsed.length > 0) {
+                            cacheData(fileText);
+                            setSystemStatus("ONLINE", `Local File (${parsed.length} objects)`, "green");
+                            setDataSourceLabel("LOCAL ACTIVE.TLE");
+                            return parsed;
+                        }
+                    } catch (fe) {}
+                }
+            }
+
+            // 2. Fresh cache check
+            const freshCache = readCache(CACHE_MAX_AGE);
+            if (freshCache) {
+                const parsed = parseTLE(freshCache);
+                if (parsed.length > 500) {
+                    setSystemStatus("ONLINE", "Cached CelesTrak TLE", "green");
+                    setDataSourceLabel("CELESTRAK (CACHE)");
+                    return parsed;
+                }
+            }
+
+            // 3. Direct CelesTrak API
+            try {
+                console.log("Connecting directly to Space-Track API...");
+                const tleText = await fetchText(CELESTRAK_API_URL, 12000);
+                const parsed = parseTLE(tleText);
+                if (parsed.length > 0) {
+                    cacheData(tleText);
+                    setSystemStatus("ONLINE", "Live Space-Track Active TLE", "green");
+                    setDataSourceLabel("CELESTRAK LIVE API");
+                    return parsed;
+                }
+            } catch (err) {
+                console.warn("Direct CelesTrak request failed (CORS/Network), attempting proxy fallbacks...", err);
+            }
+
+            // 4. CORS Proxies
+            const proxyUrls = [
+                "https://api.allorigins.win/raw?url=" + encodeURIComponent(CELESTRAK_API_URL),
+                "https://corsproxy.io/?" + encodeURIComponent(CELESTRAK_API_URL),
+                "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(CELESTRAK_API_URL)
+            ];
+
+            for (const proxyUrl of proxyUrls) {
+                try {
+                    console.log("Attempting proxy fetch:", proxyUrl);
+                    const tleText = await fetchText(proxyUrl, 10000);
+                    const parsed = parseTLE(tleText);
+                    if (parsed.length > 0) {
+                        cacheData(tleText);
+                        setSystemStatus("ONLINE", "Live CelesTrak via Proxy", "green");
+                        setDataSourceLabel("CELESTRAK VIA PROXY");
+                        return parsed;
+                    }
+                } catch (proxyErr) {
+                    console.warn("Proxy fallback failed:", proxyUrl, proxyErr);
+                }
+            }
+
+            // 5. Stale cache fallback
+            const staleCache = readCache(null);
+            if (staleCache) {
+                console.warn("Using stale cached Space-Track data as network fallback.");
+                const parsed = parseTLE(staleCache);
+                if (parsed.length > 0) {
+                    setSystemStatus("DEGRADED", "Offline (Cached Data)", "orange");
+                    setDataSourceLabel("CACHED TLE (OFFLINE)");
+                    return parsed;
+                }
+            }
+
+            throw new Error("Unable to load live TLE data from CelesTrak or proxy endpoints.");
+        }
+
+        // ================================================================
+        // TLE PARSER
+        // ================================================================
+
+        function parseTLE(tleText) {
+            if (!tleText || !tleText.trim()) return [];
+
+            const lines = tleText
+                .split(/\r?\n/)
+                .map(line => line.trim())
+                .filter(line => line.length > 0);
+
+            const objects = [];
+            let i = 0;
+
+            while (i < lines.length) {
+                const line = lines[i];
+                const next = lines[i + 1];
+                const after = lines[i + 2];
+
+                let name;
+                let line1;
+                let line2;
+
+                if (line.startsWith("1 ") && next && next.startsWith("2 ")) {
+                    line1 = line;
+                    line2 = next;
+                    name = `NORAD ${line1.substring(2, 7).trim()}`;
+                    i += 2;
+                } else if (next && next.startsWith("1 ") && after && after.startsWith("2 ")) {
+                    name = line;
+                    line1 = next;
+                    line2 = after;
+                    i += 3;
+                } else {
+                    i += 1;
+                    continue;
+                }
+
+                try {
+                    const noradId = parseInt(line1.substring(2, 7).trim(), 10);
+                    const satrec = satellite.twoline2satrec(line1, line2);
+
+                    const inclination = parseFloat(line2.substring(8, 16).trim()) || 
+                                        (satrec && satrec.inclo ? (satrec.inclo * 180 / Math.PI) : 0);
+                    
+                    const eccStr = "0." + line2.substring(26, 33).trim();
+                    const eccentricity = parseFloat(eccStr) || (satrec && satrec.ecco ? satrec.ecco : 0);
+                    
+                    const meanMotion = parseFloat(line2.substring(52, 63).trim()) || 0;
+                    const period = meanMotion > 0 ? (1440 / meanMotion).toFixed(2) : "--";
+
+                    objects.push({
+                        name: name || `NORAD ${noradId}`,
+                        noradId: noradId,
+                        line1: line1,
+                        line2: line2,
+                        satrec: satrec,
+                        inclination: inclination,
+                        eccentricity: eccentricity,
+                        period: period,
+                        type: getObjectType(name, noradId)
+                    });
+                } catch (err) {
+                    // Ignore single parsing error
+                }
+            }
+
+            return objects;
+        }
+
+        function getObjectType(name, noradId) {
+            if (noradId === ISS_NORAD_ID) return "Space Station";
+            const lower = (name || "").toLowerCase();
+            if (lower.includes("iss") || lower.includes("tianhe") || lower.includes("tiangong") || lower.includes("space station")) {
+                return "Space Station";
+            }
+            if (lower.includes("deb") || lower.includes("debris") || lower.includes("r/b") || lower.includes("rocket") || lower.includes("fragment")) {
+                return "Debris";
+            }
+            if (lower.includes("starlink") || lower.includes("oneweb")) {
+                return "Constellation";
+            }
+            return "Satellite";
+        }
+
+        function getTypeBadgeClass(type) {
+            switch (type) {
+                case "Space Station": return "type-station";
+                case "Debris": return "type-debris";
+                case "Constellation": return "type-constellation";
+                default: return "type-satellite";
+            }
+        }
+
+        // ================================================================
+        // UI RENDERING
+        // ================================================================
+
+        function renderObjects(objects) {
+            const container = document.getElementById("objectsContainer");
+            const loadMoreWrap = document.getElementById("loadMoreWrap");
+            const countSummary = document.getElementById("countSummary");
+
+            countSummary.textContent = `Showing ${Math.min(visibleLimit, objects.length).toLocaleString()} of ${objects.length.toLocaleString()} items`;
+
+            if (objects.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">◎</div>
+                        <strong style="font-size: 16px; display: block; margin-bottom: 6px;">No Orbital Objects Found</strong>
+                        <div>No satellites or debris match the current search or filter criteria.</div>
+                    </div>
+                `;
+                loadMoreWrap.style.display = "none";
+                return;
+            }
+
+            const visibleSlice = objects.slice(0, visibleLimit);
+
+            container.innerHTML = `
+                <div class="objects-grid">
+                    ${visibleSlice.map(obj => `
+                        <div class="object-card ${selectedObject && selectedObject.noradId === obj.noradId ? 'selected' : ''}" onclick="showDetails(${obj.noradId})">
+                            <div class="object-head">
+                                <div>
+                                    <div class="object-name" title="${obj.name}">${obj.name}</div>
+                                    <div class="object-id">NORAD #${obj.noradId}</div>
+                                </div>
+                                <span class="type-badge ${getTypeBadgeClass(obj.type)}">${obj.type}</span>
+                            </div>
+                            <div class="object-info">
+                                <div class="object-info-row">
+                                    <span class="object-info-label">Inclination:</span>
+                                    <span class="object-info-value">${obj.inclination.toFixed(2)}°</span>
+                                </div>
+                                <div class="object-info-row">
+                                    <span class="object-info-label">Period:</span>
+                                    <span class="object-info-value">${obj.period} min</span>
+                                </div>
+                                <div class="object-info-row">
+                                    <span class="object-info-label">Eccentricity:</span>
+                                    <span class="object-info-value">${obj.eccentricity.toFixed(5)}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `).join("")}
+                </div>
+            `;
+
+            if (objects.length > visibleLimit) {
+                loadMoreWrap.style.display = "flex";
+                document.getElementById("pagingInfo").textContent = `Displaying ${visibleLimit} / ${objects.length} total objects`;
+            } else {
+                loadMoreWrap.style.display = "none";
+            }
+        }
+
+        function loadMoreObjects() {
+            visibleLimit += ITEMS_PER_PAGE;
+            renderObjects(filteredObjects);
+        }
+
+        function showDetails(noradId) {
+            selectedObject = allObjects.find(obj => obj.noradId === noradId);
+            if (!selectedObject) return;
+
+            // Highlight card
+            document.querySelectorAll(".object-card").forEach(c => c.classList.remove("selected"));
+            
+            const panel = document.getElementById("detailsPanel");
+            document.getElementById("detailsTitle").textContent = selectedObject.name;
+
+            const detailsGrid = document.getElementById("detailsGrid");
+
+            let position = "Calculating...";
+            let velocity = "Calculating...";
+            let altitude = "-- km";
+            let latLon = "--";
+
+            if (selectedObject.satrec && (!selectedObject.satrec.error || selectedObject.satrec.error === 0)) {
+                try {
+                    const now = new Date();
+                    const state = satellite.propagate(selectedObject.satrec, now);
+                    const pos = state.position;
+                    const vel = state.velocity;
+
+                    if (pos) {
+                        position = `X: ${pos.x.toFixed(2)} km &nbsp;|&nbsp; Y: ${pos.y.toFixed(2)} km &nbsp;|&nbsp; Z: ${pos.z.toFixed(2)} km`;
+                        const gmst = satellite.gstime(now);
+                        const geodetic = satellite.eciToGeodetic(pos, gmst);
+                        const altKm = geodetic.height;
+                        const regime = altKm < 2000 ? "LEO" : (altKm < 35786 ? "MEO" : "GEO");
+                        altitude = `${altKm.toFixed(2)} km (${regime})`;
+
+                        const latDeg = satellite.degreesLat(geodetic.latitude).toFixed(2);
+                        const lonDeg = satellite.degreesLong(geodetic.longitude).toFixed(2);
+                        latLon = `${latDeg}°, ${lonDeg}°`;
+                    }
+
+                    if (vel) {
+                        const speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y + vel.z * vel.z).toFixed(2);
+                        velocity = `${speed} km/s (VX: ${vel.x.toFixed(2)}, VY: ${vel.y.toFixed(2)}, VZ: ${vel.z.toFixed(2)})`;
+                    }
+                } catch (e) {
+                    console.warn("Propagation failed:", e);
+                }
+            }
+
+            detailsGrid.innerHTML = `
+                <div class="detail-item">
+                    <div class="detail-label">NORAD Catalog ID</div>
+                    <div class="detail-value" style="color:var(--cyan); font-family:monospace;">${selectedObject.noradId}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Classification / Type</div>
+                    <div class="detail-value"><span class="type-badge ${getTypeBadgeClass(selectedObject.type)}">${selectedObject.type}</span></div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Inclination</div>
+                    <div class="detail-value">${selectedObject.inclination.toFixed(4)}°</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Orbital Period</div>
+                    <div class="detail-value">${selectedObject.period} minutes</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Eccentricity</div>
+                    <div class="detail-value">${selectedObject.eccentricity.toFixed(6)}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Altitude & Regime</div>
+                    <div class="detail-value" style="color:var(--green);">${altitude}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Sub-Satellite Point (Lat, Lon)</div>
+                    <div class="detail-value">${latLon}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Relative Orbital Velocity</div>
+                    <div class="detail-value">${velocity}</div>
+                </div>
+                <div class="detail-item" style="grid-column: 1 / -1;">
+                    <div class="detail-label">Instantaneous Position Vector (TEME / ECI)</div>
+                    <div class="detail-value" style="font-size: 12px; font-family: monospace; color: var(--cyan);">${position}</div>
+                </div>
+            `;
+
+            panel.style.display = "block";
+            panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
+
+        function closeDetails() {
+            document.getElementById("detailsPanel").style.display = "none";
+            selectedObject = null;
+            document.querySelectorAll(".object-card").forEach(c => c.classList.remove("selected"));
+        }
+
+        function setSystemStatus(title, subtitle, color = "green") {
+            const dot = document.getElementById("sysDot");
+            const status = document.getElementById("sysStatus");
+            const sub = document.getElementById("sysSub");
+
+            dot.className = "dot " + (color === "green" ? "" : color);
+            status.textContent = title;
+            sub.textContent = subtitle;
+        }
+
+        function setDataSourceLabel(label) {
+            document.getElementById("sourceLabel").textContent = label;
+        }
+
+        // ================================================================
+        // FILTERS & STATS
+        // ================================================================
+
+        function applyFilters() {
+            const search = document.getElementById("searchInput").value.trim().toLowerCase();
+            const filter = document.getElementById("filterSelect").value;
+
+            filteredObjects = allObjects.filter(obj => {
+                const matchesSearch = 
+                    !search ||
+                    obj.name.toLowerCase().includes(search) ||
+                    obj.noradId.toString().includes(search);
+
+                if (!matchesSearch) return false;
+
+                if (filter === "active") return obj.type === "Satellite" || obj.type === "Constellation" || obj.type === "Space Station";
+                if (filter === "debris") return obj.type === "Debris";
+                if (filter === "stations") return obj.type === "Space Station";
+                if (filter === "constellation") return obj.type === "Constellation";
+
+                return true;
+            });
+
+            visibleLimit = ITEMS_PER_PAGE;
+            renderObjects(filteredObjects);
+        }
+
+        function updateStats() {
+            const total = allObjects.length;
+            const active = allObjects.filter(obj => obj.type !== "Debris").length;
+            const debris = allObjects.filter(obj => obj.type === "Debris").length;
+            const now = new Date();
+            const timeStr = `${now.getUTCHours().toString().padStart(2, "0")}:${now.getUTCMinutes().toString().padStart(2, "0")} UTC`;
+
+            document.getElementById("totalObjects").textContent = total.toLocaleString();
+            document.getElementById("activeObjects").textContent = active.toLocaleString();
+            document.getElementById("debrisObjects").textContent = debris.toLocaleString();
+            document.getElementById("lastUpdate").textContent = timeStr;
+
+            document.getElementById("statusIndicator").className = "dot";
+            document.getElementById("statusText").textContent = `Live tracking ${total.toLocaleString()} objects from Space-Track`;
+        }
+
+        // ================================================================
+        // INITIALIZATION
+        // ================================================================
+
+        async function init() {
+            try {
+                allObjects = await fetchTLEData();
+                console.log(`Successfully loaded ${allObjects.length} objects from TLE catalog.`);
+                updateStats();
+                applyFilters();
+            } catch (error) {
+                console.error("Failed to load live TLE data:", error);
+                console.log("Switching to sample fallback objects...");
+
+                allObjects = SAMPLE_OBJECTS.map(obj => {
+                    let satrec = null;
+                    try {
+                        satrec = satellite.twoline2satrec(obj.line1, obj.line2);
+                    } catch (e) {}
+                    return {
+                        ...obj,
+                        satrec: satrec
+                    };
+                });
+
+                setSystemStatus("DEMO MODE", "Sample Data (Offline)", "orange");
+                setDataSourceLabel("DEMO SAMPLE DATA");
+                
+                document.getElementById("statusIndicator").className = "dot orange";
+                document.getElementById("statusText").textContent = "Demo mode: Live TLE unavailable, showing sample objects";
+                
+                updateStats();
+                applyFilters();
+            }
+        }
+
+        // Sidebar Controls
+        const sidebar = document.getElementById("sidebar");
+        const sidebarOverlay = document.getElementById("sidebarOverlay");
+        const sidebarToggleBtn = document.getElementById("sidebarToggleBtn");
+        const sidebarCloseBtn = document.getElementById("sidebarCloseBtn");
+
+        function openSidebar() {
+            if (sidebar) sidebar.classList.add("open");
+            if (sidebarOverlay) sidebarOverlay.classList.add("active");
+        }
+
+        function closeSidebar() {
+            if (sidebar) sidebar.classList.remove("open");
+            if (sidebarOverlay) sidebarOverlay.classList.remove("active");
+        }
+
+        function toggleSidebar() {
+            if (sidebar && sidebar.classList.contains("open")) closeSidebar();
+            else openSidebar();
+        }
+
+        if (sidebarToggleBtn) sidebarToggleBtn.addEventListener("click", toggleSidebar);
+        if (sidebarCloseBtn) sidebarCloseBtn.addEventListener("click", closeSidebar);
+        if (sidebarOverlay) sidebarOverlay.addEventListener("click", closeSidebar);
+
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape" && sidebar && sidebar.classList.contains("open")) closeSidebar();
+        });
+
+        // Event Listeners
+        document.getElementById("searchInput").addEventListener("input", applyFilters);
+        document.getElementById("filterSelect").addEventListener("change", applyFilters);
+
+        // Start initialization
+        init();
+
+        // ============================================================
+        // SPACE-THEMED FAST PAGE TRANSITION INTERCEPTOR
+        // ============================================================
+        (function initSpaceTransition() {
+            const loader = document.getElementById("spaceWarpLoader");
+            const bar = document.getElementById("spaceWarpBar");
+            const status = document.getElementById("spaceWarpStatus");
+            const icon = document.getElementById("spaceWarpIcon");
+
+            const telemetryStatusMsgs = [
+                "COMPUTING SGP4 EPHEMERIS...",
+                "ALIGNING SENSOR VECTOR...",
+                "SYNCHRONIZING ORBITAL MESH...",
+                "ACQUIRING TELEMETRY UPLINK...",
+                "CALIBRATING CONJUNCTION MATRIX..."
+            ];
+
+            function dismissEntranceLoader() {
+                if (loader) {
+                    if (bar) bar.style.width = "100%";
+                    setTimeout(() => {
+                        loader.classList.remove("active");
+                        setTimeout(() => {
+                            if (bar) bar.style.width = "0%";
+                        }, 260);
+                    }, 200);
+                }
+            }
+
+            if (document.readyState === "complete" || document.readyState === "interactive") {
+                dismissEntranceLoader();
+            } else {
+                window.addEventListener("DOMContentLoaded", dismissEntranceLoader);
+            }
+
+            document.addEventListener("click", (e) => {
+                const link = e.target.closest("a");
+                if (!link) return;
+
+                const href = link.getAttribute("href");
+                if (!href || href.startsWith("#") || href.startsWith("javascript:") || link.target === "_blank") {
+                    return;
+                }
+
+                const validPages = ["earth.html", "orb_obj.html", "grid.html", "analytics.html", "index.html"];
+                const targetPage = href.split("?")[0].split("#")[0];
+
+                if (validPages.some(p => targetPage.endsWith(p))) {
+                    e.preventDefault();
+
+                    if (loader) {
+                        if (status) {
+                            if (targetPage.includes("earth")) status.innerText = "ENGAGING 3D GLOBE RENDERER...";
+                            else if (targetPage.includes("orb_obj")) status.innerText = "QUERYING ORBITAL DATABASE...";
+                            else if (targetPage.includes("grid")) status.innerText = "PROCESSING CONJUNCTION SENSORS...";
+                            else if (targetPage.includes("analytics")) status.innerText = "COMPILING KEPLERIAN ANALYTICS...";
+                            else status.innerText = telemetryStatusMsgs[Math.floor(Math.random() * telemetryStatusMsgs.length)];
+                        }
+
+                        if (icon) {
+                            if (targetPage.includes("earth")) icon.className = "fa-solid fa-earth-americas";
+                            else if (targetPage.includes("orb_obj")) icon.className = "fa-solid fa-cubes";
+                            else if (targetPage.includes("grid")) icon.className = "fa-solid fa-triangle-exclamation";
+                            else if (targetPage.includes("analytics")) icon.className = "fa-solid fa-chart-line";
+                            else icon.className = "fa-solid fa-satellite";
+                        }
+
+                        loader.classList.add("active");
+                        if (bar) {
+                            bar.style.width = "0%";
+                            setTimeout(() => { bar.style.width = "100%"; }, 20);
+                        }
+
+                        setTimeout(() => {
+                            window.location.href = href;
+                        }, 280);
+                    } else {
+                        window.location.href = href;
+                    }
+                }
+            });
+
+            window.addEventListener("pageshow", (e) => {
+                if (e.persisted && loader) {
+                    loader.classList.remove("active");
+                    if (bar) bar.style.width = "0%";
+                }
+            });
+        })();
+    </script>
+</body>
+
+</html>
