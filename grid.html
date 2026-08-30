@@ -807,11 +807,342 @@
             color: #070b14;
         }
 
-        @media(max-width: 1000px) {
-            .cards {
-                grid-template-columns: repeat(2, 1fr);
+        /* ============================================================
+           FLOATING HUD CAPSULE BUTTON (Shown on screens <= 1212px or <= 840px)
+           ============================================================ */
+        .hud-capsule-btn {
+            display: none;
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 25;
+            background: rgba(10, 17, 30, 0.88);
+            border: 1px solid var(--border-glass-glow);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-radius: 999px;
+            padding: 10px 22px;
+            color: #eaf2ff;
+            font-family: var(--font-main);
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.65), 0 0 24px rgba(70, 217, 255, 0.25);
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            align-items: center;
+            gap: 10px;
+            white-space: nowrap;
+            user-select: none;
+        }
+
+        .hud-capsule-btn:hover {
+            border-color: var(--cyan);
+            transform: translateX(-50%) translateY(-2px);
+            box-shadow: 0 16px 42px rgba(0, 0, 0, 0.75), 0 0 32px var(--cyan-glow);
+            color: #ffffff;
+        }
+
+        .hud-pulse-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--red);
+            box-shadow: 0 0 10px var(--red);
+            animation: pulseDot 1.8s infinite;
+        }
+
+        .hud-badge-count {
+            background: rgba(255, 82, 109, 0.2);
+            border: 1px solid rgba(255, 82, 109, 0.45);
+            color: var(--red);
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-family: var(--font-mono);
+            font-weight: 700;
+        }
+
+        .hud-btn-arrow {
+            font-size: 11px;
+            color: var(--cyan);
+            transition: transform 0.25s ease;
+        }
+
+        /* ============================================================
+           GLASSMORPHIC CONJUNCTION BOTTOM SHEET / DRAWER
+           ============================================================ */
+        .conjunction-sheet-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(4, 7, 14, 0.72);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 10000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+        }
+
+        .conjunction-sheet-backdrop.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .conjunction-bottom-sheet {
+            background: rgba(10, 17, 30, 0.96);
+            border: 1px solid var(--border-glass-glow);
+            border-bottom: none;
+            backdrop-filter: blur(32px);
+            -webkit-backdrop-filter: blur(32px);
+            border-radius: 24px 24px 0 0;
+            width: 100%;
+            max-width: 640px;
+            max-height: 85vh;
+            overflow-y: auto;
+            padding: 12px 22px 34px;
+            box-shadow: 0 -16px 54px rgba(0, 0, 0, 0.8), 0 0 36px rgba(70, 217, 255, 0.18);
+            transform: translateY(100%);
+            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .conjunction-sheet-backdrop.active .conjunction-bottom-sheet {
+            transform: translateY(0);
+        }
+
+        .sheet-handle-bar {
+            display: flex;
+            justify-content: center;
+            padding: 6px 0 12px;
+            cursor: pointer;
+        }
+
+        .sheet-handle {
+            width: 44px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.25);
+            border-radius: 999px;
+            transition: background 0.2s;
+        }
+
+        .sheet-handle-bar:hover .sheet-handle {
+            background: var(--cyan);
+        }
+
+        .sheet-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            border-bottom: 1px solid var(--border-glass);
+            padding-bottom: 12px;
+        }
+
+        .sheet-title-wrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sheet-title-wrap h3 {
+            font-size: 15px;
+            font-weight: 700;
+            color: #fff;
+            margin: 0;
+            letter-spacing: -0.2px;
+        }
+
+        .sheet-close-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #c4d3e8;
+            width: 32px;
+            height: 32px;
+            border-radius: 9px;
+            cursor: pointer;
+            display: grid;
+            place-items: center;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .sheet-close-btn:hover {
+            color: #fff;
+            background: rgba(255, 82, 109, 0.35);
+            border-color: var(--red);
+        }
+
+        .sheet-metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .sheet-metric-item {
+            background: rgba(14, 23, 40, 0.65);
+            border: 1px solid var(--border-glass);
+            padding: 14px 16px;
+            border-radius: 14px;
+            transition: border-color 0.2s;
+        }
+
+        .sheet-metric-item:hover {
+            border-color: var(--border-glass-glow);
+        }
+
+        .metric-label {
+            font-size: 10px;
+            color: var(--muted);
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-val {
+            font-size: 22px;
+            font-weight: 800;
+            font-family: var(--font-mono);
+            color: #fff;
+            margin: 4px 0 2px;
+        }
+
+        .metric-sub {
+            font-size: 10px;
+            color: var(--muted);
+        }
+
+        /* ── DESKTOP / LAPTOP: above 1212px wide AND above 840px tall ── */
+        /* Restore all desktop glassmorphic overlays; hide mobile-only elements */
+        @media (min-width: 1213px) and (min-height: 841px) {
+            /* Ensure floating KPI cards are always shown on desktop */
+            .floating-cards-overlay {
+                display: grid !important;
             }
-            .grid-2col {
+
+            /* Desktop bplaneChart fixed height */
+            #bplaneChart {
+                height: 720px;
+            }
+
+            /* Desktop 2-column bottom grid */
+            .bottom-grid-2col {
+                grid-template-columns: minmax(0, 1.15fr) minmax(0, 1.25fr);
+            }
+
+            /* Always show CAM panel on desktop */
+            .bottom-grid-2col aside.panel {
+                display: flex;
+            }
+
+            /* Hide all mobile-only elements */
+            .hud-capsule-btn {
+                display: none !important;
+            }
+
+            .conjunction-sheet-backdrop {
+                display: none !important;
+            }
+        }
+
+        /* ── MOBILE / TABLET: below 1212px wide OR below 840px tall ── */
+        @media (max-width: 1212px), (max-height: 840px) {
+            #bplaneChart {
+                height: clamp(560px, 72vh, 800px);
+            }
+
+            /* Hide heavy overlay cards on 3D encounter chart */
+            .floating-cards-overlay {
+                display: none !important;
+            }
+
+            /* Show sleek single capsule button */
+            .hud-capsule-btn {
+                display: inline-flex !important;
+            }
+
+            .bottom-grid-2col {
+                grid-template-columns: 1fr;
+            }
+
+            /* Hide duplicate outside CAM panel on mobile since it is integrated into HUD */
+            .bottom-grid-2col aside.panel {
+                display: none !important;
+            }
+        }
+
+        @media (max-width: 768px) {
+            main {
+                padding: 14px 14px 40px;
+            }
+
+            .top {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
+            }
+
+            .live-badge {
+                align-self: flex-start;
+            }
+
+            .hero-stage-header {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+                padding: 10px 14px;
+            }
+
+            .chart-toggle-bar-floating {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .toggle-btn {
+                font-size: 10px;
+                padding: 5px 9px;
+            }
+
+            #bplaneChart {
+                height: clamp(520px, 70vh, 740px);
+            }
+
+            #timelineChart {
+                height: 320px;
+            }
+
+            .table-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .search-box {
+                width: 100%;
+            }
+
+            .filter-select {
+                width: 100%;
+            }
+
+            .sheet-metrics-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+
+            .sheet-metric-item {
+                padding: 10px 12px;
+            }
+
+            .metric-val {
+                font-size: 18px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .sheet-metrics-grid {
                 grid-template-columns: 1fr;
             }
         }
@@ -1157,6 +1488,14 @@
 
                 <!-- ENLARGED 720px 3D / 2D PLOT CANVAS -->
                 <div id="bplaneChart"></div>
+
+                <!-- FLOATING HUD CAPSULE BUTTON (Responsive < 1212px) -->
+                <button class="hud-capsule-btn" id="hudCapsuleBtn" onclick="toggleConjunctionSheet()" title="Tap to open live conjunction telemetry & metrics">
+                    <span class="hud-pulse-dot"></span>
+                    <span>Conjunction HUD</span>
+                    <span class="hud-badge-count" id="hudCriticalBadge">0 Critical</span>
+                    <i class="fa-solid fa-chevron-up hud-btn-arrow"></i>
+                </button>
             </section>
 
             <!-- 2-COLUMN SECTION: CAM ADVISORY + RISK TIMELINE -->
@@ -1186,74 +1525,76 @@
                                     <b id="camDistVal" style="color:var(--red);">--</b>
                                 </div>
                                 <div>
-                                    <span>Relative Speed:</span>
+                                    <span>Rel Velocity:</span>
                                     <b id="camVelVal">--</b>
                                 </div>
                                 <div>
-                                    <span>Collision Probability:</span>
-                                    <b id="camProbVal">--</b>
+                                    <span>Collision Prob (Pc):</span>
+                                    <b id="camProbVal" style="color:var(--red);">--</b>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- MANEUVER PROPOSAL -->
+                        <!-- RECOMMENDED MANEUVER BOX -->
                         <div class="maneuver-box">
                             <div class="maneuver-title">
-                                <span>🚀</span> Recommended Avoidance Burn
+                                <span style="font-size:14px;">⚡</span> Recommended Avoidance Burn
                             </div>
 
                             <div class="maneuver-grid">
                                 <div>
-                                    <span>Optimal Burn (&Delta;v):</span>
-                                    <b id="camDeltaV">Calculating...</b>
+                                    <span>Required ΔV:</span>
+                                    <b id="camDeltaV">+0.14 m/s (Prograde)</b>
                                 </div>
                                 <div>
-                                    <span>Execution Window:</span>
-                                    <b id="camBurnWindow" style="color:#fff;">--</b>
+                                    <span>Optimal Burn Window:</span>
+                                    <b id="camBurnWindow">TCA - 45 min</b>
                                 </div>
                                 <div>
-                                    <span>Propellant Cost:</span>
-                                    <b id="camFuelCost" style="color:var(--orange);">--</b>
+                                    <span>Est. Propellant Cost:</span>
+                                    <b id="camFuelCost">42.5 g Hydrazine</b>
                                 </div>
                                 <div>
-                                    <span>Post-Maneuver Distance:</span>
-                                    <b id="camPostDist" style="color:var(--cyan);">--</b>
+                                    <span>Post-Maneuver Miss:</span>
+                                    <b id="camPostDist">18.40 km (Safe Clearance)</b>
                                 </div>
                             </div>
 
                             <button class="cam-btn" id="simManeuverBtn" onclick="simulateManeuver()">
-                                <span>⚡</span> Simulate Avoidance Maneuver
+                                <span>🚀 Simulate Avoidance Burn</span>
                             </button>
-                        </div>
-
-                        <div style="font-size: 11px; color: var(--muted); line-height: 1.45;">
-                            * Calculated via SGP4 differential propagation. Executing an along-track &Delta;v burn 0.5 orbital periods before TCA minimizes propellant expenditure while safely shifting phasing beyond the keep-out ellipsoid.
                         </div>
                     </div>
                 </aside>
 
-                <!-- CONJUNCTION TIMELINE CHART -->
+                <!-- RISK TIMELINE CHART -->
                 <section class="panel">
                     <div class="panelTitle">
-                        <strong>24-Hour Conjunction Risk Timeline</strong>
-                        <span>Miss Distance (km) vs Encounter Time (UTC)</span>
+                        <strong>24-Hour Miss Distance Timeline</strong>
+                        <span>Radial Proximity vs TCA (km)</span>
                     </div>
-                    <div id="timelineChart"></div>
+                    <div style="padding:15px; flex:1; display:flex; align-items:center;">
+                        <div id="timelineChart"></div>
+                    </div>
                 </section>
 
             </div>
 
-            <!-- CONJUNCTION DATA MESSAGES (CDM) TABLE -->
+            <!-- UPCOMING CONJUNCTION DATA MESSAGES (CDM) TABLE -->
             <section class="table-panel">
                 <div class="table-controls">
-                    <strong style="font-size: 14px;">Conjunction Data Messages (CDM Catalog)</strong>
-                    <div style="display:flex; gap:10px; align-items:center;">
-                        <input type="text" id="tableSearch" class="search-box" placeholder="Search satellite or debris..." oninput="applyTableFilter()" />
-                        <select id="riskFilter" class="filter-select" onchange="applyTableFilter()">
-                            <option value="all">All Risk Levels</option>
-                            <option value="critical">Critical (&lt; 2.0 km)</option>
-                            <option value="warning">Warning (2 - 10 km)</option>
-                            <option value="nominal">Nominal (&gt; 10 km)</option>
+                    <div>
+                        <strong style="font-size:14px; font-weight:700; color:#fff;">Upcoming Conjunction Data Messages (CDM)</strong>
+                        <div style="font-size:11px; color:var(--muted); margin-top:2px;">Standard CCSDS 508.0-B-1 Conjunction Telemetry</div>
+                    </div>
+
+                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                        <input type="text" class="search-box" id="tableSearch" placeholder="Search satellite or NORAD ID..." oninput="filterTable()">
+                        <select class="filter-select" id="riskFilter" onchange="filterTable()">
+                            <option value="all">All Risk Tiers</option>
+                            <option value="critical">Critical (&lt; 1.0 km)</option>
+                            <option value="warning">Warning (&lt; 5.0 km)</option>
+                            <option value="nominal">Nominal (&gt; 5.0 km)</option>
                         </select>
                     </div>
                 </div>
@@ -1262,8 +1603,8 @@
                     <table>
                         <thead>
                             <tr>
-                                <th>Primary Asset</th>
-                                <th>Chaser / Threat Object</th>
+                                <th>Primary Object</th>
+                                <th>Secondary Object</th>
                                 <th>TCA (UTC)</th>
                                 <th>Miss Distance</th>
                                 <th>Rel Velocity</th>
@@ -1282,6 +1623,109 @@
                     </table>
                 </div>
             </section>
+
+            <!-- GLASSMORPHIC CONJUNCTIONS BOTTOM SHEET / MODAL (< 1212px) -->
+            <div class="conjunction-sheet-backdrop" id="conjunctionBackdrop" onclick="toggleConjunctionSheet(false)">
+                <div class="conjunction-bottom-sheet" onclick="event.stopPropagation()">
+                    <div class="sheet-handle-bar" onclick="toggleConjunctionSheet(false)">
+                        <div class="sheet-handle"></div>
+                    </div>
+
+                    <div class="sheet-header">
+                        <div class="sheet-title-wrap">
+                            <i class="fa-solid fa-triangle-exclamation" style="color: var(--cyan);"></i>
+                            <h3>Conjunction Telemetry & Stats</h3>
+                        </div>
+                        <button class="sheet-close-btn" onclick="toggleConjunctionSheet(false)" title="Close HUD">✕</button>
+                    </div>
+
+                    <div class="sheet-body">
+                        <!-- 4 Main KPI Cards Grid -->
+                        <div class="sheet-metrics-grid">
+                            <div class="sheet-metric-item">
+                                <span class="metric-label">Pairs Screened (24h)</span>
+                                <div class="metric-val" id="sheetCardScreened">--</div>
+                                <span class="metric-sub">Orbital intersections</span>
+                            </div>
+                            <div class="sheet-metric-item">
+                                <span class="metric-label">High Risk Events</span>
+                                <div class="metric-val" id="sheetCardCritical" style="color:var(--red)">--</div>
+                                <span class="metric-sub">Miss distance &lt; 5.0 km</span>
+                            </div>
+                            <div class="sheet-metric-item">
+                                <span class="metric-label">Next Close Approach</span>
+                                <div class="metric-val" id="sheetCardNextTca" style="color:var(--orange); font-size:16px;">--</div>
+                                <span class="metric-sub" id="sheetCardNextPair">Screening catalog...</span>
+                            </div>
+                            <div class="sheet-metric-item">
+                                <span class="metric-label">Avg Rel Velocity</span>
+                                <div class="metric-val" id="sheetCardAvgVel" style="color:var(--cyan)">--</div>
+                                <span class="metric-sub">Hypervelocity encounters</span>
+                            </div>
+                        </div>
+
+                        <!-- FULL CAM MANEUVER ADVISORY INSIDE HUD -->
+                        <div class="cam-body" style="padding: 0; background: transparent; height: auto;">
+                            <div class="encounter-summary-box" style="margin-bottom: 12px; background: rgba(14,23,40,0.85);">
+                                <div class="encounter-header">
+                                    <div class="encounter-title" id="sheetCamPairTitle">Evaluating primary encounter...</div>
+                                    <span class="badge critical" id="sheetCamRiskBadge">CRITICAL</span>
+                                </div>
+
+                                <div class="encounter-grid">
+                                    <div>
+                                        <span>Time to TCA:</span>
+                                        <b id="sheetCamTcaVal">--</b>
+                                    </div>
+                                    <div>
+                                        <span>Miss Distance:</span>
+                                        <b id="sheetCamDistVal" style="color:var(--red);">--</b>
+                                    </div>
+                                    <div>
+                                        <span>Rel Velocity:</span>
+                                        <b id="sheetCamVelVal">--</b>
+                                    </div>
+                                    <div>
+                                        <span>Collision Prob (Pc):</span>
+                                        <b id="sheetCamProbVal" style="color:var(--red);">--</b>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- RECOMMENDED MANEUVER BOX -->
+                            <div class="maneuver-box" style="background: rgba(10, 20, 38, 0.95); border: 1px solid var(--cyan-glow);">
+                                <div class="maneuver-title" style="display:flex; justify-content:space-between; align-items:center;">
+                                    <div><span style="font-size:14px;">⚡</span> Recommended Avoidance Burn</div>
+                                    <span class="badge critical" id="sheetCamStatusBadge" style="font-size:9px;">ACTION REQUIRED</span>
+                                </div>
+
+                                <div class="maneuver-grid">
+                                    <div>
+                                        <span>Required ΔV:</span>
+                                        <b id="sheetCamDeltaV">+0.14 m/s (Prograde)</b>
+                                    </div>
+                                    <div>
+                                        <span>Optimal Burn Window:</span>
+                                        <b id="sheetCamBurnWindow">TCA - 45 min</b>
+                                    </div>
+                                    <div>
+                                        <span>Est. Propellant Cost:</span>
+                                        <b id="sheetCamFuelCost">42.5 g Hydrazine</b>
+                                    </div>
+                                    <div>
+                                        <span>Post-Maneuver Miss:</span>
+                                        <b id="sheetCamPostDist">18.40 km (Safe Clearance)</b>
+                                    </div>
+                                </div>
+
+                                <button class="cam-btn" id="sheetSimManeuverBtn" onclick="simulateManeuver()">
+                                    <span>🚀 Simulate Avoidance Burn</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
         </main>
     </div>
@@ -1694,6 +2138,52 @@ DELTA 1 DEB
         // KPIS & STATS
         // ================================================================
 
+        // ================================================================
+        // MOBILE & TABLET CONJUNCTION BOTTOM SHEET TOGGLE (< 1212px)
+        // ================================================================
+        function toggleConjunctionSheet(forceState) {
+            const backdrop = document.getElementById("conjunctionBackdrop");
+            const capsuleBtn = document.getElementById("hudCapsuleBtn");
+            if (!backdrop) return;
+
+            const isCurrentlyActive = backdrop.classList.contains("active");
+            const nextState = (forceState !== undefined) ? forceState : !isCurrentlyActive;
+
+            if (nextState) {
+                backdrop.classList.add("active");
+                document.body.style.overflow = "hidden";
+                if (capsuleBtn) {
+                    const arrow = capsuleBtn.querySelector(".hud-btn-arrow");
+                    if (arrow) arrow.style.transform = "rotate(180deg)";
+                }
+            } else {
+                backdrop.classList.remove("active");
+                document.body.style.overflow = "";
+                if (capsuleBtn) {
+                    const arrow = capsuleBtn.querySelector(".hud-btn-arrow");
+                    if (arrow) arrow.style.transform = "rotate(0deg)";
+                }
+            }
+        }
+
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape") toggleConjunctionSheet(false);
+        });
+
+        // Plotly automatic chart resize observer on window dimension changes
+        window.addEventListener("resize", () => {
+            if (window.Plotly) {
+                const bplane = document.getElementById('bplaneChart');
+                const timeline = document.getElementById('timelineChart');
+                if (bplane) Plotly.Plots.resize('bplaneChart');
+                if (timeline) Plotly.Plots.resize('timelineChart');
+            }
+        });
+
+        // ================================================================
+        // KPIS & STATS
+        // ================================================================
+
         function updateKPIs() {
             const total = allConjunctions.length;
             const critical = allConjunctions.filter(c => c.riskTier === 'critical').length;
@@ -1706,13 +2196,33 @@ DELTA 1 DEB
                 ? (allParsedSatellites.length * (allParsedSatellites.length - 1)) / 2 
                 : 3570;
 
-            document.getElementById("cardScreened").textContent = screenedTotal.toLocaleString();
-            document.getElementById("cardCritical").textContent = critical.toString();
-            document.getElementById("cardAvgVel").textContent = `${avgVel} km/s`;
+            const setEl = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+
+            const screenedStr = screenedTotal.toLocaleString();
+            const critStr = critical.toString();
+            const velStr = `${avgVel} km/s`;
+
+            setEl("cardScreened", screenedStr);
+            setEl("cardCritical", critStr);
+            setEl("cardAvgVel", velStr);
+
+            setEl("sheetCardScreened", screenedStr);
+            setEl("sheetCardCritical", critStr);
+            setEl("sheetCardAvgVel", velStr);
+            setEl("hudCriticalBadge", `${critStr} Critical`);
 
             const closest = allConjunctions[0];
             if (closest) {
-                document.getElementById("cardNextPair").textContent = `${closest.objA.name} ✕ ${closest.objB.name}`;
+                const pairStr = `${closest.objA.name} ✕ ${closest.objB.name}`;
+                setEl("cardNextPair", pairStr);
+                setEl("sheetCardNextPair", pairStr);
+                setEl("sheetCamPairTitle", pairStr);
+                const sheetBadge = document.getElementById("sheetCamRiskBadge");
+                if (sheetBadge) {
+                    const rTier = (closest.riskTier || "critical").toUpperCase();
+                    sheetBadge.textContent = rTier;
+                    sheetBadge.className = `badge ${closest.riskTier || 'critical'}`;
+                }
             }
         }
 
@@ -1736,7 +2246,10 @@ DELTA 1 DEB
             const next = allConjunctions[0];
             const timeStr = formatGridCountdown(next.tcaTimestamp, next.tcaMinutes);
 
-            document.getElementById("cardNextTca").textContent = timeStr;
+            const setEl = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+            setEl("cardNextTca", timeStr);
+            setEl("sheetCardNextTca", timeStr);
+
             if (selectedConjunction) {
                 const selStr = formatGridCountdown(selectedConjunction.tcaTimestamp, selectedConjunction.tcaMinutes);
                 const camTca = document.getElementById("camTcaVal");
@@ -1821,26 +2334,27 @@ DELTA 1 DEB
             const conj = selectedConjunction || allConjunctions[0];
             if (!conj) return;
 
-            const steps = 70;
+            const steps = 110;
             const rA = 6371 + (conj.altitudeKm || 500);
+            const orbitArcSpan = 0.72; // ~41° orbital trajectory arc for extensive spatial visibility
 
             // 1. Primary Asset Nominal Orbit (Unperturbed Baseline)
             const xA_nom = [], yA_nom = [], zA_nom = [];
             for (let i = -steps; i <= steps; i++) {
-                const angle = (i / steps) * 0.28;
+                const angle = (i / steps) * orbitArcSpan;
                 xA_nom.push(rA * Math.cos(angle));
                 yA_nom.push(rA * Math.sin(angle));
                 zA_nom.push(rA * Math.sin(angle * 0.55));
             }
 
             // 2. Primary Asset Active Orbit (Perturbed via Maneuver Progress)
-            // Branching off from the burn execution point (i = -25, ~45m before TCA)
+            // Branching off from the burn execution point (i = -40, ~45m before TCA)
             const xA = [], yA = [], zA = [];
-            const maxDeltaR = 18.25; // km radial/phasing separation
+            const maxDeltaR = 22.5; // km radial/phasing separation
             for (let i = -steps; i <= steps; i++) {
-                const angle = (i / steps) * 0.28;
-                const burnWeight = Math.max(0, (i + 25) / (steps + 25)); // Smooth burn curvature
-                const radialDisplacement = maxDeltaR * maneuverProgress * burnWeight;
+                const angle = (i / steps) * orbitArcSpan;
+                const burnWeight = Math.max(0, (i + 40) / (steps + 40)); // Smooth burn curvature
+                const radialDisplacement = maxDeltaR * maneuverProgress * Math.pow(burnWeight, 1.2);
                 const rCurrent = rA + radialDisplacement;
 
                 xA.push(rCurrent * Math.cos(angle));
@@ -1848,18 +2362,18 @@ DELTA 1 DEB
                 zA.push(rCurrent * Math.sin(angle * 0.55));
             }
 
-            // 3. Threat / Debris Orbit (Ballistic track)
+            // 3. Threat / Debris Orbit (Ballistic track with inclination cross)
             const xB = [], yB = [], zB = [];
             const missNominal = conj.missDistanceKm * 15;
-            const incB = 0.48;
+            const incB = 0.52;
             for (let i = -steps; i <= steps; i++) {
-                const angle = (i / steps) * 0.28;
+                const angle = (i / steps) * orbitArcSpan;
                 xB.push(rA * Math.cos(angle + 0.008) + missNominal);
                 yB.push(rA * Math.sin(angle) * Math.cos(incB) - missNominal * 0.4);
                 zB.push(rA * Math.sin(angle) * Math.sin(incB));
             }
 
-            // Current satellite positions at encounter (index = steps)
+            // Current satellite positions at encounter (center index = steps, i = 0)
             const posAsset = { x: xA[steps], y: yA[steps], z: zA[steps] };
             const posThreat = { x: xB[steps], y: yB[steps], z: zB[steps] };
 
@@ -1890,7 +2404,7 @@ DELTA 1 DEB
                     mode: 'lines',
                     name: maneuverProgress > 0.1 ? `${conj.objA.name} (Post-Burn Trajectory)` : `${conj.objA.name} Orbit`,
                     x: xA, y: yA, z: zA,
-                    line: { color: isSafe ? '#42e6a4' : '#46d9ff', width: 5.0 },
+                    line: { color: isSafe ? '#42e6a4' : '#46d9ff', width: 5.5 },
                     hoverinfo: 'name'
                 },
                 // 3. Primary Asset Satellite Marker
@@ -1910,11 +2424,11 @@ DELTA 1 DEB
                     type: 'scatter3d',
                     mode: 'lines+markers',
                     name: 'Δv Thrust Vector (+0.14 m/s)',
-                    x: [xA_nom[steps - 25], xA[steps - 25] + 25 * maneuverProgress],
-                    y: [yA_nom[steps - 25], yA[steps - 25] + 30 * maneuverProgress],
-                    z: [zA_nom[steps - 25], zA[steps - 25] + 15 * maneuverProgress],
+                    x: [xA_nom[steps - 40], xA[steps - 40] + 35 * maneuverProgress],
+                    y: [yA_nom[steps - 40], yA[steps - 40] + 40 * maneuverProgress],
+                    z: [zA_nom[steps - 40], zA[steps - 40] + 20 * maneuverProgress],
                     line: { color: '#ffd166', width: 4 },
-                    marker: { size: [0, 6 * maneuverProgress], color: '#ffd166', symbol: 'circle' },
+                    marker: { size: [0, 7 * maneuverProgress], color: '#ffd166', symbol: 'circle' },
                     hoverinfo: 'name',
                     showlegend: maneuverProgress > 0.1
                 },
@@ -1922,9 +2436,9 @@ DELTA 1 DEB
                 {
                     type: 'scatter3d',
                     mode: 'lines',
-                    name: `${conj.objB.name} Orbit (Debris)`,
+                    name: `${conj.objB.name} Orbit (Threat Track)`,
                     x: xB, y: yB, z: zB,
-                    line: { color: '#ff526d', width: 4.5 },
+                    line: { color: '#ff526d', width: 5.0 },
                     hoverinfo: 'name'
                 },
                 // 6. Threat Object Marker
@@ -1947,7 +2461,7 @@ DELTA 1 DEB
                     x: [midX], y: [midY], z: [midZ],
                     marker: {
                         color: isSafe ? 'rgba(66, 230, 164, 0.35)' : 'rgba(255, 82, 109, 0.45)',
-                        size: isSafe ? 10 : 20,
+                        size: isSafe ? 12 : 22,
                         symbol: 'circle',
                         line: { color: accentColor, width: 2 }
                     },
@@ -1966,16 +2480,16 @@ DELTA 1 DEB
                 }
             ];
 
-            const eyeR = 2.0;
+            const eyeR = 2.4;
             const eyeX = eyeR * Math.cos(rotAngle3D);
             const eyeY = eyeR * Math.sin(rotAngle3D);
-            const eyeZ = 1.1 + 0.3 * Math.sin(rotAngle3D * 0.7);
+            const eyeZ = 1.25 + 0.35 * Math.sin(rotAngle3D * 0.7);
 
             const layout = {
                 paper_bgcolor: 'transparent',
                 plot_bgcolor: 'transparent',
-                height: 720,
-                margin: { l: 0, r: 0, t: 80, b: 0 },
+                autosize: true,
+                margin: { l: 0, r: 0, t: 60, b: 0 },
                 scene: {
                     xaxis: { title: 'X (km)', color: '#7f91ad', gridcolor: '#16233b', showbackground: false },
                     yaxis: { title: 'Y (km)', color: '#7f91ad', gridcolor: '#16233b', showbackground: false },
@@ -2013,10 +2527,10 @@ DELTA 1 DEB
                 if (chartMode === '3d' && is3DAutoRotating && document.getElementById('bplaneChart')) {
                     rotAngle3D += 0.22 * delta; // Continuous rotation velocity
 
-                    const eyeR = 2.0;
+                    const eyeR = 2.4;
                     const eyeX = eyeR * Math.cos(rotAngle3D);
                     const eyeY = eyeR * Math.sin(rotAngle3D);
-                    const eyeZ = 1.1 + 0.3 * Math.sin(rotAngle3D * 0.7);
+                    const eyeZ = 1.25 + 0.35 * Math.sin(rotAngle3D * 0.7);
 
                     Plotly.relayout('bplaneChart', {
                         'scene.camera.eye': { x: eyeX, y: eyeY, z: eyeZ }
@@ -2406,32 +2920,55 @@ DELTA 1 DEB
 
             const nameA = c.objA ? c.objA.name : 'Primary Asset';
             const nameB = c.objB ? c.objB.name : 'Threat Object';
-            document.getElementById("camPairTitle").textContent = `${nameA} ✕ ${nameB}`;
-            
-            const riskBadge = document.getElementById("camRiskBadge");
-            riskBadge.textContent = `Pc: ${c.collisionProb || '1.0 × 10⁻⁴'}`;
-            riskBadge.className = `badge ${c.riskTier || 'warning'}`;
+            const pairStr = `${nameA} ✕ ${nameB}`;
 
-            const statusBadge = document.getElementById("camStatusBadge");
+            const setTxt = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+
+            setTxt("camPairTitle", pairStr);
+            setTxt("sheetCamPairTitle", pairStr);
+            
+            const riskTxt = `Pc: ${c.collisionProb || '1.0 × 10⁻⁴'}`;
+            const riskCls = `badge ${c.riskTier || 'warning'}`;
+            const riskBadge = document.getElementById("camRiskBadge");
+            if (riskBadge) { riskBadge.textContent = riskTxt; riskBadge.className = riskCls; }
+            const sheetRiskBadge = document.getElementById("sheetCamRiskBadge");
+            if (sheetRiskBadge) { sheetRiskBadge.textContent = riskTxt; sheetRiskBadge.className = riskCls; }
+
+            let statusCls = "badge nominal";
+            let statusTxt = "NOMINAL (TRACK ONLY)";
             if (c.riskTier === 'critical') {
-                statusBadge.className = "badge critical";
-                statusBadge.textContent = "CRITICAL ACTION REQUIRED";
+                statusCls = "badge critical";
+                statusTxt = "CRITICAL ACTION REQUIRED";
             } else if (c.riskTier === 'warning') {
-                statusBadge.className = "badge warning";
-                statusBadge.textContent = "WARNING ADVISORY";
-            } else {
-                statusBadge.className = "badge nominal";
-                statusBadge.textContent = "NOMINAL (TRACK ONLY)";
+                statusCls = "badge warning";
+                statusTxt = "WARNING ADVISORY";
             }
 
-            document.getElementById("camDistVal").textContent = `${c.missDistanceKm < 1 ? (c.missDistanceKm * 1000).toFixed(0) + ' m' : c.missDistanceKm.toFixed(2) + ' km'}`;
-            document.getElementById("camVelVal").textContent = `${(c.relVelKmS || 11.8).toFixed(2)} km/s`;
-            document.getElementById("camProbVal").textContent = c.collisionProb || '1.0 × 10⁻⁴';
+            const statusBadge = document.getElementById("camStatusBadge");
+            if (statusBadge) { statusBadge.className = statusCls; statusBadge.textContent = statusTxt; }
+            const sheetStatusBadge = document.getElementById("sheetCamStatusBadge");
+            if (sheetStatusBadge) { sheetStatusBadge.className = statusCls; sheetStatusBadge.textContent = statusTxt; }
+
+            const distStr = `${c.missDistanceKm < 1 ? (c.missDistanceKm * 1000).toFixed(0) + ' m' : c.missDistanceKm.toFixed(2) + ' km'}`;
+            const velStr = `${(c.relVelKmS || 11.8).toFixed(2)} km/s`;
+            const probStr = c.collisionProb || '1.0 × 10⁻⁴';
+            const postDistStr = `${cam.postMissKm.toFixed(2)} km (Safe Clearance)`;
+
+            setTxt("camDistVal", distStr);
+            setTxt("sheetCamDistVal", distStr);
+            setTxt("camVelVal", velStr);
+            setTxt("sheetCamVelVal", velStr);
+            setTxt("camProbVal", probStr);
+            setTxt("sheetCamProbVal", probStr);
             
-            document.getElementById("camDeltaV").textContent = cam.deltaVStr;
-            document.getElementById("camBurnWindow").textContent = cam.burnWindowStr;
-            document.getElementById("camFuelCost").textContent = cam.fuelCostStr;
-            document.getElementById("camPostDist").textContent = `${cam.postMissKm.toFixed(2)} km (Safe Clearance)`;
+            setTxt("camDeltaV", cam.deltaVStr);
+            setTxt("sheetCamDeltaV", cam.deltaVStr);
+            setTxt("camBurnWindow", cam.burnWindowStr);
+            setTxt("sheetCamBurnWindow", cam.burnWindowStr);
+            setTxt("camFuelCost", cam.fuelCostStr);
+            setTxt("sheetCamFuelCost", cam.fuelCostStr);
+            setTxt("camPostDist", postDistStr);
+            setTxt("sheetCamPostDist", postDistStr);
         }
 
         function simulateManeuver() {
@@ -2441,53 +2978,55 @@ DELTA 1 DEB
             const cam = calculateCAMParameters(c);
 
             const btn = document.getElementById("simManeuverBtn");
-            const distEl = document.getElementById("camDistVal");
-            const probEl = document.getElementById("camProbVal");
-            const fuelEl = document.getElementById("camFuelCost");
+            const sheetBtn = document.getElementById("sheetSimManeuverBtn");
+            const distEls = [document.getElementById("camDistVal"), document.getElementById("sheetCamDistVal")].filter(Boolean);
+            const probEls = [document.getElementById("camProbVal"), document.getElementById("sheetCamProbVal")].filter(Boolean);
+            const fuelEls = [document.getElementById("camFuelCost"), document.getElementById("sheetCamFuelCost")].filter(Boolean);
 
-            // 1. Smoothly scroll ("fly") up to the 3D Encounter Geometry Hero Stage
+            // 1. Smoothly scroll up to the 3D Encounter Geometry Stage on non-mobile or if sheet is not modal
             const stage = document.querySelector('.encounter-hero-stage') || document.getElementById('bplaneChart');
             if (stage) {
                 stage.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
 
             if (isManeuverSimulated) {
-                btn.className = "cam-btn simulated";
-                btn.innerHTML = `<span>✓</span> Maneuver Executed (+${(cam.postMissKm - c.missDistanceKm).toFixed(1)} km) &mdash; Reset`;
+                const btnHtml = `<span>✓</span> Maneuver Executed (+${(cam.postMissKm - c.missDistanceKm).toFixed(1)} km) &mdash; Reset`;
+                if (btn) { btn.className = "cam-btn simulated"; btn.innerHTML = btnHtml; }
+                if (sheetBtn) { sheetBtn.className = "cam-btn simulated"; sheetBtn.innerHTML = btnHtml; }
                 
-                // Update text readout after arrival at the graph
                 setTimeout(() => {
-                    if (distEl) {
-                        distEl.textContent = `${cam.postMissKm.toFixed(2)} km (CLEAR)`;
-                        distEl.style.color = "var(--green)";
-                    }
-                    if (probEl) {
-                        probEl.textContent = "< 1.0 × 10⁻⁷ (Safe)";
-                        probEl.style.color = "var(--green)";
-                    }
-                    if (fuelEl) {
-                        fuelEl.textContent = `${cam.fuelCostStr} [Expended]`;
-                    }
+                    distEls.forEach(el => {
+                        el.textContent = `${cam.postMissKm.toFixed(2)} km (CLEAR)`;
+                        el.style.color = "var(--green)";
+                    });
+                    probEls.forEach(el => {
+                        el.textContent = "< 1.0 × 10⁻⁷ (Safe)";
+                        el.style.color = "var(--green)";
+                    });
+                    fuelEls.forEach(el => {
+                        el.textContent = `${cam.fuelCostStr} [Expended]`;
+                    });
                 }, 400);
 
                 // 2. Trigger smooth 3D/2D trajectory transition with a 450ms delay for screen arrival
                 triggerManeuverAnimation(1.0, 450);
             } else {
-                btn.className = "cam-btn";
-                btn.innerHTML = `<span>⚡</span> Simulate Avoidance Maneuver`;
+                const btnHtml = `<span>🚀</span> Simulate Avoidance Burn`;
+                if (btn) { btn.className = "cam-btn"; btn.innerHTML = btnHtml; }
+                if (sheetBtn) { sheetBtn.className = "cam-btn"; sheetBtn.innerHTML = btnHtml; }
 
                 setTimeout(() => {
-                    if (distEl) {
-                        distEl.textContent = `${c.missDistanceKm < 1 ? (c.missDistanceKm * 1000).toFixed(0) + ' m' : c.missDistanceKm.toFixed(2) + ' km'}`;
-                        distEl.style.color = c.riskTier === 'critical' ? "var(--red)" : (c.riskTier === 'warning' ? "var(--orange)" : "var(--green)");
-                    }
-                    if (probEl) {
-                        probEl.textContent = c.collisionProb || '1.0 × 10⁻⁴';
-                        probEl.style.color = c.riskTier === 'critical' ? "var(--red)" : "var(--text)";
-                    }
-                    if (fuelEl) {
-                        fuelEl.textContent = cam.fuelCostStr;
-                    }
+                    distEls.forEach(el => {
+                        el.textContent = `${c.missDistanceKm < 1 ? (c.missDistanceKm * 1000).toFixed(0) + ' m' : c.missDistanceKm.toFixed(2) + ' km'}`;
+                        el.style.color = c.riskTier === 'critical' ? "var(--red)" : (c.riskTier === 'warning' ? "var(--orange)" : "var(--green)");
+                    });
+                    probEls.forEach(el => {
+                        el.textContent = c.collisionProb || '1.0 × 10⁻⁴';
+                        el.style.color = c.riskTier === 'critical' ? "var(--red)" : "var(--text)";
+                    });
+                    fuelEls.forEach(el => {
+                        el.textContent = cam.fuelCostStr;
+                    });
                 }, 300);
 
                 triggerManeuverAnimation(0.0, 350);
