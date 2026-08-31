@@ -1968,6 +1968,99 @@ DELTA 1 DEB
         // ================================================================
         // REAL-TIME SGP4 CONJUNCTION SCREENING & RISK ENGINE
         // ================================================================
+        // CANONICAL CONJUNCTION IDENTIFIERS & STABLE LOOKUP ENGINE
+        // ================================================================
+
+        function getCanonicalConjId(c) {
+            if (!c) return "";
+            const nA = Number(c.objA && c.objA.noradId) || 0;
+            const nB = Number(c.objB && c.objB.noradId) || 0;
+            if (nA && nB) {
+                return `CDM-${Math.min(nA, nB)}-${Math.max(nA, nB)}`;
+            }
+            if (c.conjunctionId && !String(c.conjunctionId).startsWith("temp-")) return String(c.conjunctionId);
+            if (c.id && !String(c.id).startsWith("temp-")) return String(c.id);
+            const nameA = ((c.objA && c.objA.name) || "A").trim().toUpperCase().replace(/\s+/g, '_');
+            const nameB = ((c.objB && c.objB.name) || "B").trim().toUpperCase().replace(/\s+/g, '_');
+            return `CDM-${nameA}-${nameB}`;
+        }
+
+        function isSameConjunction(a, b) {
+            if (!a || !b) return false;
+            const idA = getCanonicalConjId(a);
+            const idB = getCanonicalConjId(b);
+            if (idA && idB && idA === idB) return true;
+            if (a.conjunctionId && b.conjunctionId && a.conjunctionId === b.conjunctionId) return true;
+            if (a._id && b._id && String(a._id) === String(b._id)) return true;
+            if (a.id && b.id && String(a.id) === String(b.id)) return true;
+
+            const a1 = Number(a.objA && a.objA.noradId) || 0;
+            const a2 = Number(a.objB && a.objB.noradId) || 0;
+            const b1 = Number(b.objA && b.objA.noradId) || 0;
+            const b2 = Number(b.objB && b.objB.noradId) || 0;
+            if (a1 && a2 && b1 && b2) {
+                if ((a1 === b1 && a2 === b2) || (a1 === b2 && a2 === b1)) return true;
+            }
+
+            const aName1 = ((a.objA && a.objA.name) || "").trim().toUpperCase();
+            const aName2 = ((a.objB && a.objB.name) || "").trim().toUpperCase();
+            const bName1 = ((b.objA && b.objA.name) || "").trim().toUpperCase();
+            const bName2 = ((b.objB && b.objB.name) || "").trim().toUpperCase();
+            if (aName1 && aName2 && bName1 && bName2) {
+                if ((aName1 === bName1 && aName2 === bName2) || (aName1 === bName2 && aName2 === bName1)) return true;
+            }
+            return false;
+        }
+
+        function findConjunction(keyOrId) {
+            if (!keyOrId && keyOrId !== 0) return null;
+            const sKey = String(keyOrId).trim().toUpperCase();
+
+            // 1. Direct canonical ID or conjunctionId or _id match
+            let found = allConjunctions.find(c => {
+                const canId = getCanonicalConjId(c).toUpperCase();
+                return canId === sKey || 
+                       (c.conjunctionId && String(c.conjunctionId).toUpperCase() === sKey) ||
+                       (c._id && String(c._id).toUpperCase() === sKey) ||
+                       (c.id && String(c.id).toUpperCase() === sKey);
+            });
+            if (found) return found;
+
+            // 2. Match by NORAD ID pair pattern e.g. "CDM-25544-34001" or "25544-34001"
+            const noradMatch = sKey.match(/(\d+)[-_](\d+)/);
+            if (noradMatch) {
+                const n1 = Number(noradMatch[1]);
+                const n2 = Number(noradMatch[2]);
+                found = allConjunctions.find(c => {
+                    const a1 = Number(c.objA && c.objA.noradId);
+                    const a2 = Number(c.objB && c.objB.noradId);
+                    return (a1 === n1 && a2 === n2) || (a1 === n2 && a2 === n1);
+                });
+                if (found) return found;
+            }
+
+            // 3. Match if single NORAD ID is passed
+            if (!isNaN(Number(keyOrId))) {
+                const num = Number(keyOrId);
+                found = allConjunctions.find(c => Number(c.objA && c.objA.noradId) === num || Number(c.objB && c.objB.noradId) === num);
+                if (found) return found;
+                if (allConjunctions[num]) return allConjunctions[num];
+            }
+
+            // 4. Match by satellite name substring
+            found = allConjunctions.find(c => {
+                const nA = ((c.objA && c.objA.name) || "").toUpperCase();
+                const nB = ((c.objB && c.objB.name) || "").toUpperCase();
+                return nA.includes(sKey) || nB.includes(sKey) || sKey.includes(nA) || sKey.includes(nB);
+            });
+            if (found) return found;
+
+            return null;
+        }
+
+        // ================================================================
+        // REAL-TIME SGP4 CONJUNCTION SCREENING & RISK ENGINE
+        // ================================================================
 
         async function computeRealConjunctions(satellites) {
             // 1. Check MongoDB Backend first
@@ -1983,17 +2076,25 @@ DELTA 1 DEB
                     if (resp.ok) {
                         const data = await resp.json();
                         if (data.success && Array.isArray(data.conjunctions) && data.conjunctions.length > 0) {
-                            const mapped = data.conjunctions.map((c, idx) => ({
-                                ...c,
-                                id: c.id || c.conjunctionId || c._id || `CDM-2026-${String(idx + 1).padStart(4, '0')}`,
-                                missDistanceKm: Number(c.missDistanceKm || 0),
-                                radialKm: typeof c.radialKm === "number" ? c.radialKm : (Number(c.missDistanceKm || 0) * 0.22),
-                                inTrackKm: typeof c.inTrackKm === "number" ? c.inTrackKm : (Number(c.missDistanceKm || 0) * 0.92),
-                                crossTrackKm: typeof c.crossTrackKm === "number" ? c.crossTrackKm : (Number(c.missDistanceKm || 0) * 0.32),
-                                relVelKmS: Number(c.relVelKmS || 11.8),
-                                tcaMinutes: Number(c.tcaMinutes || 30),
-                                postMissKm: typeof c.postMissKm === "number" ? c.postMissKm : (Number(c.missDistanceKm || 0) + 18.25)
-                            }));
+                            const mapped = data.conjunctions.map((c, idx) => {
+                                const noradA = Number(c.objA && c.objA.noradId) || 0;
+                                const noradB = Number(c.objB && c.objB.noradId) || 0;
+                                const canonicalId = (noradA && noradB) 
+                                    ? `CDM-${Math.min(noradA, noradB)}-${Math.max(noradA, noradB)}` 
+                                    : (c.conjunctionId || c.id || c._id || `CDM-2026-${String(idx + 1).padStart(4, '0')}`);
+                                return {
+                                    ...c,
+                                    id: canonicalId,
+                                    conjunctionId: canonicalId,
+                                    missDistanceKm: Number(c.missDistanceKm || 0),
+                                    radialKm: typeof c.radialKm === "number" ? c.radialKm : (Number(c.missDistanceKm || 0) * 0.22),
+                                    inTrackKm: typeof c.inTrackKm === "number" ? c.inTrackKm : (Number(c.missDistanceKm || 0) * 0.92),
+                                    crossTrackKm: typeof c.crossTrackKm === "number" ? c.crossTrackKm : (Number(c.missDistanceKm || 0) * 0.32),
+                                    relVelKmS: Number(c.relVelKmS || 11.8),
+                                    tcaMinutes: Number(c.tcaMinutes || 30),
+                                    postMissKm: typeof c.postMissKm === "number" ? c.postMissKm : (Number(c.missDistanceKm || 0) + 18.25)
+                                };
+                            });
                             try {
                                 localStorage.setItem("orbitguard_conjunctions_cache", JSON.stringify(mapped));
                             } catch (e) {}
@@ -2012,22 +2113,22 @@ DELTA 1 DEB
                 } catch (e) {}
             }
 
-            // 2. Perform live SGP4 differential screening across active catalog candidates
+            // 3. Perform live SGP4 differential screening across active catalog candidates
             const now = new Date();
             const events = [];
 
             // Real physical candidate pairings
             const targetPairings = [
-                { a: "CARTOSAT-3", b: "FENGYUN 1C DEB", missKm: 0.34, velKmS: 12.84, mins: 38.2, prob: "3.4 × 10⁻⁴", tier: "critical", alt: 508 },
-                { a: "ISS (ZARYA)", b: "COSMOS 2251 DEB", missKm: 1.12, velKmS: 14.15, mins: 94.6, prob: "1.2 × 10⁻⁴", tier: "critical", alt: 418 },
-                { a: "STARLINK-1820", b: "CZ-4B ROCKET BODY", missKm: 3.45, velKmS: 10.42, mins: 142.0, prob: "4.8 × 10⁻⁵", tier: "warning", alt: 550 },
-                { a: "RISAT-2B", b: "SL-16 DEB", missKm: 4.80, velKmS: 11.75, mins: 215.4, prob: "1.6 × 10⁻⁵", tier: "warning", alt: 555 },
-                { a: "TIANGONG (CSS)", b: "DELTA 1 DEB", missKm: 8.90, velKmS: 13.50, mins: 380.0, prob: "2.1 × 10⁻⁶", tier: "nominal", alt: 389 }
+                { a: "CARTOSAT-3", aId: 44804, b: "FENGYUN 1C DEB", bId: 31210, missKm: 0.34, velKmS: 12.84, mins: 38.2, prob: "3.4 × 10⁻⁴", tier: "critical", alt: 508 },
+                { a: "ISS (ZARYA)", aId: 25544, b: "COSMOS 2251 DEB", bId: 34129, missKm: 1.12, velKmS: 14.15, mins: 94.6, prob: "1.2 × 10⁻⁴", tier: "critical", alt: 418 },
+                { a: "STARLINK-1820", aId: 46890, b: "CZ-4B ROCKET BODY", bId: 25941, missKm: 3.45, velKmS: 10.42, mins: 142.0, prob: "4.8 × 10⁻⁵", tier: "warning", alt: 550 },
+                { a: "RISAT-2B", aId: 44258, b: "SL-16 DEB", bId: 28410, missKm: 4.80, velKmS: 11.75, mins: 215.4, prob: "1.6 × 10⁻⁵", tier: "warning", alt: 555 },
+                { a: "TIANGONG (CSS)", aId: 48274, b: "DELTA 1 DEB", bId: 19842, missKm: 8.90, velKmS: 13.50, mins: 380.0, prob: "2.1 × 10⁻⁶", tier: "nominal", alt: 389 }
             ];
 
             targetPairings.forEach((p, idx) => {
-                const satA = satellites.find(s => s.name.toUpperCase().includes(p.a.toUpperCase())) || { name: p.a, noradId: 44804 + idx, type: "Asset" };
-                const satB = satellites.find(s => s.name.toUpperCase().includes(p.b.toUpperCase())) || { name: p.b, noradId: 31210 + idx, type: "Debris" };
+                const satA = satellites.find(s => s.name.toUpperCase().includes(p.a.toUpperCase())) || { name: p.a, noradId: p.aId || (44804 + idx), type: "Asset" };
+                const satB = satellites.find(s => s.name.toUpperCase().includes(p.b.toUpperCase())) || { name: p.b, noradId: p.bId || (31210 + idx), type: "Debris" };
 
                 const tcaDate = new Date(now.getTime() + p.mins * 60000);
                 const tcaTimestamp = tcaDate.toISOString();
@@ -2048,8 +2149,6 @@ DELTA 1 DEB
                 const deltaVNum = p.tier === 'critical' ? (0.10 + (5.0 - p.missKm) * 0.035) : (p.tier === 'warning' ? 0.06 : 0);
                 const recDeltaV = deltaVNum > 0 ? `+${deltaVNum.toFixed(2)} m/s (Prograde Burn)` : "Nominal (No burn required)";
                 
-                // Tsiolkovsky Rocket Equation: dm = m0 * (1 - exp(-dv / (Isp * g0)))
-                // Assuming satellite wet mass m0 = 1000 kg, Hydrazine Isp = 220 s, g0 = 9.80665 m/s²
                 const isp = 220; // seconds (Hydrazine monopropellant)
                 const g0 = 9.80665; // m/s²
                 const satMassKg = satA.name.includes("ISS") ? 420000 : (satA.name.includes("TIANGONG") ? 66000 : 1000);
@@ -2061,8 +2160,13 @@ DELTA 1 DEB
                 const burnWindow = deltaVNum > 0 ? `T - ${burnLeadMins} min (0.5 rev / 180° phasing)` : "Standby (Track only)";
                 const fuelCostStr = fuelMassGrams > 1000 ? `${(fuelMassGrams / 1000).toFixed(2)} kg (N₂H₄)` : `${fuelMassGrams} g (N₂H₄)`;
 
+                const nA = Number(satA.noradId) || 0;
+                const nB = Number(satB.noradId) || 0;
+                const canonicalId = (nA && nB) ? `CDM-${Math.min(nA, nB)}-${Math.max(nA, nB)}` : `CDM-2026-${String(idx + 1).padStart(4, '0')}`;
+
                 events.push({
-                    id: `CDM-2026-${String(idx + 1).padStart(4, '0')}`,
+                    id: canonicalId,
+                    conjunctionId: canonicalId,
                     objA: { name: satA.name, noradId: satA.noradId, type: satA.type || "Asset" },
                     objB: { name: satB.name, noradId: satB.noradId, type: satB.type || "Debris" },
                     missDistanceKm: p.missKm,
@@ -2108,6 +2212,7 @@ DELTA 1 DEB
                 document.getElementById("statusText").textContent = `Active: Screened ${totalPairs.toLocaleString()} orbital pairs via SGP4 propagation`;
 
                 // 3. Render all UI modules
+                filteredConjunctions = [...allConjunctions];
                 updateKPIs();
                 renderTable();
                 
@@ -2127,15 +2232,31 @@ DELTA 1 DEB
                         const updatedConjs = await computeRealConjunctions(allParsedSatellites);
                         if (updatedConjs && updatedConjs.length > 0) {
                             allConjunctions = updatedConjs;
-                            if (!selectedConjunction || !allConjunctions.some(c => (c.id || c.conjunctionId) === (selectedConjunction.id || selectedConjunction.conjunctionId))) {
+                            
+                            // Keep the currently selected conjunction active by matching across new database records
+                            if (selectedConjunction) {
+                                const matched = allConjunctions.find(c => isSameConjunction(c, selectedConjunction));
+                                selectedConjunction = matched || allConjunctions[0];
+                            } else {
                                 selectedConjunction = allConjunctions[0];
                             }
+
+                            // Re-apply current table filters so table reflects fresh database state
+                            applyTableFilter();
+
+                            // Re-render visualizers and telemetry with the exact selected conjunction
                             updateKPIs();
-                            renderTable();
+                            if (chartMode === '3d') {
+                                render3DTrajectoryChart(false);
+                            } else {
+                                renderBPlaneChart(false);
+                            }
                             renderTimelineChart();
                             updateCamPanel();
                         }
-                    } catch (e) {}
+                    } catch (e) {
+                        console.warn("Conjunction background sync poll:", e);
+                    }
                 }, 30000);
             } catch (error) {
                 console.error("Dashboard initialization error:", error);
@@ -2240,13 +2361,6 @@ DELTA 1 DEB
                 const pairStr = `${closest.objA.name} ✕ ${closest.objB.name}`;
                 setEl("cardNextPair", pairStr);
                 setEl("sheetCardNextPair", pairStr);
-                setEl("sheetCamPairTitle", pairStr);
-                const sheetBadge = document.getElementById("sheetCamRiskBadge");
-                if (sheetBadge) {
-                    const rTier = (closest.riskTier || "critical").toUpperCase();
-                    sheetBadge.textContent = rTier;
-                    sheetBadge.className = `badge ${closest.riskTier || 'critical'}`;
-                }
             }
         }
 
@@ -2358,6 +2472,14 @@ DELTA 1 DEB
             const conj = selectedConjunction || allConjunctions[0];
             if (!conj || !document.getElementById('bplaneChart')) return;
 
+            const nameA = conj.objA ? conj.objA.name : 'Asset';
+            const nameB = conj.objB ? conj.objB.name : 'Threat';
+
+            const subtitle = document.getElementById("geometrySubtitle");
+            if (subtitle && chartMode === '3d') {
+                subtitle.textContent = `${nameA} ✕ ${nameB} — 3D Crossing Orbital Trajectories (Encounter Frame in km)`;
+            }
+
             const missKm = Math.max(0.005, Number(conj.missDistanceKm || 0.34));
             const postMissKm = Math.max(missKm + 8, Number(conj.postMissKm || (missKm + 18.25)));
             const relVel = Number(conj.relVelKmS || 12.5);
@@ -2460,7 +2582,7 @@ DELTA 1 DEB
                 {
                     type: 'scatter3d',
                     mode: 'lines',
-                    name: `${conj.objA ? conj.objA.name : 'Asset'} (Nominal Baseline)`,
+                    name: `${nameA} (Nominal Baseline)`,
                     x: xA_nom, y: yA_nom, z: zA_nom,
                     line: { color: 'rgba(70, 217, 255, 0.4)', width: 3, dash: 'dot' },
                     hoverinfo: 'name',
@@ -2470,7 +2592,7 @@ DELTA 1 DEB
                 {
                     type: 'scatter3d',
                     mode: 'lines',
-                    name: maneuverProgress > 0.05 ? `${conj.objA ? conj.objA.name : 'Asset'} (Post-Burn Trajectory)` : `${conj.objA ? conj.objA.name : 'Asset'} Orbit`,
+                    name: maneuverProgress > 0.05 ? `${nameA} (Post-Burn Trajectory)` : `${nameA} Orbit`,
                     x: xA, y: yA, z: zA,
                     line: { color: isSafe ? '#42e6a4' : '#46d9ff', width: 6 },
                     hoverinfo: 'name'
@@ -2479,9 +2601,9 @@ DELTA 1 DEB
                 {
                     type: 'scatter3d',
                     mode: 'markers+text',
-                    name: `${conj.objA ? conj.objA.name : 'Asset'} (Primary)`,
+                    name: `${nameA} (Primary Asset)`,
                     x: [posAsset.x], y: [posAsset.y], z: [posAsset.z],
-                    text: [conj.objA ? conj.objA.name : 'Primary Asset'],
+                    text: [nameA],
                     textposition: 'top left',
                     textfont: { color: isSafe ? '#42e6a4' : '#46d9ff', size: 20, family: 'Plus Jakarta Sans' },
                     marker: { color: isSafe ? '#42e6a4' : '#46d9ff', size: 13, symbol: 'diamond', line: { color: '#ffffff', width: 2 } },
@@ -2504,7 +2626,7 @@ DELTA 1 DEB
                 {
                     type: 'scatter3d',
                     mode: 'lines',
-                    name: `${conj.objB ? conj.objB.name : 'Threat'} Orbit Track`,
+                    name: `${nameB} Orbit Track`,
                     x: xB, y: yB, z: zB,
                     line: { color: '#ff526d', width: 5 },
                     hoverinfo: 'name'
@@ -2513,9 +2635,9 @@ DELTA 1 DEB
                 {
                     type: 'scatter3d',
                     mode: 'markers+text',
-                    name: `${conj.objB ? conj.objB.name : 'Threat'} (Threat Object)`,
+                    name: `${nameB} (Threat Object)`,
                     x: [posThreat.x], y: [posThreat.y], z: [posThreat.z],
-                    text: [conj.objB ? conj.objB.name : 'Threat Object'],
+                    text: [nameB],
                     textposition: 'bottom right',
                     textfont: { color: '#ff526d', size: 20, family: 'Plus Jakarta Sans' },
                     marker: { color: '#ff526d', size: 12, symbol: 'circle', line: { color: '#ffffff', width: 2 } },
@@ -2636,6 +2758,14 @@ DELTA 1 DEB
             const conj = selectedConjunction || allConjunctions[0];
             if (!conj || !document.getElementById('bplaneChart')) return;
 
+            const nameA = conj.objA ? conj.objA.name : 'Asset';
+            const nameB = conj.objB ? conj.objB.name : 'Threat';
+
+            const subtitle = document.getElementById("geometrySubtitle");
+            if (subtitle && chartMode === 'bplane') {
+                subtitle.textContent = `${nameA} ✕ ${nameB} — Cartesian B-Plane (Encounter Coordinates in km)`;
+            }
+
             const missKm = Math.max(0.005, Number(conj.missDistanceKm || 0.34));
             const postMissKm = Math.max(missKm + 8, Number(conj.postMissKm || (missKm + 18.25)));
 
@@ -2730,8 +2860,8 @@ DELTA 1 DEB
                     x: [0],
                     y: [0],
                     mode: 'markers+text',
-                    name: conj.objA ? conj.objA.name : 'Primary Asset',
-                    text: [conj.objA ? conj.objA.name : 'Primary Asset'],
+                    name: nameA,
+                    text: [nameA],
                     textposition: 'top center',
                     textfont: { color: '#46d9ff', size: 16, family: 'Plus Jakarta Sans' },
                     marker: { size: 15, color: '#46d9ff', symbol: 'diamond', line: { color: '#fff', width: 2 } },
@@ -2760,8 +2890,8 @@ DELTA 1 DEB
                     x: [threatX],
                     y: [threatY],
                     mode: 'markers+text',
-                    name: `${conj.objB ? conj.objB.name : 'Threat'} (${statusLabel})`,
-                    text: [conj.objB ? conj.objB.name : 'Threat Object'],
+                    name: `${nameB} (${statusLabel})`,
+                    text: [nameB],
                     textposition: 'bottom right',
                     textfont: { color: accentColor, size: 16, family: 'Plus Jakarta Sans' },
                     marker: { size: 15, color: accentColor, symbol: 'circle', line: { color: '#fff', width: 2 } },
@@ -2829,10 +2959,12 @@ DELTA 1 DEB
             const yVals = [];
             const colors = [];
             const textLabels = [];
+            const customDataKeys = [];
 
             allConjunctions.forEach(c => {
                 xVals.push(c.tcaMinutes);
                 yVals.push(c.missDistanceKm);
+                customDataKeys.push(getCanonicalConjId(c));
                 
                 if (c.riskTier === 'critical') colors.push('#ff526d');
                 else if (c.riskTier === 'warning') colors.push('#ffad4d');
@@ -2847,6 +2979,7 @@ DELTA 1 DEB
                     y: yVals,
                     mode: 'markers',
                     text: textLabels,
+                    customdata: customDataKeys,
                     hoverinfo: 'text',
                     marker: {
                         size: 12,
@@ -2890,10 +3023,10 @@ DELTA 1 DEB
                     if (timelineEl.on) {
                         timelineEl.on('plotly_click', (data) => {
                             if (data && data.points && data.points[0]) {
-                                const ptIdx = data.points[0].pointIndex;
-                                if (allConjunctions[ptIdx]) {
-                                    const c = allConjunctions[ptIdx];
-                                    selectConjunction(c.id || c.conjunctionId || c._id || ptIdx, true);
+                                const pt = data.points[0];
+                                const conjKey = pt.customdata || (allConjunctions[pt.pointIndex] ? getCanonicalConjId(allConjunctions[pt.pointIndex]) : null);
+                                if (conjKey) {
+                                    selectConjunction(conjKey, true);
                                 }
                             }
                         });
@@ -2909,14 +3042,13 @@ DELTA 1 DEB
         function renderTable() {
             const tbody = document.getElementById("cdmTableBody");
             if (!tbody) return;
-            if (filteredConjunctions.length === 0) filteredConjunctions = [...allConjunctions];
+            if (!filteredConjunctions || filteredConjunctions.length === 0) {
+                filteredConjunctions = [...allConjunctions];
+            }
 
             tbody.innerHTML = filteredConjunctions.map((c, idx) => {
-                if (!c.id && !c.conjunctionId && !c._id) {
-                    c.id = `temp-id-${idx}-${Date.now()}`;
-                }
-                const conjId = c.id || c.conjunctionId || c._id;
-                const isSelected = selectedConjunction && (selectedConjunction.id === conjId || selectedConjunction.conjunctionId === conjId || selectedConjunction._id === conjId);
+                const conjId = getCanonicalConjId(c);
+                const isSelected = selectedConjunction && isSameConjunction(c, selectedConjunction);
                 const badgeClass = c.riskTier === 'critical' ? 'critical' : (c.riskTier === 'warning' ? 'warning' : 'nominal');
                 const badgeLabel = c.riskTier === 'critical' ? 'HIGH RISK' : (c.riskTier === 'warning' ? 'MODERATE' : 'NOMINAL');
 
@@ -2961,23 +3093,10 @@ DELTA 1 DEB
         }
 
         function selectConjunction(id, scrollToVisualizer = false) {
-            let found = allConjunctions.find(c => 
-                (c.id && String(c.id) === String(id)) || 
-                (c.conjunctionId && String(c.conjunctionId) === String(id)) || 
-                (c._id && String(c._id) === String(id))
-            );
-            if (!found && !isNaN(Number(id)) && allConjunctions[Number(id)]) {
-                found = allConjunctions[Number(id)];
-            }
-            if (!found && id) {
-                found = allConjunctions.find(c => 
-                    (c.objA && c.objA.name && String(c.objA.name).toLowerCase().includes(String(id).toLowerCase())) || 
-                    (c.objB && c.objB.name && String(c.objB.name).toLowerCase().includes(String(id).toLowerCase()))
-                );
-            }
+            const found = findConjunction(id);
             if (found) {
                 selectedConjunction = found;
-            } else if (allConjunctions.length > 0) {
+            } else if (allConjunctions.length > 0 && !selectedConjunction) {
                 selectedConjunction = allConjunctions[0];
             }
             if (!selectedConjunction) return;
@@ -3242,15 +3361,22 @@ DELTA 1 DEB
         }
 
         function applyTableFilter() {
-            const query = document.getElementById("tableSearch").value.trim().toLowerCase();
-            const filter = document.getElementById("riskFilter").value;
+            const searchEl = document.getElementById("tableSearch");
+            const filterEl = document.getElementById("riskFilter");
+            const query = searchEl ? searchEl.value.trim().toLowerCase() : "";
+            const filter = filterEl ? filterEl.value : "all";
 
             filteredConjunctions = allConjunctions.filter(c => {
+                const nameA = ((c.objA && c.objA.name) || "").toLowerCase();
+                const nameB = ((c.objB && c.objB.name) || "").toLowerCase();
+                const idA = String((c.objA && c.objA.noradId) || "");
+                const idB = String((c.objB && c.objB.noradId) || "");
+
                 const matchesQuery = !query || 
-                    c.objA.name.toLowerCase().includes(query) ||
-                    c.objB.name.toLowerCase().includes(query) ||
-                    c.objA.noradId.toString().includes(query) ||
-                    c.objB.noradId.toString().includes(query);
+                    nameA.includes(query) ||
+                    nameB.includes(query) ||
+                    idA.includes(query) ||
+                    idB.includes(query);
 
                 if (!matchesQuery) return false;
 
@@ -3262,6 +3388,11 @@ DELTA 1 DEB
             });
 
             renderTable();
+        }
+
+        // Alias for HTML oninput/onchange attributes
+        function filterTable() {
+            applyTableFilter();
         }
 
         // Sidebar Controls

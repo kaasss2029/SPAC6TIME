@@ -783,10 +783,16 @@ async function computeConjunctionsService() {
             ? "N/A (Defunct Stage / Passive)" 
             : (fuelGramsVal > 1000 ? `${(fuelGramsVal / 1000).toFixed(2)} kg (Hydrazine)` : `${fuelGramsVal} g (Hydrazine)`);
 
-          const postMissKm = parseFloat((minDist < 5.0 ? (16.5 + Math.max(0, 5.0 - minDist) * 1.8) : (minDist + 18.25)).toFixed(2));
+          const noradA = Number(satA.noradId) || 0;
+          const noradB = Number(satB.noradId) || 0;
+          const nMin = Math.min(noradA, noradB);
+          const nMax = Math.max(noradA, noradB);
+          const stableId = (nMin && nMax)
+            ? `CDM-${nMin}-${nMax}`
+            : `CDM-${(satA.name || 'A').replace(/\s+/g, '_')}-${(satB.name || 'B').replace(/\s+/g, '_')}`;
 
           conjunctionResults.push({
-            conjunctionId: `CDM-${epochNow.getFullYear()}-${String(conjunctionResults.length + 1).padStart(3, "0")}`,
+            conjunctionId: stableId,
             computedAt: epochNow,
             tcaTimestamp,
             tcaMinutes: Math.round(tcaMinutes),
@@ -826,7 +832,7 @@ async function computeConjunctionsService() {
     if (conjunctionResults.length < 8) {
       const demoPairs = [
         {
-          id: `CDM-${epochNow.getFullYear()}-001`,
+          id: `CDM-25544-34001`,
           objA: { noradId: 25544, name: "ISS (ZARYA)", type: "Space Station" },
           objB: { noradId: 34001, name: "COSMOS 2251 DEB", type: "Debris" },
           miss: 0.84,
@@ -838,7 +844,7 @@ async function computeConjunctionsService() {
           tcaMin: 14
         },
         {
-          id: `CDM-${epochNow.getFullYear()}-002`,
+          id: `CDM-29712-48274`,
           objA: { noradId: 48274, name: "TIANGONG (CSS)", type: "Space Station" },
           objB: { noradId: 29712, name: "FENGYUN 1C DEB", type: "Debris" },
           miss: 1.42,
@@ -850,7 +856,7 @@ async function computeConjunctionsService() {
           tcaMin: 48
         },
         {
-          id: `CDM-${epochNow.getFullYear()}-003`,
+          id: `CDM-33749-44713`,
           objA: { noradId: 44713, name: "STARLINK-1007", type: "Constellation" },
           objB: { noradId: 33749, name: "IRIDIUM 33 DEB", type: "Debris" },
           miss: 2.15,
@@ -862,7 +868,7 @@ async function computeConjunctionsService() {
           tcaMin: 112
         },
         {
-          id: `CDM-${epochNow.getFullYear()}-004`,
+          id: `CDM-22803-43013`,
           objA: { noradId: 43013, name: "NOAA-20", type: "Satellite" },
           objB: { noradId: 22803, name: "SL-16 R/B", type: "Debris" },
           miss: 3.68,
@@ -874,7 +880,7 @@ async function computeConjunctionsService() {
           tcaMin: 185
         },
         {
-          id: `CDM-${epochNow.getFullYear()}-005`,
+          id: `CDM-20580-39999`,
           objA: { noradId: 20580, name: "HST (HUBBLE)", type: "Satellite" },
           objB: { noradId: 39999, name: "CZ-4C DEB", type: "Debris" },
           miss: 4.90,
@@ -886,7 +892,7 @@ async function computeConjunctionsService() {
           tcaMin: 270
         },
         {
-          id: `CDM-${epochNow.getFullYear()}-006`,
+          id: `CDM-35002-40697`,
           objA: { noradId: 40697, name: "SENTINEL-2A", type: "Satellite" },
           objB: { noradId: 35002, name: "THOR ABLESTAR DEB", type: "Debris" },
           miss: 7.25,
@@ -898,7 +904,7 @@ async function computeConjunctionsService() {
           tcaMin: 360
         },
         {
-          id: `CDM-${epochNow.getFullYear()}-007`,
+          id: `CDM-36005-49260`,
           objA: { noradId: 49260, name: "LANDSAT 9", type: "Satellite" },
           objB: { noradId: 36005, name: "DELTA 1 DEB", type: "Debris" },
           miss: 9.80,
@@ -910,7 +916,7 @@ async function computeConjunctionsService() {
           tcaMin: 510
         },
         {
-          id: `CDM-${epochNow.getFullYear()}-008`,
+          id: `CDM-25994-37010`,
           objA: { noradId: 25994, name: "TERRA", type: "Satellite" },
           objB: { noradId: 37010, name: "ARIANE 4 DEB", type: "Debris" },
           miss: 14.30,
@@ -924,7 +930,7 @@ async function computeConjunctionsService() {
       ];
 
       for (const d of demoPairs) {
-        if (!conjunctionResults.some(r => r.objA.noradId === d.objA.noradId && r.objB.noradId === d.objB.noradId)) {
+        if (!conjunctionResults.some(r => (r.objA.noradId === d.objA.noradId && r.objB.noradId === d.objB.noradId) || (r.objA.noradId === d.objB.noradId && r.objB.noradId === d.objA.noradId))) {
           const tcaTimestamp = new Date(epochMs + d.tcaMin * 60000);
           const sigma = 0.5;
           const hardBodyRadius = 0.01;
