@@ -2287,16 +2287,18 @@ DELTA 1 DEB
 
         function setChartMode(mode) {
             chartMode = mode;
-            document.getElementById("btn3D").classList.toggle("active", mode === '3d');
-            document.getElementById("btnBPlane").classList.toggle("active", mode === 'bplane');
+            const btn3D = document.getElementById("btn3D");
+            const btnBPlane = document.getElementById("btnBPlane");
+            if (btn3D) btn3D.classList.toggle("active", mode === '3d');
+            if (btnBPlane) btnBPlane.classList.toggle("active", mode === 'bplane');
 
             const subtitle = document.getElementById("geometrySubtitle");
             if (mode === '3d') {
-                subtitle.textContent = "3D Crossing Orbital Trajectories (Encounter Frame in km)";
-                render3DTrajectoryChart();
+                if (subtitle) subtitle.textContent = "3D Crossing Orbital Trajectories (Encounter Frame in km)";
+                render3DTrajectoryChart(true);
             } else {
-                subtitle.textContent = "Cartesian B-Plane (Encounter Coordinates in km)";
-                renderBPlaneChart();
+                if (subtitle) subtitle.textContent = "Cartesian B-Plane (Encounter Coordinates in km)";
+                renderBPlaneChart(true);
             }
         }
 
@@ -2310,15 +2312,13 @@ DELTA 1 DEB
         }
 
         // ================================================================
-        // 3D TRAJECTORY CHART (ANIMATED CONTINUOUS ROTATION LIKE earth.html)
-        // ================================================================
-
-        // ================================================================
-        // 3D TRAJECTORY CHART (WITH SMOOTH MANEUVER TRANSITION ANIMATION)
+        // 3D TRAJECTORY CHART (WITH SMOOTH MANEUVER TRANSITION & ROTATION)
         // ================================================================
 
         let maneuverProgress = 0.0; // 0.0 = Nominal initial state, 1.0 = Post-CAM state
         let maneuverAnimId = null;
+        let isPlotUpdating = false;
+        let lastRenderedChartMode = null;
 
         function triggerManeuverAnimation(targetProgress, delayMs = 0) {
             if (maneuverAnimId) cancelAnimationFrame(maneuverAnimId);
@@ -2336,17 +2336,17 @@ DELTA 1 DEB
                     maneuverProgress = startProgress + (targetProgress - startProgress) * ease;
 
                     if (chartMode === '3d') {
-                        render3DTrajectoryChart();
+                        render3DTrajectoryChart(false);
                     } else {
-                        renderBPlaneChart();
+                        renderBPlaneChart(false);
                     }
 
                     if (t < 1) {
                         maneuverAnimId = requestAnimationFrame(animateStep);
                     } else {
                         maneuverProgress = targetProgress;
-                        if (chartMode === '3d') render3DTrajectoryChart();
-                        else renderBPlaneChart();
+                        if (chartMode === '3d') render3DTrajectoryChart(false);
+                        else renderBPlaneChart(false);
                     }
                 }
 
@@ -2354,70 +2354,101 @@ DELTA 1 DEB
             }, delayMs);
         }
 
-        function render3DTrajectoryChart() {
+        function render3DTrajectoryChart(forceNewPlot = false) {
             const conj = selectedConjunction || allConjunctions[0];
-            if (!conj) return;
+            if (!conj || !document.getElementById('bplaneChart')) return;
 
+            const missKm = Math.max(0.005, Number(conj.missDistanceKm || 0.34));
+            const postMissKm = Math.max(missKm + 8, Number(conj.postMissKm || (missKm + 18.25)));
+            const relVel = Number(conj.relVelKmS || 12.5);
+
+            // True encounter offset components (RIC frame: Radial X, In-Track Y, Cross-Track Z)
+            let radKm = typeof conj.radialKm === 'number' && !isNaN(conj.radialKm) ? conj.radialKm : (missKm * 0.35);
+            let inTrackKm = typeof conj.inTrackKm === 'number' && !isNaN(conj.inTrackKm) ? conj.inTrackKm : 0.0;
+            let crossKm = typeof conj.crossTrackKm === 'number' && !isNaN(conj.crossTrackKm) ? conj.crossTrackKm : (missKm * 0.936);
+
+            // Ensure Euclidean distance of offset vector accurately equals missKm
+            const offsetMag = Math.sqrt(radKm * radKm + inTrackKm * inTrackKm + crossKm * crossKm);
+            if (offsetMag > 0.001) {
+                const scale = missKm / offsetMag;
+                radKm *= scale;
+                inTrackKm *= scale;
+                crossKm *= scale;
+            } else {
+                radKm = missKm * 0.35;
+                inTrackKm = 0;
+                crossKm = missKm * 0.936;
+            }
+
+            // Crossing angle derived from orbital relative velocity (LEO v0 ~ 7.6 km/s)
+            const crossingAngle = 2 * Math.asin(Math.min(0.96, Math.max(0.2, relVel / (2 * 7.6))));
+
+            // Length of orbital corridor in km
+            const corridorSpanKm = Math.max(45, Math.min(90, postMissKm * 2.2));
             const steps = 100;
-            const inTrackSpanKm = 180; // km span along in-track corridor
-            const burnNodeIdx = -35; // Thruster fires 35% before encounter node
-            const maxDeltaRadial = 60; // km radial deflection
-            const maxDeltaCross = 36; // km cross-track deflection
-            const maxDeltaInTrack = 20; // km in-track phasing
+            const burnNodeIdx = -35; // 35% before encounter node
 
-            // Nominal miss parameters relative to encounter center (0,0,0)
-            const missKm = Number(conj.missDistanceKm || 1.8);
-            const missR = -Math.max(18, Math.min(38, missKm * 12));
-            const missC = -Math.max(22, Math.min(45, missKm * 15));
-            const crossingAngle = 0.62; // ~35° orbital track intersection angle
+            // Compute evasion vector for CAM deflection so at progress=1.0 separation = postMissKm
+            const evasionDirX = radKm !== 0 ? (radKm > 0 ? 1 : -1) : 1;
+            const evasionDirZ = crossKm !== 0 ? (crossKm > 0 ? -1 : 1) : -1;
+            const evasionMag = Math.sqrt(evasionDirX * evasionDirX + evasionDirZ * evasionDirZ);
+            const deltaR = ((postMissKm - missKm) * (evasionDirX / evasionMag));
+            const deltaC = ((postMissKm - missKm) * (evasionDirZ / evasionMag));
 
-            // 1. Primary Asset Nominal Baseline Orbit
+            // Generate trajectories
             const xA_nom = [], yA_nom = [], zA_nom = [];
-            // 2. Primary Asset Active Orbit (Perturbed via Maneuver Progress)
             const xA = [], yA = [], zA = [];
-            // 3. Threat / Debris Orbit Track
             const xB = [], yB = [], zB = [];
 
+            const rCurv = 450; // Visual orbital curvature constant
+
             for (let i = -steps; i <= steps; i++) {
-                const inTrackY = (i / steps) * inTrackSpanKm;
-                // Realistic orbital curvature in local encounter frame
-                const nomRadialX = -(inTrackY * inTrackY) / (2 * 450);
-                const nomCrossZ = Math.sin((inTrackY / inTrackSpanKm) * 1.6) * 6;
+                const s = i / steps; // -1 to +1
+                const inTrackY = s * corridorSpanKm;
+                const nomRadialX = -(inTrackY * inTrackY) / (2 * rCurv);
+                const nomCrossZ = 0;
 
                 xA_nom.push(nomRadialX);
                 yA_nom.push(inTrackY);
                 zA_nom.push(nomCrossZ);
 
-                // Progressive smooth thrust curvature after burn node
+                // Progressive smooth thrust deflection after burn node
                 const postWeight = i < burnNodeIdx ? 0 : Math.pow((i - burnNodeIdx) / (steps - burnNodeIdx), 0.85);
-                const radDisp = maxDeltaRadial * maneuverProgress * postWeight;
-                const crossDisp = maxDeltaCross * maneuverProgress * postWeight;
-                const inTrackDisp = maxDeltaInTrack * maneuverProgress * postWeight;
+                const radDisp = deltaR * maneuverProgress * postWeight;
+                const crossDisp = deltaC * maneuverProgress * postWeight;
+                const inTrackDisp = 6 * maneuverProgress * postWeight;
 
-                xA.push(nomRadialX + radDisp);
-                yA.push(inTrackY + inTrackDisp);
-                zA.push(nomCrossZ + crossDisp);
+                xA.push(nomRadialX - radDisp);
+                yA.push(inTrackY - inTrackDisp);
+                zA.push(nomCrossZ - crossDisp);
 
-                // Threat orbital cross-track trajectory
-                const yB_val = inTrackY * Math.cos(crossingAngle);
-                const zB_val = inTrackY * Math.sin(crossingAngle) + missC;
-                const xB_val = -(inTrackY * inTrackY) / (2 * 450) + missR;
+                // Threat trajectory slicing across the encounter frame
+                const sThreat = s * corridorSpanKm;
+                const yB_val = inTrackKm + sThreat * Math.cos(crossingAngle);
+                const zB_val = crossKm + sThreat * Math.sin(crossingAngle);
+                const xB_val = radKm - (sThreat * sThreat) / (2 * rCurv);
 
                 xB.push(xB_val);
                 yB.push(yB_val);
                 zB.push(zB_val);
             }
 
-            // Current satellite positions at encounter (center index = steps, i = 0)
+            // Positions of Asset and Threat at encounter (i = 0, index = steps)
             const posAsset = { x: xA[steps], y: yA[steps], z: zA[steps] };
             const posThreat = { x: xB[steps], y: yB[steps], z: zB[steps] };
 
-            // Dynamic miss distance calculation based on maneuver progress
-            const currentMissKm = conj.missDistanceKm + (conj.postMissKm - conj.missDistanceKm) * maneuverProgress;
-            const isSafe = maneuverProgress > 0.4;
-            const accentColor = isSafe ? '#42e6a4' : '#ff526d';
+            // Dynamic miss distance between the two bodies
+            const currentDistKm = Math.sqrt(
+                Math.pow(posAsset.x - posThreat.x, 2) +
+                Math.pow(posAsset.y - posThreat.y, 2) +
+                Math.pow(posAsset.z - posThreat.z, 2)
+            );
 
-            // Midpoint encounter marker
+            const isSafe = currentDistKm >= 5.0 || maneuverProgress > 0.4;
+            const accentColor = isSafe ? '#42e6a4' : (currentDistKm < 1.0 ? '#ff526d' : '#ffad4d');
+            const distLabel = currentDistKm < 1.0 ? `${(currentDistKm * 1000).toFixed(0)} m` : `${currentDistKm.toFixed(2)} km`;
+            const statusLabel = isSafe ? '(SAFE CLEARANCE)' : (currentDistKm < 1.0 ? '(CRITICAL HAZARD)' : '(WARNING ZONE)');
+
             const midX = (posAsset.x + posThreat.x) / 2;
             const midY = (posAsset.y + posThreat.y) / 2;
             const midZ = (posAsset.z + posThreat.z) / 2;
@@ -2425,80 +2456,80 @@ DELTA 1 DEB
             const burnIdx = steps + burnNodeIdx;
 
             const traces = [
-                // 1. Ghost Nominal Orbit (Shown as reference when maneuver is applied)
+                // 1. Ghost Nominal Baseline Orbit (Visible when maneuver is simulated)
                 {
                     type: 'scatter3d',
                     mode: 'lines',
-                    name: `${conj.objA.name} (Nominal Baseline)`,
+                    name: `${conj.objA ? conj.objA.name : 'Asset'} (Nominal Baseline)`,
                     x: xA_nom, y: yA_nom, z: zA_nom,
-                    line: { color: 'rgba(70, 217, 255, 0.45)', width: 3.5, dash: 'dot' },
+                    line: { color: 'rgba(70, 217, 255, 0.4)', width: 3, dash: 'dot' },
                     hoverinfo: 'name',
-                    showlegend: maneuverProgress > 0.1
+                    showlegend: maneuverProgress > 0.05
                 },
-                // 2. Active Maneuvered Asset Orbit
+                // 2. Active Asset Trajectory
                 {
                     type: 'scatter3d',
                     mode: 'lines',
-                    name: maneuverProgress > 0.1 ? `${conj.objA.name} (Post-Burn Trajectory)` : `${conj.objA.name} Orbit`,
+                    name: maneuverProgress > 0.05 ? `${conj.objA ? conj.objA.name : 'Asset'} (Post-Burn Trajectory)` : `${conj.objA ? conj.objA.name : 'Asset'} Orbit`,
                     x: xA, y: yA, z: zA,
-                    line: { color: isSafe ? '#42e6a4' : '#46d9ff', width: 6.0 },
+                    line: { color: isSafe ? '#42e6a4' : '#46d9ff', width: 6 },
                     hoverinfo: 'name'
                 },
                 // 3. Primary Asset Satellite Marker
                 {
                     type: 'scatter3d',
                     mode: 'markers+text',
-                    name: `${conj.objA.name} (Primary)`,
+                    name: `${conj.objA ? conj.objA.name : 'Asset'} (Primary)`,
                     x: [posAsset.x], y: [posAsset.y], z: [posAsset.z],
-                    text: [conj.objA.name],
+                    text: [conj.objA ? conj.objA.name : 'Primary Asset'],
                     textposition: 'top left',
-                    textfont: { color: isSafe ? '#42e6a4' : '#46d9ff', size: 12, family: 'Plus Jakarta Sans' },
-                    marker: { color: isSafe ? '#42e6a4' : '#46d9ff', size: 10, symbol: 'diamond', line: { color: '#ffffff', width: 2 } },
+                    textfont: { color: isSafe ? '#42e6a4' : '#46d9ff', size: 20, family: 'Plus Jakarta Sans' },
+                    marker: { color: isSafe ? '#42e6a4' : '#46d9ff', size: 13, symbol: 'diamond', line: { color: '#ffffff', width: 2 } },
                     hoverinfo: 'name+text'
                 },
-                // 4. Thruster Burn Vector Pulse Arrow (Visible during / after burn)
+                // 4. Thruster Burn Vector Arrow
                 {
                     type: 'scatter3d',
                     mode: 'lines+markers',
-                    name: 'Δv Thrust Vector (+0.14 m/s)',
-                    x: [xA_nom[burnIdx], xA[burnIdx] + 28 * maneuverProgress],
-                    y: [yA_nom[burnIdx], yA[burnIdx] + 20 * maneuverProgress],
-                    z: [zA_nom[burnIdx], zA[burnIdx] + 16 * maneuverProgress],
+                    name: `Δv Thrust Vector (${conj.recommendedDeltaV || '+0.14 m/s'})`,
+                    x: [xA_nom[burnIdx], xA[burnIdx] + 16 * Math.max(0.2, maneuverProgress)],
+                    y: [yA_nom[burnIdx], yA[burnIdx] + 24 * Math.max(0.2, maneuverProgress)],
+                    z: [zA_nom[burnIdx], zA[burnIdx] + 12 * Math.max(0.2, maneuverProgress)],
                     line: { color: '#ffd166', width: 4.5 },
-                    marker: { size: [0, 8 * maneuverProgress], color: '#ffd166', symbol: 'circle' },
+                    marker: { size: [0, 8 * Math.max(0.2, maneuverProgress)], color: '#ffd166', symbol: 'circle' },
                     hoverinfo: 'name',
-                    showlegend: maneuverProgress > 0.1
+                    showlegend: maneuverProgress > 0.05
                 },
-                // 5. Threat Debris Orbit Track
+                // 5. Threat Object Orbit Track
                 {
                     type: 'scatter3d',
                     mode: 'lines',
-                    name: `${conj.objB.name} Orbit (Threat Track)`,
+                    name: `${conj.objB ? conj.objB.name : 'Threat'} Orbit Track`,
                     x: xB, y: yB, z: zB,
-                    line: { color: '#ff526d', width: 5.0 },
+                    line: { color: '#ff526d', width: 5 },
                     hoverinfo: 'name'
                 },
                 // 6. Threat Object Marker
                 {
                     type: 'scatter3d',
                     mode: 'markers+text',
-                    name: `${conj.objB.name} (Threat)`,
+                    name: `${conj.objB ? conj.objB.name : 'Threat'} (Threat Object)`,
                     x: [posThreat.x], y: [posThreat.y], z: [posThreat.z],
-                    text: [conj.objB.name],
+                    text: [conj.objB ? conj.objB.name : 'Threat Object'],
                     textposition: 'bottom right',
-                    textfont: { color: '#ff526d', size: 12, family: 'Plus Jakarta Sans' },
-                    marker: { color: '#ff526d', size: 9, symbol: 'circle', line: { color: '#ffffff', width: 2 } },
+                    textfont: { color: '#ff526d', size: 20, family: 'Plus Jakarta Sans' },
+                    marker: { color: '#ff526d', size: 12, symbol: 'circle', line: { color: '#ffffff', width: 2 } },
                     hoverinfo: 'name+text'
                 },
-                // 7. TCA Keep-out Hazard / Clearance Sphere
+                // 7. TCA Keep-Out Zone / Safe Clearance Sphere
                 {
                     type: 'scatter3d',
                     mode: 'markers',
-                    name: isSafe ? 'Safe Clearance Bubble' : 'TCA Keep-Out Collision Zone',
+                    name: isSafe ? 'Safe Clearance Bubble (>5 km)' : (currentDistKm < 1.0 ? 'Critical Collision Zone (<1 km)' : 'Warning Keep-Out Zone (<5 km)'),
                     x: [midX], y: [midY], z: [midZ],
                     marker: {
-                        color: isSafe ? 'rgba(66, 230, 164, 0.35)' : 'rgba(255, 82, 109, 0.45)',
-                        size: isSafe ? 14 : 24,
+                        color: isSafe ? 'rgba(66, 230, 164, 0.3)' : (currentDistKm < 1.0 ? 'rgba(255, 82, 109, 0.45)' : 'rgba(255, 173, 77, 0.4)'),
+                        size: isSafe ? 16 : 26,
                         symbol: 'circle',
                         line: { color: accentColor, width: 2 }
                     },
@@ -2508,11 +2539,11 @@ DELTA 1 DEB
                 {
                     type: 'scatter3d',
                     mode: 'lines',
-                    name: `Miss Dist: ${currentMissKm < 1 ? (currentMissKm * 1000).toFixed(0) + ' m' : currentMissKm.toFixed(2) + ' km'} ${isSafe ? '(SAFE)' : '(HAZARD)'}`,
+                    name: `Miss Dist: ${distLabel} ${statusLabel}`,
                     x: [posAsset.x, posThreat.x],
                     y: [posAsset.y, posThreat.y],
                     z: [posAsset.z, posThreat.z],
-                    line: { color: accentColor, width: 3.5, dash: 'dash' },
+                    line: { color: accentColor, width: 4, dash: isSafe ? 'solid' : 'dash' },
                     hoverinfo: 'name'
                 }
             ];
@@ -2526,7 +2557,7 @@ DELTA 1 DEB
                 paper_bgcolor: 'transparent',
                 plot_bgcolor: 'transparent',
                 autosize: true,
-                margin: { l: 0, r: 0, t: 60, b: 0 },
+                margin: { l: 0, r: 0, t: 50, b: 0 },
                 scene: {
                     xaxis: { title: 'Radial (km)', color: '#7f91ad', gridcolor: '#16233b', showbackground: false },
                     yaxis: { title: 'In-Track (km)', color: '#7f91ad', gridcolor: '#16233b', showbackground: false },
@@ -2541,15 +2572,28 @@ DELTA 1 DEB
                 legend: {
                     x: 0.02,
                     y: 0.04,
-                    font: { color: '#a9b9cf', size: 10, family: 'Plus Jakarta Sans' },
+                    font: { color: '#a9b9cf', size: 11, family: 'Plus Jakarta Sans' },
                     bgcolor: 'rgba(7, 11, 20, 0.85)',
-                    bordercolor: 'rgba(70, 217, 255, 0.2)',
+                    bordercolor: 'rgba(70, 217, 255, 0.25)',
                     borderwidth: 1
                 }
             };
 
             const config = { responsive: true, displayModeBar: false };
-            Plotly.react('bplaneChart', traces, layout, config);
+
+            isPlotUpdating = true;
+            if (forceNewPlot || lastRenderedChartMode !== '3d') {
+                Plotly.purge('bplaneChart');
+                Plotly.newPlot('bplaneChart', traces, layout, config).finally(() => {
+                    isPlotUpdating = false;
+                    lastRenderedChartMode = '3d';
+                });
+            } else {
+                Plotly.react('bplaneChart', traces, layout, config).finally(() => {
+                    isPlotUpdating = false;
+                    lastRenderedChartMode = '3d';
+                });
+            }
         }
 
         // Smooth Continuous Auto-Rotation Loop
@@ -2562,17 +2606,20 @@ DELTA 1 DEB
                 const delta = (now - lastTime) / 1000;
                 lastTime = now;
 
-                if (chartMode === '3d' && is3DAutoRotating && document.getElementById('bplaneChart')) {
-                    rotAngle3D += 0.22 * delta; // Continuous rotation velocity
+                if (chartMode === '3d' && is3DAutoRotating && !isPlotUpdating && document.getElementById('bplaneChart')) {
+                    const gd = document.getElementById('bplaneChart');
+                    if (gd && gd._fullLayout && gd._fullLayout.scene) {
+                        rotAngle3D += 0.22 * delta; // Continuous rotation velocity
 
-                    const eyeR = 2.05;
-                    const eyeX = eyeR * Math.cos(rotAngle3D);
-                    const eyeY = eyeR * Math.sin(rotAngle3D);
-                    const eyeZ = 1.25 + 0.35 * Math.sin(rotAngle3D * 0.7);
+                        const eyeR = 2.05;
+                        const eyeX = eyeR * Math.cos(rotAngle3D);
+                        const eyeY = eyeR * Math.sin(rotAngle3D);
+                        const eyeZ = 1.25 + 0.35 * Math.sin(rotAngle3D * 0.7);
 
-                    Plotly.relayout('bplaneChart', {
-                        'scene.camera.eye': { x: eyeX, y: eyeY, z: eyeZ }
-                    }).catch(() => {});
+                        Plotly.relayout('bplaneChart', {
+                            'scene.camera.eye': { x: eyeX, y: eyeY, z: eyeZ }
+                        }).catch(() => {});
+                    }
                 }
 
                 animFrameId = requestAnimationFrame(animate);
@@ -2585,121 +2632,150 @@ DELTA 1 DEB
         // 2D B-PLANE (ENCOUNTER PLANE) PLOT WITH TRANSITION
         // ================================================================
 
-        function renderBPlaneChart() {
+        function renderBPlaneChart(forceNewPlot = false) {
             const conj = selectedConjunction || allConjunctions[0];
-            if (!conj) return;
-            const traces = [];
+            if (!conj || !document.getElementById('bplaneChart')) return;
 
-            // 1. Keep-out zone circle (Red: 1 km radius)
+            const missKm = Math.max(0.005, Number(conj.missDistanceKm || 0.34));
+            const postMissKm = Math.max(missKm + 8, Number(conj.postMissKm || (missKm + 18.25)));
+
+            // Cartesian encounter coordinates on the B-plane
+            let crossKm = typeof conj.crossTrackKm === 'number' && !isNaN(conj.crossTrackKm) ? conj.crossTrackKm : (missKm * 0.936);
+            let radKm = typeof conj.radialKm === 'number' && !isNaN(conj.radialKm) ? conj.radialKm : (missKm * 0.35);
+
+            const offsetMag = Math.sqrt(crossKm * crossKm + radKm * radKm);
+            if (offsetMag > 0.001) {
+                const scale = missKm / offsetMag;
+                crossKm *= scale;
+                radKm *= scale;
+            } else {
+                crossKm = missKm * 0.936;
+                radKm = missKm * 0.35;
+            }
+
+            const evasionDirX = crossKm !== 0 ? (crossKm > 0 ? 1 : -1) : 1;
+            const evasionDirY = radKm !== 0 ? (radKm > 0 ? 1 : -1) : 1;
+            const evMag = Math.sqrt(evasionDirX * evasionDirX + evasionDirY * evasionDirY);
+
+            const postX = evasionDirX * (postMissKm / evMag);
+            const postY = evasionDirY * (postMissKm / evMag);
+
+            const threatX = crossKm + (postX - crossKm) * maneuverProgress;
+            const threatY = radKm + (postY - radKm) * maneuverProgress;
+
+            const currentDist = Math.sqrt(threatX * threatX + threatY * threatY);
+            const isSafe = currentDist >= 5.0 || maneuverProgress > 0.4;
+            const accentColor = isSafe ? '#42e6a4' : (currentDist < 1.0 ? '#ff526d' : '#ffad4d');
+            const distLabel = currentDist < 1.0 ? `${(currentDist * 1000).toFixed(0)} m` : `${currentDist.toFixed(2)} km`;
+            const statusLabel = isSafe ? '(SAFE CLEARANCE)' : (currentDist < 1.0 ? '(CRITICAL RISK)' : '(WARNING ZONE)');
+
             const theta = [];
             for (let i = 0; i <= 360; i += 4) theta.push(i * Math.PI / 180);
 
+            // 1. High Risk Zone (1 km)
             const redCircleX = theta.map(t => Math.cos(t) * 1.0);
             const redCircleY = theta.map(t => Math.sin(t) * 1.0);
 
-            traces.push({
-                x: redCircleX,
-                y: redCircleY,
-                mode: 'lines',
-                name: 'High Risk (1 km)',
-                line: { color: 'rgba(255, 82, 109, 0.8)', width: 1.5, dash: 'dot' },
-                fill: 'toself',
-                fillcolor: 'rgba(255, 82, 109, 0.12)',
-                hoverinfo: 'name'
-            });
-
-            // 2. Warning zone circle (Orange: 5 km radius)
+            // 2. Warning Zone (5 km)
             const orangeCircleX = theta.map(t => Math.cos(t) * 5.0);
             const orangeCircleY = theta.map(t => Math.sin(t) * 5.0);
 
-            traces.push({
-                x: orangeCircleX,
-                y: orangeCircleY,
-                mode: 'lines',
-                name: 'Warning Zone (5 km)',
-                line: { color: 'rgba(255, 173, 77, 0.6)', width: 1, dash: 'dash' },
-                hoverinfo: 'name'
-            });
+            // 3. 1-sigma and 3-sigma Covariance Ellipses
+            const ell1X = theta.map(t => Math.cos(t) * 0.45 + (crossKm * 0.2));
+            const ell1Y = theta.map(t => Math.sin(t) * 0.25 + (radKm * 0.2));
+            const ell3X = theta.map(t => Math.cos(t) * 1.35 + (crossKm * 0.2));
+            const ell3Y = theta.map(t => Math.sin(t) * 0.75 + (radKm * 0.2));
 
-            // 3. Primary Satellite at Center (0, 0)
-            traces.push({
-                x: [0],
-                y: [0],
-                mode: 'markers+text',
-                name: conj.objA.name,
-                text: [conj.objA.name],
-                textposition: 'top center',
-                textfont: { color: '#46d9ff', size: 12, family: 'Plus Jakarta Sans' },
-                marker: {
-                    size: 14,
-                    color: '#46d9ff',
-                    symbol: 'diamond',
-                    line: { color: '#fff', width: 2 }
+            const traces = [
+                // 1. Red Keep-out Zone
+                {
+                    x: redCircleX,
+                    y: redCircleY,
+                    mode: 'lines',
+                    name: 'Critical Collision Zone (1 km)',
+                    line: { color: 'rgba(255, 82, 109, 0.85)', width: 1.5, dash: 'dot' },
+                    fill: 'toself',
+                    fillcolor: 'rgba(255, 82, 109, 0.14)',
+                    hoverinfo: 'name'
                 },
-                hoverinfo: 'text'
-            });
-
-            // 4. Uncertainty Covariance Ellipse (1-sigma)
-            const ellX = theta.map(t => Math.cos(t) * 0.55);
-            const ellY = theta.map(t => Math.sin(t) * 0.30);
-            traces.push({
-                x: ellX,
-                y: ellY,
-                mode: 'lines',
-                name: '1-σ Covariance',
-                line: { color: 'rgba(70, 217, 255, 0.5)', width: 1.5 },
-                hoverinfo: 'name'
-            });
-
-            // 5. Threat Debris position with smooth interpolation
-            const nominalX = conj.crossTrackKm || 0.15;
-            const nominalY = conj.radialKm || 0.30;
-            const postX = (conj.postMissKm || 18.5) * 0.7;
-            const postY = (conj.postMissKm || 18.5) * 0.5;
-
-            const threatX = nominalX + (postX - nominalX) * maneuverProgress;
-            const threatY = nominalY + (postY - nominalY) * maneuverProgress;
-
-            const isSafe = maneuverProgress > 0.4;
-            const accentColor = isSafe ? '#42e6a4' : '#ff526d';
-
-            // Trajectory line piercing the B-Plane
-            const trajX = [threatX - 5, threatX, threatX + 5];
-            const trajY = [threatY - 2, threatY, threatY + 2];
-
-            traces.push({
-                x: trajX,
-                y: trajY,
-                mode: 'lines',
-                name: 'Relative Velocity Vector',
-                line: { color: accentColor, width: 2, dash: 'solid' },
-                hoverinfo: 'name'
-            });
-
-            traces.push({
-                x: [threatX],
-                y: [threatY],
-                mode: 'markers+text',
-                name: conj.objB.name + (isSafe ? ' (Safe Clearance)' : ' (Collision Path)'),
-                text: [conj.objB.name],
-                textposition: 'bottom right',
-                textfont: { color: accentColor, size: 12, family: 'Plus Jakarta Sans' },
-                marker: {
-                    size: 14,
-                    color: accentColor,
-                    symbol: 'circle',
-                    line: { color: '#fff', width: 2 }
+                // 2. Orange Warning Zone
+                {
+                    x: orangeCircleX,
+                    y: orangeCircleY,
+                    mode: 'lines',
+                    name: 'Warning Keep-Out Zone (5 km)',
+                    line: { color: 'rgba(255, 173, 77, 0.7)', width: 1.5, dash: 'dash' },
+                    hoverinfo: 'name'
                 },
-                hoverinfo: 'text'
-            });
+                // 3. 1-sigma Uncertainty Covariance
+                {
+                    x: ell1X,
+                    y: ell1Y,
+                    mode: 'lines',
+                    name: '1-σ Covariance Ellipse',
+                    line: { color: 'rgba(70, 217, 255, 0.6)', width: 1.5 },
+                    hoverinfo: 'name'
+                },
+                // 4. 3-sigma Uncertainty Covariance
+                {
+                    x: ell3X,
+                    y: ell3Y,
+                    mode: 'lines',
+                    name: '3-σ Positional Error',
+                    line: { color: 'rgba(70, 217, 255, 0.25)', width: 1, dash: 'dot' },
+                    hoverinfo: 'name'
+                },
+                // 5. Primary Satellite at Origin (0,0)
+                {
+                    x: [0],
+                    y: [0],
+                    mode: 'markers+text',
+                    name: conj.objA ? conj.objA.name : 'Primary Asset',
+                    text: [conj.objA ? conj.objA.name : 'Primary Asset'],
+                    textposition: 'top center',
+                    textfont: { color: '#46d9ff', size: 16, family: 'Plus Jakarta Sans' },
+                    marker: { size: 15, color: '#46d9ff', symbol: 'diamond', line: { color: '#fff', width: 2 } },
+                    hoverinfo: 'text'
+                },
+                // 6. Threat Object Relative Velocity Track
+                {
+                    x: [threatX - 4, threatX, threatX + 4],
+                    y: [threatY - 2, threatY, threatY + 2],
+                    mode: 'lines',
+                    name: 'Relative Velocity Vector',
+                    line: { color: accentColor, width: 2, dash: 'solid' },
+                    hoverinfo: 'name'
+                },
+                // 7. Dynamic Miss Distance Vector
+                {
+                    x: [0, threatX],
+                    y: [0, threatY],
+                    mode: 'lines',
+                    name: `Miss Dist: ${distLabel} ${statusLabel}`,
+                    line: { color: accentColor, width: 3, dash: isSafe ? 'solid' : 'dash' },
+                    hoverinfo: 'name'
+                },
+                // 8. Threat Object Marker
+                {
+                    x: [threatX],
+                    y: [threatY],
+                    mode: 'markers+text',
+                    name: `${conj.objB ? conj.objB.name : 'Threat'} (${statusLabel})`,
+                    text: [conj.objB ? conj.objB.name : 'Threat Object'],
+                    textposition: 'bottom right',
+                    textfont: { color: accentColor, size: 16, family: 'Plus Jakarta Sans' },
+                    marker: { size: 15, color: accentColor, symbol: 'circle', line: { color: '#fff', width: 2 } },
+                    hoverinfo: 'text'
+                }
+            ];
 
-            const rangeLimit = Math.max(7, Math.abs(threatX) * 1.35, Math.abs(threatY) * 1.35);
+            const rangeLimit = Math.max(8, Math.abs(threatX) * 1.35, Math.abs(threatY) * 1.35);
 
             const layout = {
                 paper_bgcolor: 'transparent',
                 plot_bgcolor: 'transparent',
                 height: 720,
-                margin: { l: 50, r: 30, t: 180, b: 50 },
+                margin: { l: 50, r: 30, t: 80, b: 50 },
                 xaxis: {
                     title: { text: 'Cross-Track Axis (km)', font: { color: '#7f91ad', family: 'Plus Jakarta Sans', size: 12 } },
                     color: '#7f91ad',
@@ -2720,15 +2796,28 @@ DELTA 1 DEB
                 legend: {
                     x: 0.02,
                     y: 0.04,
-                    font: { color: '#a9b9cf', size: 10, family: 'Plus Jakarta Sans' },
+                    font: { color: '#a9b9cf', size: 11, family: 'Plus Jakarta Sans' },
                     bgcolor: 'rgba(7, 11, 20, 0.85)',
-                    bordercolor: 'rgba(70, 217, 255, 0.2)',
+                    bordercolor: 'rgba(70, 217, 255, 0.25)',
                     borderwidth: 1
                 }
             };
 
             const config = { responsive: true, displayModeBar: false };
-            Plotly.react('bplaneChart', traces, layout, config);
+
+            isPlotUpdating = true;
+            if (forceNewPlot || lastRenderedChartMode !== 'bplane') {
+                Plotly.purge('bplaneChart');
+                Plotly.newPlot('bplaneChart', traces, layout, config).finally(() => {
+                    isPlotUpdating = false;
+                    lastRenderedChartMode = 'bplane';
+                });
+            } else {
+                Plotly.react('bplaneChart', traces, layout, config).finally(() => {
+                    isPlotUpdating = false;
+                    lastRenderedChartMode = 'bplane';
+                });
+            }
         }
 
         // ================================================================
@@ -2749,7 +2838,7 @@ DELTA 1 DEB
                 else if (c.riskTier === 'warning') colors.push('#ffad4d');
                 else colors.push('#42e6a4');
 
-                textLabels.push(`${c.objA.name} ✕ ${c.objB.name}<br>Miss: ${c.missDistanceKm < 1 ? (c.missDistanceKm * 1000).toFixed(0) + ' m' : c.missDistanceKm.toFixed(2) + ' km'} | TCA: +${Math.round(c.tcaMinutes)}m`);
+                textLabels.push(`${c.objA ? c.objA.name : 'Asset'} ✕ ${c.objB ? c.objB.name : 'Threat'}<br>Miss: ${c.missDistanceKm < 1 ? (c.missDistanceKm * 1000).toFixed(0) + ' m' : c.missDistanceKm.toFixed(2) + ' km'} | TCA: +${Math.round(c.tcaMinutes)}m`);
             });
 
             const traces = [
@@ -2794,7 +2883,23 @@ DELTA 1 DEB
                 showlegend: false
             };
 
-            Plotly.newPlot('timelineChart', traces, layout, { responsive: true, displayModeBar: false });
+            const timelineEl = document.getElementById('timelineChart');
+            if (timelineEl) {
+                Plotly.newPlot('timelineChart', traces, layout, { responsive: true, displayModeBar: false }).then(() => {
+                    if (timelineEl.removeAllListeners) timelineEl.removeAllListeners('plotly_click');
+                    if (timelineEl.on) {
+                        timelineEl.on('plotly_click', (data) => {
+                            if (data && data.points && data.points[0]) {
+                                const ptIdx = data.points[0].pointIndex;
+                                if (allConjunctions[ptIdx]) {
+                                    const c = allConjunctions[ptIdx];
+                                    selectConjunction(c.id || c.conjunctionId || c._id || ptIdx, true);
+                                }
+                            }
+                        });
+                    }
+                });
+            }
         }
 
         // ================================================================
@@ -2803,9 +2908,13 @@ DELTA 1 DEB
 
         function renderTable() {
             const tbody = document.getElementById("cdmTableBody");
+            if (!tbody) return;
             if (filteredConjunctions.length === 0) filteredConjunctions = [...allConjunctions];
 
-            tbody.innerHTML = filteredConjunctions.map(c => {
+            tbody.innerHTML = filteredConjunctions.map((c, idx) => {
+                if (!c.id && !c.conjunctionId && !c._id) {
+                    c.id = `temp-id-${idx}-${Date.now()}`;
+                }
                 const conjId = c.id || c.conjunctionId || c._id;
                 const isSelected = selectedConjunction && (selectedConjunction.id === conjId || selectedConjunction.conjunctionId === conjId || selectedConjunction._id === conjId);
                 const badgeClass = c.riskTier === 'critical' ? 'critical' : (c.riskTier === 'warning' ? 'warning' : 'nominal');
@@ -2852,12 +2961,19 @@ DELTA 1 DEB
         }
 
         function selectConjunction(id, scrollToVisualizer = false) {
-            let found = allConjunctions.find(c => String(c.id) === String(id) || String(c.conjunctionId) === String(id) || String(c._id) === String(id));
+            let found = allConjunctions.find(c => 
+                (c.id && String(c.id) === String(id)) || 
+                (c.conjunctionId && String(c.conjunctionId) === String(id)) || 
+                (c._id && String(c._id) === String(id))
+            );
             if (!found && !isNaN(Number(id)) && allConjunctions[Number(id)]) {
                 found = allConjunctions[Number(id)];
             }
             if (!found && id) {
-                found = allConjunctions.find(c => (c.objA && String(c.objA.name).includes(String(id))) || (c.objB && String(c.objB.name).includes(String(id))));
+                found = allConjunctions.find(c => 
+                    (c.objA && c.objA.name && String(c.objA.name).toLowerCase().includes(String(id).toLowerCase())) || 
+                    (c.objB && c.objB.name && String(c.objB.name).toLowerCase().includes(String(id).toLowerCase()))
+                );
             }
             if (found) {
                 selectedConjunction = found;
@@ -2886,9 +3002,9 @@ DELTA 1 DEB
 
             // 2. Update 3D Trajectory / B-Plane Visualizer
             if (chartMode === '3d') {
-                render3DTrajectoryChart();
+                render3DTrajectoryChart(true);
             } else {
-                renderBPlaneChart();
+                renderBPlaneChart(true);
             }
 
             // 3. Highlight selected row in CDM table
