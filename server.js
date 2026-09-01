@@ -405,6 +405,7 @@ async function syncTleCatalog(options = {}) {
 let isComputingConjunctions = false;
 let lastConjunctionComputeTime = null;
 let lastConjunctionPairsScreened = 5460;
+let memoryConjunctions = [];
 const CONJUNCTION_HORIZON_HOURS = 24;
 const CONJUNCTION_STEP_MINUTES = 2;
 const CONJUNCTION_SYNC_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
@@ -993,7 +994,8 @@ async function computeConjunctionsService() {
       conjunctionResults.sort((a, b) => a.missDistanceKm - b.missDistanceKm);
     }
 
-    // 5. Store into MongoDB
+    // 5. Store into Memory & MongoDB
+    memoryConjunctions = conjunctionResults;
     if (mongoose.connection.readyState === 1) {
       await Conjunction.deleteMany({});
       await Conjunction.insertMany(conjunctionResults);
@@ -1029,12 +1031,23 @@ app.get("/api/conjunctions", async (req, res) => {
     if (mongoose.connection.readyState === 1) {
       conjunctions = await Conjunction.find({}).sort({ missDistanceKm: 1 }).lean();
     }
+    if (conjunctions.length === 0 && memoryConjunctions.length > 0) {
+      conjunctions = memoryConjunctions;
+    }
 
-    if (conjunctions.length === 0) {
-      // Trigger instant computation if database is empty
-      const computeRes = await computeConjunctionsService();
+    const nowMs = Date.now();
+    const upcomingCount = conjunctions.filter(c => new Date(c.tcaTimestamp).getTime() > nowMs).length;
+    const newestComputed = conjunctions[0]?.computedAt ? new Date(conjunctions[0].computedAt).getTime() : (lastConjunctionComputeTime ? new Date(lastConjunctionComputeTime).getTime() : 0);
+    const isStale = (nowMs - newestComputed) > CONJUNCTION_SYNC_INTERVAL_MS || upcomingCount < 3;
+
+    if (conjunctions.length === 0 || isStale) {
+      // Trigger instant computation if database is empty or stale (e.g. Render waking up from sleep)
+      await computeConjunctionsService();
       if (mongoose.connection.readyState === 1) {
         conjunctions = await Conjunction.find({}).sort({ missDistanceKm: 1 }).lean();
+      }
+      if (conjunctions.length === 0 && memoryConjunctions.length > 0) {
+        conjunctions = memoryConjunctions;
       }
     }
 
@@ -1045,6 +1058,9 @@ app.get("/api/conjunctions", async (req, res) => {
       ? (conjunctions.reduce((acc, c) => acc + (c.relVelKmS || 0), 0) / conjunctions.length).toFixed(1)
       : "10.5";
 
+    const upcomingEvents = conjunctions.filter(c => new Date(c.tcaTimestamp).getTime() > Date.now());
+    const nextEvent = upcomingEvents.length > 0 ? upcomingEvents[0] : (conjunctions[0] || null);
+
     res.json({
       success: true,
       count: conjunctions.length,
@@ -1052,10 +1068,11 @@ app.get("/api/conjunctions", async (req, res) => {
       summary: {
         totalScreened: lastConjunctionPairsScreened || 5460,
         totalEvents: conjunctions.length,
+        upcomingEvents: upcomingEvents.length,
         highRiskCount,
         warningCount,
         nominalCount,
-        nextEvent: conjunctions[0] || null,
+        nextEvent,
         avgRelVel
       },
       conjunctions
@@ -1249,13 +1266,17 @@ async function startServer() {
       console.log(`[${new Date().toLocaleTimeString()}] 📂 MongoDB TLE catalog is fresh (${docCount} tracked objects, ${ageMins} mins old).`);
     }
 
-    // Run initial conjunction screening if none exists
+    // Run initial conjunction screening if none exists OR if data is stale
+    const newestConj = await Conjunction.findOne().sort({ computedAt: -1 });
     const conjCount = await Conjunction.countDocuments();
-    if (conjCount === 0) {
-      console.log(`[${new Date().toLocaleTimeString()}] 🚀 Running initial SGP4 24h orbital conjunction analysis...`);
+    const upcomingCount = await Conjunction.countDocuments({ tcaTimestamp: { $gt: new Date() } });
+    const isConjStale = conjCount === 0 || !newestConj || (Date.now() - new Date(newestConj.computedAt).getTime()) > CONJUNCTION_SYNC_INTERVAL_MS || upcomingCount < 3;
+
+    if (isConjStale) {
+      console.log(`[${new Date().toLocaleTimeString()}] 🚀 Conjunction records are missing or stale (${upcomingCount} upcoming TCAs). Running fresh SGP4 24h orbital conjunction analysis...`);
       computeConjunctionsService().catch(err => console.error("Initial conjunction compute error:", err));
     } else {
-      console.log(`[${new Date().toLocaleTimeString()}] 🛰️ MongoDB has ${conjCount} precomputed conjunction records.`);
+      console.log(`[${new Date().toLocaleTimeString()}] 🛰️ MongoDB has ${conjCount} conjunction records (${upcomingCount} active upcoming TCAs).`);
     }
 
     // Schedule 15-minute recurring conjunction screening

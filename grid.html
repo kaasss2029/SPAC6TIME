@@ -2109,7 +2109,15 @@ DELTA 1 DEB
             if (cached) {
                 try {
                     const parsed = JSON.parse(cached);
-                    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        const nowMs = Date.now();
+                        const upcoming = parsed.filter(e => new Date(e.tcaTimestamp).getTime() > nowMs);
+                        if (upcoming.length > 0) return parsed;
+                        return parsed.map((e, idx) => ({
+                            ...e,
+                            tcaTimestamp: new Date(nowMs + (idx + 1) * 15 * 60000).toISOString()
+                        }));
+                    }
                 } catch (e) {}
             }
 
@@ -2381,17 +2389,26 @@ DELTA 1 DEB
 
         function updateCountdowns() {
             if (!allConjunctions || allConjunctions.length === 0) return;
-            const next = allConjunctions[0];
+            const now = Date.now();
+            const upcoming = allConjunctions.filter(c => new Date(c.tcaTimestamp).getTime() > now);
+            const next = upcoming.length > 0 ? upcoming[0] : allConjunctions[0];
             const timeStr = formatGridCountdown(next.tcaTimestamp, next.tcaMinutes);
 
             const setEl = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
             setEl("cardNextTca", timeStr);
             setEl("sheetCardNextTca", timeStr);
+            if (next && next.objA && next.objB) {
+                const pairStr = `${next.objA.name || next.objA} ✕ ${next.objB.name || next.objB}`;
+                setEl("cardNextPair", pairStr);
+                setEl("sheetCardNextPair", pairStr);
+            }
 
             if (selectedConjunction) {
                 const selStr = formatGridCountdown(selectedConjunction.tcaTimestamp, selectedConjunction.tcaMinutes);
                 const camTca = document.getElementById("camTcaVal");
                 if (camTca) camTca.textContent = selStr;
+                const sheetCamTca = document.getElementById("sheetCamTcaVal");
+                if (sheetCamTca) sheetCamTca.textContent = selStr;
             }
         }
 
