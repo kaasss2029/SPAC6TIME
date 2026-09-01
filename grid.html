@@ -2839,6 +2839,7 @@ DELTA 1 DEB
             const threatX = crossKm + (postX - crossKm) * maneuverProgress;
             const threatY = radKm + (postY - radKm) * maneuverProgress;
 
+            const currentDist = Math.sqrt(threatX * threatX + threatY * threatY);
             const isManeuverActive = maneuverProgress > 0.05;
             const assetColor = '#46d9ff'; // Primary Asset at Origin is Cyan Blue
             const threatMarkerColor = isManeuverActive ? '#42e6a4' : '#ff526d'; // Red before burn, transitions to Green post-burn
