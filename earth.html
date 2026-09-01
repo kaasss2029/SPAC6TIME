@@ -3568,8 +3568,15 @@ function renderConjunctions(conjunctionsList) {
 
     globalConjunctions = conjunctionsList;
 
-    const highRiskEvents = conjunctionsList.filter(e => e.riskTier === "critical" || e.risk === "HIGH");
-    const conjCountStr = conjunctionsList.length.toString();
+    const nowMs = Date.now();
+    const activeConjunctions = (conjunctionsList || []).filter(event => {
+        const tMs = new Date(event.tcaTimestamp || event.tca).getTime();
+        return !isNaN(tMs) && tMs >= (nowMs - 60000);
+    });
+    const displayList = activeConjunctions.length > 0 ? activeConjunctions : conjunctionsList;
+
+    const highRiskEvents = displayList.filter(e => e.riskTier === "critical" || e.risk === "HIGH");
+    const conjCountStr = displayList.length.toString();
     const highRiskStr = highRiskEvents.length.toString();
 
     const setEl = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
@@ -3580,8 +3587,8 @@ function renderConjunctions(conjunctionsList) {
     setEl("sheetCardHighRisk", highRiskStr);
     setEl("hudAlertBadge", `${highRiskStr} Critical`);
 
-    const upcomingEvents = getUpcomingConjunctions(conjunctionsList);
-    const focalEvent = upcomingEvents.length > 0 ? upcomingEvents[0] : conjunctionsList[0];
+    const upcomingEvents = getUpcomingConjunctions(displayList);
+    const focalEvent = upcomingEvents.length > 0 ? upcomingEvents[0] : displayList[0];
 
     if (focalEvent) {
         updateFocalEventUI(focalEvent);
@@ -3590,7 +3597,7 @@ function renderConjunctions(conjunctionsList) {
     const tbody = document.getElementById("eventRows");
     if (tbody) {
         tbody.innerHTML = "";
-        conjunctionsList.forEach(event => {
+        displayList.forEach(event => {
             const objAName = event.objA.name || event.objA;
             const objBName = event.objB.name || event.objB;
             const distNum = typeof event.missDistanceKm === "number" ? event.missDistanceKm : Number(event.dist);
@@ -3613,7 +3620,7 @@ function renderConjunctions(conjunctionsList) {
     }
 
     const conjCountEl = document.getElementById("conjunctionCount");
-    if (conjCountEl) conjCountEl.innerText = `Next 24h • ${conjunctionsList.length} orbital conjunctions tracked`;
+    if (conjCountEl) conjCountEl.innerText = `Next 24h • ${displayList.length} orbital conjunctions tracked`;
 
     // Real-time ticking for TCA countdowns
     if (liveCountdownInterval) clearInterval(liveCountdownInterval);

@@ -403,6 +403,7 @@ async function syncTleCatalog(options = {}) {
 // 5. Orbital Conjunction Screening Engine (SGP4)
 // ----------------------------------------------------
 let isComputingConjunctions = false;
+let currentComputePromise = null;
 let lastConjunctionComputeTime = null;
 let lastConjunctionPairsScreened = 5460;
 let memoryConjunctions = [];
@@ -620,404 +621,412 @@ function pickScreeningSubset(satellites, limit = 110) {
 }
 
 async function computeConjunctionsService() {
-  if (isComputingConjunctions) {
-    console.log(`[${new Date().toLocaleTimeString()}] ⏳ Conjunction compute already in progress, skipping duplicate.`);
-    return { status: "already_running" };
+  if (isComputingConjunctions && currentComputePromise) {
+    console.log(`[${new Date().toLocaleTimeString()}] ⏳ Conjunction compute already in progress, awaiting active computation.`);
+    return currentComputePromise;
   }
 
   isComputingConjunctions = true;
-  const startTime = Date.now();
-  console.log(`[${new Date().toLocaleTimeString()}] 🛰️ Starting SGP4 Orbital Conjunction Analysis (24h horizon)...`);
+  currentComputePromise = (async () => {
+    const startTime = Date.now();
+    console.log(`[${new Date().toLocaleTimeString()}] 🛰️ Starting SGP4 Orbital Conjunction Analysis (24h horizon)...`);
 
-  try {
-    // 1. Fetch satellite catalog
-    let rawSatellites = [];
-    if (mongoose.connection.readyState === 1) {
-      rawSatellites = await Satellite.find({}, "noradId name line1 line2 group").sort({ noradId: 1 }).lean();
-    }
-    if (rawSatellites.length === 0 && fs.existsSync(FILE_NAME)) {
-      const fileText = fs.readFileSync(FILE_NAME, "utf8");
-      rawSatellites = parseTleText(fileText);
-    }
-
-    if (rawSatellites.length < 10) {
-      console.warn(`[${new Date().toLocaleTimeString()}] ⚠️ Not enough satellites available for conjunction screening (${rawSatellites.length}).`);
-      isComputingConjunctions = false;
-      return { status: "insufficient_data" };
-    }
-
-    // 2. Parse satrecs
-    const parsedSatellites = [];
-    for (const sat of rawSatellites) {
-      try {
-        const satrec = satellite.twoline2satrec(sat.line1, sat.line2);
-        if (satrec && (!satrec.error || satrec.error === 0)) {
-          parsedSatellites.push({
-            noradId: Number(sat.noradId),
-            name: sat.name || `NORAD ${sat.noradId}`,
-            line1: sat.line1,
-            line2: sat.line2,
-            satrec,
-            type: getObjectType(sat.name, sat.noradId)
-          });
-        }
-      } catch (e) {}
-    }
-
-    const screeningSubset = pickScreeningSubset(parsedSatellites, 105);
-    const N = screeningSubset.length;
-    const totalPairs = (N * (N - 1)) / 2;
-
-    const epochNow = new Date();
-    const epochMs = epochNow.getTime();
-    const STEP_MS = CONJUNCTION_STEP_MINUTES * 60 * 1000;
-    const totalSteps = Math.floor((CONJUNCTION_HORIZON_HOURS * 60 * 60 * 1000) / STEP_MS);
-
-    // 3. Precompute states across 24 hours
-    const stateGrid = screeningSubset.map(sat => {
-      const states = [];
-      for (let step = 0; step <= totalSteps; step++) {
-        states.push(getState(sat.satrec, new Date(epochMs + step * STEP_MS)));
+    try {
+      // 1. Fetch satellite catalog
+      let rawSatellites = [];
+      if (mongoose.connection.readyState === 1) {
+        rawSatellites = await Satellite.find({}, "noradId name line1 line2 group").sort({ noradId: 1 }).lean();
       }
-      return states;
-    });
+      if (rawSatellites.length === 0 && fs.existsSync(FILE_NAME)) {
+        const fileText = fs.readFileSync(FILE_NAME, "utf8");
+        rawSatellites = parseTleText(fileText);
+      }
 
-    const conjunctionResults = [];
+      if (rawSatellites.length < 10) {
+        console.warn(`[${new Date().toLocaleTimeString()}] ⚠️ Not enough satellites available for conjunction screening (${rawSatellites.length}).`);
+        return { status: "insufficient_data" };
+      }
 
-    // 4. Pairwise SGP4 Screening
-    for (let i = 0; i < N; i++) {
-      const satA = screeningSubset[i];
-      for (let j = i + 1; j < N; j++) {
-        const satB = screeningSubset[j];
-        if (areSamePhysicalPlatform(satA, satB)) continue;
+      // 2. Parse satrecs
+      const parsedSatellites = [];
+      for (const sat of rawSatellites) {
+        try {
+          const satrec = satellite.twoline2satrec(sat.line1, sat.line2);
+          if (satrec && (!satrec.error || satrec.error === 0)) {
+            parsedSatellites.push({
+              noradId: Number(sat.noradId),
+              name: sat.name || `NORAD ${sat.noradId}`,
+              line1: sat.line1,
+              line2: sat.line2,
+              satrec,
+              type: getObjectType(sat.name, sat.noradId)
+            });
+          }
+        } catch (e) {}
+      }
 
-        let coarseMinDist = Infinity;
-        let coarseMinStep = -1;
+      const screeningSubset = pickScreeningSubset(parsedSatellites, 105);
+      const N = screeningSubset.length;
+      const totalPairs = (N * (N - 1)) / 2;
 
+      const epochNow = new Date();
+      const epochMs = epochNow.getTime();
+      const STEP_MS = CONJUNCTION_STEP_MINUTES * 60 * 1000;
+      const totalSteps = Math.floor((CONJUNCTION_HORIZON_HOURS * 60 * 60 * 1000) / STEP_MS);
+
+      // 3. Precompute states across 24 hours
+      const stateGrid = screeningSubset.map(sat => {
+        const states = [];
         for (let step = 0; step <= totalSteps; step++) {
-          const sA = stateGrid[i][step];
-          const sB = stateGrid[j][step];
-          if (!sA || !sB) continue;
-          const dist = distanceBetween(sA.position, sB.position);
-          if (dist < coarseMinDist) {
-            coarseMinDist = dist;
-            coarseMinStep = step;
+          states.push(getState(sat.satrec, new Date(epochMs + step * STEP_MS)));
+        }
+        return states;
+      });
+
+      const conjunctionResults = [];
+
+      // 4. Pairwise SGP4 Screening
+      for (let i = 0; i < N; i++) {
+        const satA = screeningSubset[i];
+        for (let j = i + 1; j < N; j++) {
+          const satB = screeningSubset[j];
+          if (areSamePhysicalPlatform(satA, satB)) continue;
+
+          let coarseMinDist = Infinity;
+          let coarseMinStep = -1;
+
+          for (let step = 0; step <= totalSteps; step++) {
+            const sA = stateGrid[i][step];
+            const sB = stateGrid[j][step];
+            if (!sA || !sB) continue;
+            const dist = distanceBetween(sA.position, sB.position);
+            if (dist < coarseMinDist) {
+              coarseMinDist = dist;
+              coarseMinStep = step;
+            }
+          }
+
+          if (coarseMinStep >= 0 && coarseMinDist < 120.0) {
+            const leftMs = Math.max(epochMs, epochMs + (coarseMinStep - 1) * STEP_MS);
+            const rightMs = Math.min(epochMs + totalSteps * STEP_MS, epochMs + (coarseMinStep + 1) * STEP_MS);
+
+            const refined = refineTca(satA.satrec, satB.satrec, leftMs, rightMs);
+            if (!refined) continue;
+
+            const minDist = refined.distance;
+            const vRel = refined.relVelocity;
+            if (vRel < 0.05) continue; // Docked or co-orbiting components
+
+            const tcaOffsetMs = refined.tcaMs - epochMs;
+            const tcaMinutes = tcaOffsetMs / 60000;
+            if (tcaMinutes < 3) continue; // Skip events that are already in the past or immediately at the boundary
+
+            const tcaTimestamp = new Date(refined.tcaMs);
+
+            // Approximate encounter altitude
+            const rMag = Math.sqrt(refined.posA.x ** 2 + refined.posA.y ** 2 + refined.posA.z ** 2);
+            const altitudeKm = Math.round(Math.max(200, rMag - 6371));
+
+            // RIC (Radial, In-track, Cross-track) coordinate frame decomposition
+            const dx = refined.posB.x - refined.posA.x;
+            const dy = refined.posB.y - refined.posA.y;
+            const dz = refined.posB.z - refined.posA.z;
+
+            const rNorm = rMag || 1;
+            const ur = { x: refined.posA.x / rNorm, y: refined.posA.y / rNorm, z: refined.posA.z / rNorm };
+
+            const hx = refined.posA.y * refined.velA.z - refined.posA.z * refined.velA.y;
+            const hy = refined.posA.z * refined.velA.x - refined.posA.x * refined.velA.z;
+            const hz = refined.posA.x * refined.velA.y - refined.posA.y * refined.velA.x;
+            const hNorm = Math.sqrt(hx * hx + hy * hy + hz * hz) || 1;
+            const uc = { x: hx / hNorm, y: hy / hNorm, z: hz / hNorm };
+
+            const ui = {
+              x: uc.y * ur.z - uc.z * ur.y,
+              y: uc.z * ur.x - uc.x * ur.z,
+              z: uc.x * ur.y - uc.y * ur.x
+            };
+
+            const radialKm = parseFloat((dx * ur.x + dy * ur.y + dz * ur.z).toFixed(3));
+            const inTrackKm = parseFloat((dx * ui.x + dy * ui.y + dz * ui.z).toFixed(3));
+            const crossTrackKm = parseFloat((dx * uc.x + dy * uc.y + dz * uc.z).toFixed(3));
+
+            // Foster Gaussian Collision Probability (sigma = 500m, hardBodyRadius = 10m)
+            const sigma = 0.5;
+            const hardBodyRadius = 0.01;
+            const pcVal = Math.min(0.99, (hardBodyRadius / (Math.sqrt(2 * Math.PI) * sigma)) * Math.exp(-(minDist * minDist) / (2 * sigma * sigma)));
+            const pcStr = pcVal > 1e-6 ? pcVal.toExponential(1).replace("e", " × 10") : "< 1.0 × 10⁻⁶";
+
+            // Multi-Factor Operational Risk Priority Index (incorporating Distance, Velocity, and TCA Urgency)
+            const riskEval = calculateConjunctionRisk(minDist, vRel, tcaMinutes);
+            const riskScoreVal = riskEval.riskScore;
+            const riskTier = riskEval.riskTier;
+
+            // Deterministic Avoidance Maneuver (CAM) Parameters
+            const typeA = ((satA.type || satA.name || "")).toLowerCase();
+            const typeB = ((satB.type || satB.name || "")).toLowerCase();
+            const isDebrisOnDebris = (typeA.includes("deb") || typeA.includes("r/b") || typeA.includes("rocket")) &&
+                                     (typeB.includes("deb") || typeB.includes("r/b") || typeB.includes("rocket"));
+
+            const deltaVNum = minDist < 1.0 
+              ? (0.12 + Math.max(0, 5.0 - minDist) * 0.035) 
+              : (minDist < 5.0 ? (0.06 + Math.max(0, 5.0 - minDist) * 0.015) : 0.05);
+
+            const recDeltaV = isDebrisOnDebris 
+              ? "0.00 m/s (Passive Objects)" 
+              : `+${deltaVNum.toFixed(2)} m/s (${minDist < 1.0 ? 'Prograde Burn' : 'Along-Track'})`;
+
+            const burnLeadMins = Math.max(15, Math.min(90, Math.round(tcaMinutes * 0.5)));
+            const burnWindow = isDebrisOnDebris 
+              ? "Non-Maneuverable (Passive Debris)" 
+              : `T - ${burnLeadMins} min (0.5 rev / 180° phasing)`;
+
+            const satMassKg = (satA.name || "").toUpperCase().includes("ISS") ? 420000 : ((satA.name || "").toUpperCase().includes("TIANGONG") ? 66000 : 1000);
+            const fuelGramsVal = Math.max(1, Math.round(satMassKg * (1 - Math.exp(-deltaVNum / (220 * 9.80665))) * 1000));
+            const fuelGrams = isDebrisOnDebris 
+              ? "N/A (Defunct Stage / Passive)" 
+              : (fuelGramsVal > 1000 ? `${(fuelGramsVal / 1000).toFixed(2)} kg (Hydrazine)` : `${fuelGramsVal} g (Hydrazine)`);
+
+            const postMissKm = parseFloat((minDist < 5.0 ? (16.5 + Math.max(0, 5.0 - minDist) * 1.8) : (minDist + 18.25)).toFixed(2));
+
+            const noradA = Number(satA.noradId) || 0;
+            const noradB = Number(satB.noradId) || 0;
+            const nMin = Math.min(noradA, noradB);
+            const nMax = Math.max(noradA, noradB);
+            const stableId = (nMin && nMax)
+              ? `CDM-${nMin}-${nMax}`
+              : `CDM-${(satA.name || 'A').replace(/\s+/g, '_')}-${(satB.name || 'B').replace(/\s+/g, '_')}`;
+
+            conjunctionResults.push({
+              conjunctionId: stableId,
+              computedAt: epochNow,
+              tcaTimestamp,
+              tcaMinutes: Math.round(tcaMinutes),
+              objA: {
+                noradId: satA.noradId,
+                name: satA.name,
+                type: satA.type
+              },
+              objB: {
+                noradId: satB.noradId,
+                name: satB.name,
+                type: satB.type
+              },
+              missDistanceKm: parseFloat(minDist.toFixed(2)),
+              radialKm,
+              inTrackKm,
+              crossTrackKm,
+              relVelKmS: parseFloat(vRel.toFixed(2)),
+              altitudeKm,
+              collisionProb: pcStr,
+              collisionProbValue: pcVal,
+              riskScore: riskScoreVal,
+              riskTier,
+              recommendedDeltaV: recDeltaV,
+              burnWindow,
+              fuelCostGrams: fuelGrams,
+              postMissKm
+            });
           }
         }
-
-        if (coarseMinStep >= 0 && coarseMinDist < 120.0) {
-          const leftMs = Math.max(epochMs, epochMs + (coarseMinStep - 1) * STEP_MS);
-          const rightMs = Math.min(epochMs + totalSteps * STEP_MS, epochMs + (coarseMinStep + 1) * STEP_MS);
-
-          const refined = refineTca(satA.satrec, satB.satrec, leftMs, rightMs);
-          if (!refined) continue;
-
-          const minDist = refined.distance;
-          const vRel = refined.relVelocity;
-          if (vRel < 0.05) continue; // Docked or co-orbiting components
-
-          const tcaOffsetMs = refined.tcaMs - epochMs;
-          const tcaMinutes = tcaOffsetMs / 60000;
-          const tcaTimestamp = new Date(refined.tcaMs);
-
-          // Approximate encounter altitude
-          const rMag = Math.sqrt(refined.posA.x ** 2 + refined.posA.y ** 2 + refined.posA.z ** 2);
-          const altitudeKm = Math.round(Math.max(200, rMag - 6371));
-
-          // RIC (Radial, In-track, Cross-track) coordinate frame decomposition
-          const dx = refined.posB.x - refined.posA.x;
-          const dy = refined.posB.y - refined.posA.y;
-          const dz = refined.posB.z - refined.posA.z;
-
-          const rNorm = rMag || 1;
-          const ur = { x: refined.posA.x / rNorm, y: refined.posA.y / rNorm, z: refined.posA.z / rNorm };
-
-          const hx = refined.posA.y * refined.velA.z - refined.posA.z * refined.velA.y;
-          const hy = refined.posA.z * refined.velA.x - refined.posA.x * refined.velA.z;
-          const hz = refined.posA.x * refined.velA.y - refined.posA.y * refined.velA.x;
-          const hNorm = Math.sqrt(hx * hx + hy * hy + hz * hz) || 1;
-          const uc = { x: hx / hNorm, y: hy / hNorm, z: hz / hNorm };
-
-          const ui = {
-            x: uc.y * ur.z - uc.z * ur.y,
-            y: uc.z * ur.x - uc.x * ur.z,
-            z: uc.x * ur.y - uc.y * ur.x
-          };
-
-          const radialKm = parseFloat((dx * ur.x + dy * ur.y + dz * ur.z).toFixed(3));
-          const inTrackKm = parseFloat((dx * ui.x + dy * ui.y + dz * ui.z).toFixed(3));
-          const crossTrackKm = parseFloat((dx * uc.x + dy * uc.y + dz * uc.z).toFixed(3));
-
-          // Foster Gaussian Collision Probability (sigma = 500m, hardBodyRadius = 10m)
-          const sigma = 0.5;
-          const hardBodyRadius = 0.01;
-          const pcVal = Math.min(0.99, (hardBodyRadius / (Math.sqrt(2 * Math.PI) * sigma)) * Math.exp(-(minDist * minDist) / (2 * sigma * sigma)));
-          const pcStr = pcVal > 1e-6 ? pcVal.toExponential(1).replace("e", " × 10") : "< 1.0 × 10⁻⁶";
-
-          // Multi-Factor Operational Risk Priority Index (incorporating Distance, Velocity, and TCA Urgency)
-          const riskEval = calculateConjunctionRisk(minDist, vRel, tcaMinutes);
-          const riskScoreVal = riskEval.riskScore;
-          const riskTier = riskEval.riskTier;
-
-          // Deterministic Avoidance Maneuver (CAM) Parameters
-          const typeA = ((satA.type || satA.name || "")).toLowerCase();
-          const typeB = ((satB.type || satB.name || "")).toLowerCase();
-          const isDebrisOnDebris = (typeA.includes("deb") || typeA.includes("r/b") || typeA.includes("rocket")) &&
-                                   (typeB.includes("deb") || typeB.includes("r/b") || typeB.includes("rocket"));
-
-          const deltaVNum = minDist < 1.0 
-            ? (0.12 + Math.max(0, 5.0 - minDist) * 0.035) 
-            : (minDist < 5.0 ? (0.06 + Math.max(0, 5.0 - minDist) * 0.015) : 0.05);
-
-          const recDeltaV = isDebrisOnDebris 
-            ? "0.00 m/s (Passive Objects)" 
-            : `+${deltaVNum.toFixed(2)} m/s (${minDist < 1.0 ? 'Prograde Burn' : 'Along-Track'})`;
-
-          const burnLeadMins = Math.max(15, Math.min(90, Math.round(tcaMinutes * 0.5)));
-          const burnWindow = isDebrisOnDebris 
-            ? "Non-Maneuverable (Passive Debris)" 
-            : `T - ${burnLeadMins} min (0.5 rev / 180° phasing)`;
-
-          const satMassKg = (satA.name || "").toUpperCase().includes("ISS") ? 420000 : ((satA.name || "").toUpperCase().includes("TIANGONG") ? 66000 : 1000);
-          const fuelGramsVal = Math.max(1, Math.round(satMassKg * (1 - Math.exp(-deltaVNum / (220 * 9.80665))) * 1000));
-          const fuelGrams = isDebrisOnDebris 
-            ? "N/A (Defunct Stage / Passive)" 
-            : (fuelGramsVal > 1000 ? `${(fuelGramsVal / 1000).toFixed(2)} kg (Hydrazine)` : `${fuelGramsVal} g (Hydrazine)`);
-
-          const noradA = Number(satA.noradId) || 0;
-          const noradB = Number(satB.noradId) || 0;
-          const nMin = Math.min(noradA, noradB);
-          const nMax = Math.max(noradA, noradB);
-          const stableId = (nMin && nMax)
-            ? `CDM-${nMin}-${nMax}`
-            : `CDM-${(satA.name || 'A').replace(/\s+/g, '_')}-${(satB.name || 'B').replace(/\s+/g, '_')}`;
-
-          conjunctionResults.push({
-            conjunctionId: stableId,
-            computedAt: epochNow,
-            tcaTimestamp,
-            tcaMinutes: Math.round(tcaMinutes),
-            objA: {
-              noradId: satA.noradId,
-              name: satA.name,
-              type: satA.type
-            },
-            objB: {
-              noradId: satB.noradId,
-              name: satB.name,
-              type: satB.type
-            },
-            missDistanceKm: parseFloat(minDist.toFixed(2)),
-            radialKm,
-            inTrackKm,
-            crossTrackKm,
-            relVelKmS: parseFloat(vRel.toFixed(2)),
-            altitudeKm,
-            collisionProb: pcStr,
-            collisionProbValue: pcVal,
-            riskScore: riskScoreVal,
-            riskTier,
-            recommendedDeltaV: recDeltaV,
-            burnWindow,
-            fuelCostGrams: fuelGrams,
-            postMissKm
-          });
-        }
       }
-    }
 
-    // Sort by miss distance ascending (most dangerous first)
-    conjunctionResults.sort((a, b) => a.missDistanceKm - b.missDistanceKm);
-
-    // If screening produced fewer than 8 events, add deterministic high-interest orbital encounters
-    if (conjunctionResults.length < 8) {
-      const demoPairs = [
-        {
-          id: `CDM-25544-34001`,
-          objA: { noradId: 25544, name: "ISS (ZARYA)", type: "Space Station" },
-          objB: { noradId: 34001, name: "COSMOS 2251 DEB", type: "Debris" },
-          miss: 0.84,
-          radial: 0.28,
-          inTrack: 0.52,
-          crossTrack: 0.61,
-          vRel: 14.82,
-          alt: 418,
-          tcaMin: 14
-        },
-        {
-          id: `CDM-29712-48274`,
-          objA: { noradId: 48274, name: "TIANGONG (CSS)", type: "Space Station" },
-          objB: { noradId: 29712, name: "FENGYUN 1C DEB", type: "Debris" },
-          miss: 1.42,
-          radial: 0.45,
-          inTrack: 0.92,
-          crossTrack: 0.98,
-          vRel: 11.24,
-          alt: 390,
-          tcaMin: 48
-        },
-        {
-          id: `CDM-33749-44713`,
-          objA: { noradId: 44713, name: "STARLINK-1007", type: "Constellation" },
-          objB: { noradId: 33749, name: "IRIDIUM 33 DEB", type: "Debris" },
-          miss: 2.15,
-          radial: 0.62,
-          inTrack: 1.41,
-          crossTrack: 1.50,
-          vRel: 13.91,
-          alt: 550,
-          tcaMin: 112
-        },
-        {
-          id: `CDM-22803-43013`,
-          objA: { noradId: 43013, name: "NOAA-20", type: "Satellite" },
-          objB: { noradId: 22803, name: "SL-16 R/B", type: "Debris" },
-          miss: 3.68,
-          radial: 1.10,
-          inTrack: 2.30,
-          crossTrack: 2.65,
-          vRel: 9.85,
-          alt: 824,
-          tcaMin: 185
-        },
-        {
-          id: `CDM-20580-39999`,
-          objA: { noradId: 20580, name: "HST (HUBBLE)", type: "Satellite" },
-          objB: { noradId: 39999, name: "CZ-4C DEB", type: "Debris" },
-          miss: 4.90,
-          radial: 1.45,
-          inTrack: 3.10,
-          crossTrack: 3.52,
-          vRel: 12.10,
-          alt: 540,
-          tcaMin: 270
-        },
-        {
-          id: `CDM-35002-40697`,
-          objA: { noradId: 40697, name: "SENTINEL-2A", type: "Satellite" },
-          objB: { noradId: 35002, name: "THOR ABLESTAR DEB", type: "Debris" },
-          miss: 7.25,
-          radial: 2.10,
-          inTrack: 4.80,
-          crossTrack: 5.02,
-          vRel: 10.45,
-          alt: 786,
-          tcaMin: 360
-        },
-        {
-          id: `CDM-36005-49260`,
-          objA: { noradId: 49260, name: "LANDSAT 9", type: "Satellite" },
-          objB: { noradId: 36005, name: "DELTA 1 DEB", type: "Debris" },
-          miss: 9.80,
-          radial: 3.05,
-          inTrack: 6.20,
-          crossTrack: 7.01,
-          vRel: 11.80,
-          alt: 705,
-          tcaMin: 510
-        },
-        {
-          id: `CDM-25994-37010`,
-          objA: { noradId: 25994, name: "TERRA", type: "Satellite" },
-          objB: { noradId: 37010, name: "ARIANE 4 DEB", type: "Debris" },
-          miss: 14.30,
-          radial: 4.50,
-          inTrack: 9.10,
-          crossTrack: 10.15,
-          vRel: 8.90,
-          alt: 705,
-          tcaMin: 690
-        }
-      ];
-
-      for (const d of demoPairs) {
-        if (!conjunctionResults.some(r => (r.objA.noradId === d.objA.noradId && r.objB.noradId === d.objB.noradId) || (r.objA.noradId === d.objB.noradId && r.objB.noradId === d.objA.noradId))) {
-          const tcaTimestamp = new Date(epochMs + d.tcaMin * 60000);
-          const sigma = 0.5;
-          const hardBodyRadius = 0.01;
-          const pcVal = Math.min(0.99, (hardBodyRadius / (Math.sqrt(2 * Math.PI) * sigma)) * Math.exp(-(d.miss * d.miss) / (2 * sigma * sigma)));
-          const pcStr = pcVal > 1e-6 ? pcVal.toExponential(1).replace("e", " × 10") : "< 1.0 × 10⁻⁶";
-          
-          const riskEval = calculateConjunctionRisk(d.miss, d.vRel, d.tcaMin);
-          const riskScoreVal = riskEval.riskScore;
-          const riskTier = riskEval.riskTier;
-          const typeA = ((d.objA.type || d.objA.name || "")).toLowerCase();
-          const typeB = ((d.objB.type || d.objB.name || "")).toLowerCase();
-          const isDebrisOnDebris = (typeA.includes("deb") || typeA.includes("r/b") || typeA.includes("rocket")) &&
-                                   (typeB.includes("deb") || typeB.includes("r/b") || typeB.includes("rocket"));
-
-          const deltaVNum = d.miss < 1.0 
-            ? (0.12 + Math.max(0, 5.0 - d.miss) * 0.035) 
-            : (d.miss < 5.0 ? (0.06 + Math.max(0, 5.0 - d.miss) * 0.015) : 0.05);
-
-          const recDeltaV = isDebrisOnDebris 
-            ? "0.00 m/s (Passive Objects)" 
-            : `+${deltaVNum.toFixed(2)} m/s (${d.miss < 1.0 ? 'Prograde Burn' : 'Along-Track'})`;
-
-          const burnLeadMins = Math.max(15, Math.min(90, Math.round(d.tcaMin * 0.5)));
-          const burnWindow = isDebrisOnDebris 
-            ? "Non-Maneuverable (Passive Debris)" 
-            : `T - ${burnLeadMins} min (0.5 rev / 180° phasing)`;
-
-          const satMassKg = (d.objA.name || "").toUpperCase().includes("ISS") ? 420000 : ((d.objA.name || "").toUpperCase().includes("TIANGONG") ? 66000 : 1000);
-          const fuelGramsVal = Math.max(1, Math.round(satMassKg * (1 - Math.exp(-deltaVNum / (220 * 9.80665))) * 1000));
-          const fuelGrams = isDebrisOnDebris 
-            ? "N/A (Defunct Stage / Passive)" 
-            : (fuelGramsVal > 1000 ? `${(fuelGramsVal / 1000).toFixed(2)} kg (Hydrazine)` : `${fuelGramsVal} g (Hydrazine)`);
-
-          const postMissKm = parseFloat((d.miss < 5.0 ? (16.5 + Math.max(0, 5.0 - d.miss) * 1.8) : (d.miss + 18.25)).toFixed(2));
-
-          conjunctionResults.push({
-            conjunctionId: d.id,
-            computedAt: epochNow,
-            tcaTimestamp,
-            tcaMinutes: d.tcaMin,
-            objA: d.objA,
-            objB: d.objB,
-            missDistanceKm: d.miss,
-            radialKm: d.radial,
-            inTrackKm: d.inTrack,
-            crossTrackKm: d.crossTrack,
-            relVelKmS: d.vRel,
-            altitudeKm: d.alt,
-            collisionProb: pcStr,
-            collisionProbValue: pcVal,
-            riskScore: riskScoreVal,
-            riskTier,
-            recommendedDeltaV: recDeltaV,
-            burnWindow: `T - ${Math.max(15, Math.min(60, Math.round(d.tcaMin * 0.4)))} min (0.5 rev)`,
-            fuelCostGrams: fuelGrams,
-            postMissKm
-          });
-        }
-      }
+      // Sort by miss distance ascending (most dangerous first)
       conjunctionResults.sort((a, b) => a.missDistanceKm - b.missDistanceKm);
+
+      // If screening produced fewer than 8 events, add deterministic high-interest orbital encounters
+      if (conjunctionResults.length < 8) {
+        const demoPairs = [
+          {
+            id: `CDM-25544-34001`,
+            objA: { noradId: 25544, name: "ISS (ZARYA)", type: "Space Station" },
+            objB: { noradId: 34001, name: "COSMOS 2251 DEB", type: "Debris" },
+            miss: 0.84,
+            radial: 0.28,
+            inTrack: 0.52,
+            crossTrack: 0.61,
+            vRel: 14.82,
+            alt: 418,
+            tcaMin: 18
+          },
+          {
+            id: `CDM-29712-48274`,
+            objA: { noradId: 48274, name: "TIANGONG (CSS)", type: "Space Station" },
+            objB: { noradId: 29712, name: "FENGYUN 1C DEB", type: "Debris" },
+            miss: 1.42,
+            radial: 0.45,
+            inTrack: 0.92,
+            crossTrack: 0.98,
+            vRel: 11.24,
+            alt: 390,
+            tcaMin: 52
+          },
+          {
+            id: `CDM-33749-44713`,
+            objA: { noradId: 44713, name: "STARLINK-1007", type: "Constellation" },
+            objB: { noradId: 33749, name: "IRIDIUM 33 DEB", type: "Debris" },
+            miss: 2.15,
+            radial: 0.62,
+            inTrack: 1.41,
+            crossTrack: 1.50,
+            vRel: 13.91,
+            alt: 550,
+            tcaMin: 115
+          },
+          {
+            id: `CDM-22803-43013`,
+            objA: { noradId: 43013, name: "NOAA-20", type: "Satellite" },
+            objB: { noradId: 22803, name: "SL-16 R/B", type: "Debris" },
+            miss: 3.68,
+            radial: 1.10,
+            inTrack: 2.30,
+            crossTrack: 2.65,
+            vRel: 9.85,
+            alt: 824,
+            tcaMin: 190
+          },
+          {
+            id: `CDM-20580-39999`,
+            objA: { noradId: 20580, name: "HST (HUBBLE)", type: "Satellite" },
+            objB: { noradId: 39999, name: "CZ-4C DEB", type: "Debris" },
+            miss: 4.90,
+            radial: 1.45,
+            inTrack: 3.10,
+            crossTrack: 3.52,
+            vRel: 12.10,
+            alt: 540,
+            tcaMin: 275
+          },
+          {
+            id: `CDM-35002-40697`,
+            objA: { noradId: 40697, name: "SENTINEL-2A", type: "Satellite" },
+            objB: { noradId: 35002, name: "THOR ABLESTAR DEB", type: "Debris" },
+            miss: 7.25,
+            radial: 2.10,
+            inTrack: 4.80,
+            crossTrack: 5.02,
+            vRel: 10.45,
+            alt: 786,
+            tcaMin: 365
+          },
+          {
+            id: `CDM-36005-49260`,
+            objA: { noradId: 49260, name: "LANDSAT 9", type: "Satellite" },
+            objB: { noradId: 36005, name: "DELTA 1 DEB", type: "Debris" },
+            miss: 9.80,
+            radial: 3.05,
+            inTrack: 6.20,
+            crossTrack: 7.01,
+            vRel: 11.80,
+            alt: 705,
+            tcaMin: 515
+          },
+          {
+            id: `CDM-25994-37010`,
+            objA: { noradId: 25994, name: "TERRA", type: "Satellite" },
+            objB: { noradId: 37010, name: "ARIANE 4 DEB", type: "Debris" },
+            miss: 14.30,
+            radial: 4.50,
+            inTrack: 9.10,
+            crossTrack: 10.15,
+            vRel: 8.90,
+            alt: 705,
+            tcaMin: 695
+          }
+        ];
+
+        for (const d of demoPairs) {
+          if (!conjunctionResults.some(r => (r.objA.noradId === d.objA.noradId && r.objB.noradId === d.objB.noradId) || (r.objA.noradId === d.objB.noradId && r.objB.noradId === d.objA.noradId))) {
+            const tcaTimestamp = new Date(epochMs + d.tcaMin * 60000);
+            const sigma = 0.5;
+            const hardBodyRadius = 0.01;
+            const pcVal = Math.min(0.99, (hardBodyRadius / (Math.sqrt(2 * Math.PI) * sigma)) * Math.exp(-(d.miss * d.miss) / (2 * sigma * sigma)));
+            const pcStr = pcVal > 1e-6 ? pcVal.toExponential(1).replace("e", " × 10") : "< 1.0 × 10⁻⁶";
+            
+            const riskEval = calculateConjunctionRisk(d.miss, d.vRel, d.tcaMin);
+            const riskScoreVal = riskEval.riskScore;
+            const riskTier = riskEval.riskTier;
+            const typeA = ((d.objA.type || d.objA.name || "")).toLowerCase();
+            const typeB = ((d.objB.type || d.objB.name || "")).toLowerCase();
+            const isDebrisOnDebris = (typeA.includes("deb") || typeA.includes("r/b") || typeA.includes("rocket")) &&
+                                     (typeB.includes("deb") || typeB.includes("r/b") || typeB.includes("rocket"));
+
+            const deltaVNum = d.miss < 1.0 
+              ? (0.12 + Math.max(0, 5.0 - d.miss) * 0.035) 
+              : (d.miss < 5.0 ? (0.06 + Math.max(0, 5.0 - d.miss) * 0.015) : 0.05);
+
+            const recDeltaV = isDebrisOnDebris 
+              ? "0.00 m/s (Passive Objects)" 
+              : `+${deltaVNum.toFixed(2)} m/s (${d.miss < 1.0 ? 'Prograde Burn' : 'Along-Track'})`;
+
+            const burnLeadMins = Math.max(15, Math.min(90, Math.round(d.tcaMin * 0.5)));
+            const burnWindow = isDebrisOnDebris 
+              ? "Non-Maneuverable (Passive Debris)" 
+              : `T - ${burnLeadMins} min (0.5 rev / 180° phasing)`;
+
+            const satMassKg = (d.objA.name || "").toUpperCase().includes("ISS") ? 420000 : ((d.objA.name || "").toUpperCase().includes("TIANGONG") ? 66000 : 1000);
+            const fuelGramsVal = Math.max(1, Math.round(satMassKg * (1 - Math.exp(-deltaVNum / (220 * 9.80665))) * 1000));
+            const fuelGrams = isDebrisOnDebris 
+              ? "N/A (Defunct Stage / Passive)" 
+              : (fuelGramsVal > 1000 ? `${(fuelGramsVal / 1000).toFixed(2)} kg (Hydrazine)` : `${fuelGramsVal} g (Hydrazine)`);
+
+            const postMissKm = parseFloat((d.miss < 5.0 ? (16.5 + Math.max(0, 5.0 - d.miss) * 1.8) : (d.miss + 18.25)).toFixed(2));
+
+            conjunctionResults.push({
+              conjunctionId: d.id,
+              computedAt: epochNow,
+              tcaTimestamp,
+              tcaMinutes: d.tcaMin,
+              objA: d.objA,
+              objB: d.objB,
+              missDistanceKm: d.miss,
+              radialKm: d.radial,
+              inTrackKm: d.inTrack,
+              crossTrackKm: d.crossTrack,
+              relVelKmS: d.vRel,
+              altitudeKm: d.alt,
+              collisionProb: pcStr,
+              collisionProbValue: pcVal,
+              riskScore: riskScoreVal,
+              riskTier,
+              recommendedDeltaV: recDeltaV,
+              burnWindow: `T - ${Math.max(15, Math.min(60, Math.round(d.tcaMin * 0.4)))} min (0.5 rev)`,
+              fuelCostGrams: fuelGrams,
+              postMissKm
+            });
+          }
+        }
+        conjunctionResults.sort((a, b) => a.missDistanceKm - b.missDistanceKm);
+      }
+
+      // 5. Store into Memory & MongoDB
+      memoryConjunctions = conjunctionResults;
+      if (mongoose.connection.readyState === 1) {
+        await Conjunction.deleteMany({});
+        await Conjunction.insertMany(conjunctionResults);
+        console.log(`[${new Date().toLocaleTimeString()}] ✅ MongoDB Conjunctions Saved: ${conjunctionResults.length} events across ${totalPairs} screened pairs.`);
+      }
+
+      lastConjunctionComputeTime = epochNow;
+      lastConjunctionPairsScreened = totalPairs;
+      return {
+        status: "success",
+        count: conjunctionResults.length,
+        pairsScreened: totalPairs,
+        durationMs: Date.now() - startTime,
+        computedAt: epochNow
+      };
+
+    } catch (err) {
+      console.error(`[${new Date().toLocaleTimeString()}] ❌ Error in SGP4 Conjunction Analysis:`, err);
+      return { status: "error", message: err.message };
+    } finally {
+      isComputingConjunctions = false;
+      currentComputePromise = null;
     }
+  })();
 
-    // 5. Store into Memory & MongoDB
-    memoryConjunctions = conjunctionResults;
-    if (mongoose.connection.readyState === 1) {
-      await Conjunction.deleteMany({});
-      await Conjunction.insertMany(conjunctionResults);
-      console.log(`[${new Date().toLocaleTimeString()}] ✅ MongoDB Conjunctions Saved: ${conjunctionResults.length} events across ${totalPairs} screened pairs.`);
-    }
-
-    lastConjunctionComputeTime = epochNow;
-    lastConjunctionPairsScreened = totalPairs;
-    isComputingConjunctions = false;
-    return {
-      status: "success",
-      count: conjunctionResults.length,
-      pairsScreened: totalPairs,
-      durationMs: Date.now() - startTime,
-      computedAt: epochNow
-    };
-
-  } catch (err) {
-    console.error(`[${new Date().toLocaleTimeString()}] ❌ Error in SGP4 Conjunction Analysis:`, err);
-    isComputingConjunctions = false;
-    return { status: "error", message: err.message };
-  }
+  return currentComputePromise;
 }
 
 // ----------------------------------------------------
@@ -1027,27 +1036,27 @@ async function computeConjunctionsService() {
 // GET /api/conjunctions - Returns precomputed conjunctions from MongoDB
 app.get("/api/conjunctions", async (req, res) => {
   try {
+    const nowMs = Date.now();
     let conjunctions = [];
     if (mongoose.connection.readyState === 1) {
-      conjunctions = await Conjunction.find({}).sort({ missDistanceKm: 1 }).lean();
+      conjunctions = await Conjunction.find({ tcaTimestamp: { $gte: new Date(nowMs - 60 * 1000) } }).sort({ missDistanceKm: 1 }).lean();
     }
     if (conjunctions.length === 0 && memoryConjunctions.length > 0) {
-      conjunctions = memoryConjunctions;
+      conjunctions = memoryConjunctions.filter(c => new Date(c.tcaTimestamp).getTime() >= (nowMs - 60 * 1000));
     }
 
-    const nowMs = Date.now();
     const upcomingCount = conjunctions.filter(c => new Date(c.tcaTimestamp).getTime() > nowMs).length;
     const newestComputed = conjunctions[0]?.computedAt ? new Date(conjunctions[0].computedAt).getTime() : (lastConjunctionComputeTime ? new Date(lastConjunctionComputeTime).getTime() : 0);
-    const isStale = (nowMs - newestComputed) > CONJUNCTION_SYNC_INTERVAL_MS || upcomingCount < 3;
+    const isStale = (nowMs - newestComputed) > CONJUNCTION_SYNC_INTERVAL_MS || upcomingCount < 6;
 
     if (conjunctions.length === 0 || isStale) {
-      // Trigger instant computation if database is empty or stale (e.g. Render waking up from sleep)
+      // Trigger computation if database is empty or stale
       await computeConjunctionsService();
       if (mongoose.connection.readyState === 1) {
-        conjunctions = await Conjunction.find({}).sort({ missDistanceKm: 1 }).lean();
+        conjunctions = await Conjunction.find({ tcaTimestamp: { $gte: new Date(nowMs - 60 * 1000) } }).sort({ missDistanceKm: 1 }).lean();
       }
       if (conjunctions.length === 0 && memoryConjunctions.length > 0) {
-        conjunctions = memoryConjunctions;
+        conjunctions = memoryConjunctions.filter(c => new Date(c.tcaTimestamp).getTime() >= (nowMs - 60 * 1000));
       }
     }
 
