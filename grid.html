@@ -2606,10 +2606,16 @@ DELTA 1 DEB
                 Math.pow(posAsset.z - posThreat.z, 2)
             );
 
-            const isSafe = currentDistKm >= 5.0 || maneuverProgress > 0.4;
-            const accentColor = isSafe ? '#42e6a4' : (currentDistKm < 1.0 ? '#ff526d' : '#ffad4d');
+            const isManeuverActive = maneuverProgress > 0.05;
+            
+            // Dynamic Asset & Threat styling:
+            // Initial state (before burn): Asset is Cyan Blue (#46d9ff), Threat is Red (#ff526d), Miss line is Red (#ff526d)
+            // During/Post Maneuver: Asset trajectory turns Green (#42e6a4), Miss distance line turns Green (#42e6a4)
+            const assetColor = isManeuverActive ? '#42e6a4' : '#46d9ff';
+            const threatColor = '#ff526d';
+            const missVectorColor = isManeuverActive ? '#42e6a4' : '#ff526d';
             const distLabel = currentDistKm < 1.0 ? `${(currentDistKm * 1000).toFixed(0)} m` : `${currentDistKm.toFixed(2)} km`;
-            const statusLabel = isSafe ? '(SAFE CLEARANCE)' : (currentDistKm < 1.0 ? '(CRITICAL HAZARD)' : '(WARNING ZONE)');
+            const statusLabel = isManeuverActive ? '(SAFE CLEARANCE)' : (currentDistKm < 1.0 ? '(CRITICAL HAZARD)' : (currentDistKm < 5.0 ? '(WARNING ZONE)' : '(CLOSE APPROACH)'));
 
             const midX = (posAsset.x + posThreat.x) / 2;
             const midY = (posAsset.y + posThreat.y) / 2;
@@ -2626,15 +2632,15 @@ DELTA 1 DEB
                     x: xA_nom, y: yA_nom, z: zA_nom,
                     line: { color: 'rgba(70, 217, 255, 0.4)', width: 3, dash: 'dot' },
                     hoverinfo: 'name',
-                    showlegend: maneuverProgress > 0.05
+                    showlegend: isManeuverActive
                 },
-                // 2. Active Asset Trajectory
+                // 2. Active Asset Trajectory (Blue initially, transitions to Green post-burn)
                 {
                     type: 'scatter3d',
                     mode: 'lines',
-                    name: maneuverProgress > 0.05 ? `${nameA} (Post-Burn Trajectory)` : `${nameA} Orbit`,
+                    name: isManeuverActive ? `${nameA} (Post-Burn Safe Trajectory)` : `${nameA} Orbit (Primary Asset)`,
                     x: xA, y: yA, z: zA,
-                    line: { color: isSafe ? '#42e6a4' : '#46d9ff', width: 6 },
+                    line: { color: assetColor, width: 6 },
                     hoverinfo: 'name'
                 },
                 // 3. Primary Asset Satellite Marker
@@ -2645,8 +2651,8 @@ DELTA 1 DEB
                     x: [posAsset.x], y: [posAsset.y], z: [posAsset.z],
                     text: [nameA],
                     textposition: 'top left',
-                    textfont: { color: isSafe ? '#42e6a4' : '#46d9ff', size: 20, family: 'Plus Jakarta Sans' },
-                    marker: { color: isSafe ? '#42e6a4' : '#46d9ff', size: 13, symbol: 'diamond', line: { color: '#ffffff', width: 2 } },
+                    textfont: { color: assetColor, size: 20, family: 'Plus Jakarta Sans' },
+                    marker: { color: assetColor, size: 13, symbol: 'diamond', line: { color: '#ffffff', width: 2 } },
                     hoverinfo: 'name+text'
                 },
                 // 4. Thruster Burn Vector Arrow
@@ -2660,18 +2666,18 @@ DELTA 1 DEB
                     line: { color: '#ffd166', width: 4.5 },
                     marker: { size: [0, 8 * Math.max(0.2, maneuverProgress)], color: '#ffd166', symbol: 'circle' },
                     hoverinfo: 'name',
-                    showlegend: maneuverProgress > 0.05
+                    showlegend: isManeuverActive
                 },
-                // 5. Threat Object Orbit Track
+                // 5. Threat Object Orbit Track (Always Red)
                 {
                     type: 'scatter3d',
                     mode: 'lines',
-                    name: `${nameB} Orbit Track`,
+                    name: `${nameB} Orbit Track (Threat)`,
                     x: xB, y: yB, z: zB,
-                    line: { color: '#ff526d', width: 5 },
+                    line: { color: threatColor, width: 5 },
                     hoverinfo: 'name'
                 },
-                // 6. Threat Object Marker
+                // 6. Threat Object Marker (Always Red)
                 {
                     type: 'scatter3d',
                     mode: 'markers+text',
@@ -2679,21 +2685,21 @@ DELTA 1 DEB
                     x: [posThreat.x], y: [posThreat.y], z: [posThreat.z],
                     text: [nameB],
                     textposition: 'bottom right',
-                    textfont: { color: '#ff526d', size: 20, family: 'Plus Jakarta Sans' },
-                    marker: { color: '#ff526d', size: 12, symbol: 'circle', line: { color: '#ffffff', width: 2 } },
+                    textfont: { color: threatColor, size: 20, family: 'Plus Jakarta Sans' },
+                    marker: { color: threatColor, size: 12, symbol: 'circle', line: { color: '#ffffff', width: 2 } },
                     hoverinfo: 'name+text'
                 },
                 // 7. TCA Keep-Out Zone / Safe Clearance Sphere
                 {
                     type: 'scatter3d',
                     mode: 'markers',
-                    name: isSafe ? 'Safe Clearance Bubble (>5 km)' : (currentDistKm < 1.0 ? 'Critical Collision Zone (<1 km)' : 'Warning Keep-Out Zone (<5 km)'),
+                    name: isManeuverActive ? 'Safe Clearance Bubble (>5 km)' : 'Keep-Out Hazard Zone (<5 km)',
                     x: [midX], y: [midY], z: [midZ],
                     marker: {
-                        color: isSafe ? 'rgba(66, 230, 164, 0.3)' : (currentDistKm < 1.0 ? 'rgba(255, 82, 109, 0.45)' : 'rgba(255, 173, 77, 0.4)'),
-                        size: isSafe ? 16 : 26,
+                        color: isManeuverActive ? 'rgba(66, 230, 164, 0.3)' : 'rgba(255, 82, 109, 0.45)',
+                        size: isManeuverActive ? 16 : 26,
                         symbol: 'circle',
-                        line: { color: accentColor, width: 2 }
+                        line: { color: missVectorColor, width: 2 }
                     },
                     hoverinfo: 'name'
                 },
@@ -2705,7 +2711,7 @@ DELTA 1 DEB
                     x: [posAsset.x, posThreat.x],
                     y: [posAsset.y, posThreat.y],
                     z: [posAsset.z, posThreat.z],
-                    line: { color: accentColor, width: 4, dash: isSafe ? 'solid' : 'dash' },
+                    line: { color: missVectorColor, width: 4, dash: isManeuverActive ? 'solid' : 'dash' },
                     hoverinfo: 'name'
                 }
             ];
@@ -2833,11 +2839,12 @@ DELTA 1 DEB
             const threatX = crossKm + (postX - crossKm) * maneuverProgress;
             const threatY = radKm + (postY - radKm) * maneuverProgress;
 
-            const currentDist = Math.sqrt(threatX * threatX + threatY * threatY);
-            const isSafe = currentDist >= 5.0 || maneuverProgress > 0.4;
-            const accentColor = isSafe ? '#42e6a4' : (currentDist < 1.0 ? '#ff526d' : '#ffad4d');
+            const isManeuverActive = maneuverProgress > 0.05;
+            const assetColor = '#46d9ff'; // Primary Asset at Origin is Cyan Blue
+            const threatMarkerColor = isManeuverActive ? '#42e6a4' : '#ff526d'; // Red before burn, transitions to Green post-burn
+            const missVectorColor = isManeuverActive ? '#42e6a4' : '#ff526d';
             const distLabel = currentDist < 1.0 ? `${(currentDist * 1000).toFixed(0)} m` : `${currentDist.toFixed(2)} km`;
-            const statusLabel = isSafe ? '(SAFE CLEARANCE)' : (currentDist < 1.0 ? '(CRITICAL RISK)' : '(WARNING ZONE)');
+            const statusLabel = isManeuverActive ? '(SAFE CLEARANCE)' : (currentDist < 1.0 ? '(CRITICAL RISK)' : (currentDist < 5.0 ? '(WARNING ZONE)' : '(CLOSE APPROACH)'));
 
             const theta = [];
             for (let i = 0; i <= 360; i += 4) theta.push(i * Math.PI / 180);
@@ -2903,8 +2910,8 @@ DELTA 1 DEB
                     name: nameA,
                     text: [nameA],
                     textposition: 'top center',
-                    textfont: { color: '#46d9ff', size: 16, family: 'Plus Jakarta Sans' },
-                    marker: { size: 15, color: '#46d9ff', symbol: 'diamond', line: { color: '#fff', width: 2 } },
+                    textfont: { color: assetColor, size: 16, family: 'Plus Jakarta Sans' },
+                    marker: { size: 15, color: assetColor, symbol: 'diamond', line: { color: '#fff', width: 2 } },
                     hoverinfo: 'text'
                 },
                 // 6. Threat Object Relative Velocity Track
@@ -2913,7 +2920,7 @@ DELTA 1 DEB
                     y: [threatY - 2, threatY, threatY + 2],
                     mode: 'lines',
                     name: 'Relative Velocity Vector',
-                    line: { color: accentColor, width: 2, dash: 'solid' },
+                    line: { color: isManeuverActive ? '#42e6a4' : '#ff526d', width: 2, dash: 'solid' },
                     hoverinfo: 'name'
                 },
                 // 7. Dynamic Miss Distance Vector
@@ -2922,7 +2929,7 @@ DELTA 1 DEB
                     y: [0, threatY],
                     mode: 'lines',
                     name: `Miss Dist: ${distLabel} ${statusLabel}`,
-                    line: { color: accentColor, width: 3, dash: isSafe ? 'solid' : 'dash' },
+                    line: { color: missVectorColor, width: 3, dash: isManeuverActive ? 'solid' : 'dash' },
                     hoverinfo: 'name'
                 },
                 // 8. Threat Object Marker
@@ -2930,11 +2937,11 @@ DELTA 1 DEB
                     x: [threatX],
                     y: [threatY],
                     mode: 'markers+text',
-                    name: `${nameB} (${statusLabel})`,
+                    name: isManeuverActive ? `${nameB} (Post-Burn Safe Position)` : `${nameB} (Threat Position)`,
                     text: [nameB],
                     textposition: 'bottom right',
-                    textfont: { color: accentColor, size: 16, family: 'Plus Jakarta Sans' },
-                    marker: { size: 15, color: accentColor, symbol: 'circle', line: { color: '#fff', width: 2 } },
+                    textfont: { color: threatMarkerColor, size: 16, family: 'Plus Jakarta Sans' },
+                    marker: { size: 15, color: threatMarkerColor, symbol: 'circle', line: { color: '#fff', width: 2 } },
                     hoverinfo: 'text'
                 }
             ];
