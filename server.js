@@ -409,7 +409,7 @@ let lastConjunctionPairsScreened = 5460;
 let memoryConjunctions = [];
 const CONJUNCTION_HORIZON_HOURS = 24;
 const CONJUNCTION_STEP_MINUTES = 2;
-const CONJUNCTION_SYNC_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4 hours
+const CONJUNCTION_SYNC_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
 
 function getObjectType(name, noradId) {
   const nid = Number(noradId);
@@ -1255,7 +1255,7 @@ async function startServer() {
       console.log(`🍃 MongoDB JSON API: http://localhost:${PORT}/api/tle/satellites`);
       console.log(`🚨 Precomputed Conjunctions API: http://localhost:${PORT}/api/conjunctions`);
       console.log(`🛰️ Space-Track 18th SDS Feed: http://localhost:${PORT}/api/spacetrack/sync`);
-      console.log(`🔄 Conjunction Auto-sync: Every 4 hours automatically -> MongoDB`);
+      console.log(`🔄 Conjunction Auto-sync: Every 15 minutes automatically -> MongoDB`);
       console.log("=".repeat(65));
     });
 
@@ -1288,9 +1288,9 @@ async function startServer() {
       console.log(`[${new Date().toLocaleTimeString()}] 🛰️ MongoDB has ${conjCount} conjunction records (${upcomingCount} active upcoming TCAs).`);
     }
 
-    // Schedule 4-hour recurring conjunction screening
+    // Schedule 15-minute recurring conjunction screening
     setInterval(async () => {
-      console.log(`[${new Date().toLocaleTimeString()}] ⏰ 4-hour timer: Recalculating SGP4 24h orbital conjunctions...`);
+      console.log(`[${new Date().toLocaleTimeString()}] ⏰ 15-min timer: Recalculating SGP4 24h orbital conjunctions...`);
       await computeConjunctionsService();
     }, CONJUNCTION_SYNC_INTERVAL_MS);
 
