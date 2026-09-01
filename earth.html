@@ -1933,10 +1933,27 @@ let showOrbits = true;
 let lastInteractionTime = performance.now();
 const IDLE_RESUME_MS = 3500;
 
-// Earth radius in 3D Scene space (Large, commanding presence)
 const EARTH_RADIUS_3D = 54;
 const EARTH_KM_RADIUS = 6371;
 const KM_TO_3D_SCALE = EARTH_RADIUS_3D / EARTH_KM_RADIUS;
+
+// Altitude projection: tighter clean clearance for nearer bodies, scaling from 18 to 100 for bodies > 15,000 km
+function getAltitude3D(altKm) {
+    const safeAlt = Math.max(100, altKm);
+    if (safeAlt <= 2000) {
+        // LEO (< 2,000 km): Tight & sleek orbital sheath (2.0 to 5.2 units above surface)
+        return 2.0 + (safeAlt / 2000) * 3.2;
+    } else if (safeAlt <= 15000) {
+        // Mid-altitude (2,000 - 15,000 km): Smooth elevation gradient (5.2 to 18.0 units above surface)
+        const t = (safeAlt - 2000) / 13000;
+        return 5.2 + t * 12.8;
+    } else {
+        // High-altitude (> 15,000 km, e.g. GPS, Galileo, GEO, HEO):
+        // Expansive grand clearance from 18.0 to 100.0 units above surface
+        const t = Math.min(1.0, (safeAlt - 15000) / 25000);
+        return 18.0 + Math.pow(t, 0.85) * 82.0;
+    }
+}
 
 // Interactive Raycaster for Satellites
 const raycaster = new THREE.Raycaster();
@@ -2573,8 +2590,9 @@ function render3DOrbits(satellites, highlightQuery = "") {
                 const lonDeg = (geodetic.longitude * 180) / Math.PI;
                 const altKm = Math.max(0, geodetic.height);
 
-                // Convert exact Lat/Lon/Alt into 3D spherical coordinate
-                const r3d = EARTH_RADIUS_3D + (altKm * KM_TO_3D_SCALE);
+                // Convert exact Lat/Lon/Alt into 3D spherical coordinate (tighter for <10000 km, original for >=10000 km)
+                const altitude3D = getAltitude3D(altKm);
+                const r3d = EARTH_RADIUS_3D + altitude3D;
                 const pt = geoToVector3(lonDeg, latDeg, r3d);
                 orbitPoints.push(pt);
 
@@ -2599,9 +2617,9 @@ function render3DOrbits(satellites, highlightQuery = "") {
 
             const curve = new THREE.CatmullRomCurve3(orbitPoints, false);
 
-            // SLEEK & ELEGANT TRAJECTORY TUBES (REFINED UI/UX)
-            const tubeRadius = isMatched ? 0.22 : (isIss ? 0.13 : 0.06);
-            const opacity = isMatched ? 1.0 : (hasActiveSearch ? 0.12 : (isIss ? 0.80 : 0.42));
+            // SLEEK & ELEGANT TRAJECTORY TUBES (TIGHT, REFINED UI/UX)
+            const tubeRadius = isMatched ? 0.16 : (isIss ? 0.09 : 0.045);
+            const opacity = isMatched ? 1.0 : (hasActiveSearch ? 0.12 : (isIss ? 0.80 : 0.38));
 
             const orbitGeo = new THREE.TubeGeometry(curve, 96, tubeRadius, 6, false);
             const orbitMat = new THREE.MeshBasicMaterial({
@@ -2619,7 +2637,7 @@ function render3DOrbits(satellites, highlightQuery = "") {
             satObjGroup.position.copy(currentPos3D);
 
             // Core sphere (sleek refined pips)
-            const coreRadius = isMatched ? 1.45 : (isIss ? 1.05 : 0.75);
+            const coreRadius = isMatched ? 1.20 : (isIss ? 0.85 : 0.58);
             const satCoreGeo = new THREE.SphereGeometry(coreRadius, 16, 16);
             const satCoreMat = new THREE.MeshBasicMaterial({
                 color: isMatched ? 0xffffff : (isIss ? 0xffffff : colorHex)
@@ -2628,19 +2646,19 @@ function render3DOrbits(satellites, highlightQuery = "") {
             satObjGroup.add(satCoreMesh);
 
             // Glowing outer halo
-            const haloRadius = isMatched ? 2.8 : (isIss ? 2.0 : 1.5);
+            const haloRadius = isMatched ? 2.2 : (isIss ? 1.6 : 1.15);
             const haloGeo = new THREE.SphereGeometry(haloRadius, 16, 16);
             const haloMat = new THREE.MeshBasicMaterial({
                 color: isMatched ? 0xffd166 : colorHex,
                 transparent: true,
-                opacity: isMatched ? 0.80 : (hasActiveSearch ? 0.08 : 0.30),
+                opacity: isMatched ? 0.80 : (hasActiveSearch ? 0.08 : 0.28),
                 blending: THREE.AdditiveBlending
             });
             const haloMesh = new THREE.Mesh(haloGeo, haloMat);
             satObjGroup.add(haloMesh);
 
             // Invisible raycast target
-            const hitGeo = new THREE.SphereGeometry(3.6, 8, 8);
+            const hitGeo = new THREE.SphereGeometry(3.2, 8, 8);
             const hitMat = new THREE.MeshBasicMaterial({ visible: false });
             const hitMesh = new THREE.Mesh(hitGeo, hitMat);
 
