@@ -2960,7 +2960,7 @@ async function fetchCelesTrakData() {
 
     for (const ep of backendEndpoints) {
         try {
-            const localFileText = await fetchText(ep, 15000);
+            const localFileText = await fetchText(ep, 25000);
             const parsedLocal = parseTleCatalog(localFileText);
             if (parsedLocal.length > 0) {
                 cacheData(localFileText);
