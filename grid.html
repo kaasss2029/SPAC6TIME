@@ -350,37 +350,31 @@
             -webkit-backdrop-filter: blur(16px);
         }
 
-        /* ── 4 FLOATING GLASSMORPHISM KPI STATS CARDS INSIDE 3D STAGE ── */
-        .floating-cards-overlay {
-            position: absolute;
-            top: 68px;
-            left: 20px;
-            right: 20px;
+        /* ── 4 GLASSMORPHISM KPI STATS CARDS (POSITIONED ABOVE MANEUVER BOX) ── */
+        .desktop-kpi-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 16px;
-            z-index: 12;
-            pointer-events: none;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 2px;
         }
 
-        .floating-cards-overlay .card.glass-card {
-            pointer-events: auto;
+        .desktop-kpi-grid .card.glass-card {
             background: var(--bg-glass-card);
             border: 1px solid var(--border-glass);
             backdrop-filter: blur(24px);
             -webkit-backdrop-filter: blur(24px);
-            border-radius: 14px;
-            padding: 14px 18px;
+            border-radius: 12px;
+            padding: 12px 14px;
             position: relative;
             overflow: hidden;
-            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
             transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
             display: flex;
             flex-direction: column;
             justify-content: space-between;
         }
 
-        .floating-cards-overlay .card.glass-card::before {
+        .desktop-kpi-grid .card.glass-card::before {
             content: '';
             position: absolute;
             top: 0;
@@ -391,10 +385,10 @@
             pointer-events: none;
         }
 
-        .floating-cards-overlay .card.glass-card:hover {
-            transform: translateY(-3px);
+        .desktop-kpi-grid .card.glass-card:hover {
+            transform: translateY(-2px);
             border-color: var(--border-glass-glow);
-            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 24px var(--cyan-glow);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6), 0 0 20px var(--cyan-glow);
             background: rgba(14, 25, 48, 0.8);
         }
 
@@ -410,15 +404,15 @@
         }
 
         .value {
-            font-size: 24px;
+            font-size: 20px;
             font-weight: 800;
             font-family: var(--font-mono);
-            margin: 6px 0 2px;
+            margin: 4px 0 2px;
             color: #ffffff;
         }
 
         .sub {
-            font-size: 11px;
+            font-size: 10.5px;
             color: var(--muted);
             white-space: nowrap;
             overflow: hidden;
@@ -438,7 +432,7 @@
             transition: opacity 0.3s ease;
         }
 
-        .floating-cards-overlay .card.glass-card:hover .card-glow {
+        .desktop-kpi-grid .card.glass-card:hover .card-glow {
             opacity: 0.35;
         }
 
@@ -1026,13 +1020,7 @@
         }
 
         /* ── DESKTOP / LAPTOP: above 1212px wide AND above 840px tall ── */
-        /* Restore all desktop glassmorphic overlays; hide mobile-only elements */
         @media (min-width: 1213px) and (min-height: 841px) {
-            /* Ensure floating KPI cards are always shown on desktop */
-            .floating-cards-overlay {
-                display: grid !important;
-            }
-
             /* Desktop bplaneChart fixed height */
             #bplaneChart {
                 height: 720px;
@@ -1048,7 +1036,7 @@
                 display: flex;
             }
 
-            /* Hide all mobile-only elements */
+            /* Hide mobile-only elements on desktop */
             .hud-capsule-btn {
                 display: none !important;
             }
@@ -1062,11 +1050,6 @@
         @media (max-width: 1212px), (max-height: 840px) {
             #bplaneChart {
                 height: clamp(560px, 72vh, 800px);
-            }
-
-            /* Hide heavy overlay cards on 3D encounter chart */
-            .floating-cards-overlay {
-                display: none !important;
             }
 
             /* Show sleek single capsule button */
@@ -1439,54 +1422,7 @@
                     </div>
                 </div>
 
-                <!-- 4 FLOATING GLASSMORPHISM KPI STATS CARDS INSIDE 3D STAGE -->
-                <div class="floating-cards-overlay">
-                    <!-- Card 1: Pairs Screened -->
-                    <div class="card glass-card">
-                        <div class="cardHead">
-                            <span>Pairs Screened (24h)</span>
-                            <span style="color:var(--cyan); font-size:13px;">◎</span>
-                        </div>
-                        <div class="value" id="cardScreened">--</div>
-                        <div class="sub">Orbital intersection pairs</div>
-                        <div class="card-glow glow-cyan"></div>
-                    </div>
-
-                    <!-- Card 2: High Risk Events -->
-                    <div class="card glass-card">
-                        <div class="cardHead">
-                            <span>High Risk Events</span>
-                            <span style="color:var(--red); font-size:13px;">●</span>
-                        </div>
-                        <div class="value" style="color:var(--red)" id="cardCritical">--</div>
-                        <div class="sub">Miss distance &lt; 5.0 km</div>
-                        <div class="card-glow glow-red"></div>
-                    </div>
-
-                    <!-- Card 3: Next Close Approach (TCA) -->
-                    <div class="card glass-card">
-                        <div class="cardHead">
-                            <span>Next Close Approach (TCA)</span>
-                            <span style="color:var(--orange); font-size:13px;">◷</span>
-                        </div>
-                        <div class="value" style="color:var(--orange)" id="cardNextTca">--</div>
-                        <div class="sub" id="cardNextPair">Screening catalog...</div>
-                        <div class="card-glow glow-orange"></div>
-                    </div>
-
-                    <!-- Card 4: Average Rel Velocity -->
-                    <div class="card glass-card">
-                        <div class="cardHead">
-                            <span>Average Rel Velocity</span>
-                            <span style="color:var(--cyan); font-size:13px;">⚡</span>
-                        </div>
-                        <div class="value" style="color:var(--cyan)" id="cardAvgVel">--</div>
-                        <div class="sub">Hypervelocity encounters</div>
-                        <div class="card-glow glow-blue"></div>
-                    </div>
-                </div>
-
-                <!-- ENLARGED 720px 3D / 2D PLOT CANVAS -->
+                <!-- ENLARGED 720px 3D / 2D PLOT CANVAS (CLEAR & UNOBSTRUCTED) -->
                 <div id="bplaneChart"></div>
 
                 <!-- FLOATING HUD CAPSULE BUTTON (Responsive < 1212px) -->
@@ -1532,6 +1468,53 @@
                                     <span>Collision Prob (Pc):</span>
                                     <b id="camProbVal" style="color:var(--red);">--</b>
                                 </div>
+                            </div>
+                        </div>
+
+                        <!-- 4 GLASSMORPHISM KPI STATS CARDS (POSITIONED JUST ABOVE SIMULATE MANEUVER BOX) -->
+                        <div class="desktop-kpi-grid">
+                            <!-- Card 1: Pairs Screened -->
+                            <div class="card glass-card">
+                                <div class="cardHead">
+                                    <span>Pairs Screened (24h)</span>
+                                    <span style="color:var(--cyan); font-size:13px;">◎</span>
+                                </div>
+                                <div class="value" id="cardScreened">--</div>
+                                <div class="sub">Orbital intersection pairs</div>
+                                <div class="card-glow glow-cyan"></div>
+                            </div>
+
+                            <!-- Card 2: High Risk Events -->
+                            <div class="card glass-card">
+                                <div class="cardHead">
+                                    <span>High Risk Events</span>
+                                    <span style="color:var(--red); font-size:13px;">●</span>
+                                </div>
+                                <div class="value" style="color:var(--red)" id="cardCritical">--</div>
+                                <div class="sub">Miss distance &lt; 5.0 km</div>
+                                <div class="card-glow glow-red"></div>
+                            </div>
+
+                            <!-- Card 3: Next Close Approach (TCA) -->
+                            <div class="card glass-card">
+                                <div class="cardHead">
+                                    <span>Next Close Approach</span>
+                                    <span style="color:var(--orange); font-size:13px;">◷</span>
+                                </div>
+                                <div class="value" style="color:var(--orange)" id="cardNextTca">--</div>
+                                <div class="sub" id="cardNextPair">Screening catalog...</div>
+                                <div class="card-glow glow-orange"></div>
+                            </div>
+
+                            <!-- Card 4: Average Rel Velocity -->
+                            <div class="card glass-card">
+                                <div class="cardHead">
+                                    <span>Avg Rel Velocity</span>
+                                    <span style="color:var(--cyan); font-size:13px;">⚡</span>
+                                </div>
+                                <div class="value" style="color:var(--cyan)" id="cardAvgVel">--</div>
+                                <div class="sub">Hypervelocity encounters</div>
+                                <div class="card-glow glow-blue"></div>
                             </div>
                         </div>
 
