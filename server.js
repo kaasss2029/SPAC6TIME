@@ -150,8 +150,7 @@ function parseTleText(text, defaultGroup = "active") {
 
   while (i < lines.length) {
     if (i + 2 < lines.length && lines[i + 1].startsWith("1 ") && lines[i + 2].startsWith("2 ")) {
-      let name = lines[i].trim();
-      if (name.startsWith("0 ")) name = name.substring(2).trim();
+      let name = lines[i].trim().replace(/^0\s+/, "").trim();
       const line1 = lines[i + 1].trim();
       const line2 = lines[i + 2].trim();
       const noradId = line1.substring(2, 7).trim();

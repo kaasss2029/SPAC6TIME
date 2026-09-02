@@ -1799,7 +1799,8 @@ function parseTleCatalog(text) {
     let i = 0;
     while (i < lines.length) {
         if (i + 2 < lines.length && lines[i + 1].startsWith('1 ') && lines[i + 2].startsWith('2 ')) {
-            records.push({ name: lines[i].trim(), line1: lines[i + 1], line2: lines[i + 2] });
+            const name = lines[i].trim().replace(/^0\s+/, '');
+            records.push({ name, line1: lines[i + 1], line2: lines[i + 2] });
             i += 3;
         } else if (i + 1 < lines.length && lines[i].startsWith('1 ') && lines[i + 1].startsWith('2 ')) {
             const noradId = lines[i].substring(2, 7).trim();

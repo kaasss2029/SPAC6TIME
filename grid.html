@@ -1912,7 +1912,7 @@ DELTA 1 DEB
                     name = `NORAD ${line1.substring(2, 7).trim()}`;
                     i += 2;
                 } else if (next && next.startsWith("1 ") && after && after.startsWith("2 ")) {
-                    name = line;
+                    name = line.replace(/^0\s+/, "").trim();
                     line1 = next;
                     line2 = after;
                     i += 3;
